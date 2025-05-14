@@ -15,15 +15,27 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 
 	// Find the next pending podcast, prioritizing scheduled ones
 	const podcastToProcess = await env.DB.prepare(
-		`SELECT id, source_audio_bucket_key, source_background_bucket_key
-		 FROM podcasts
-		 WHERE status = ?
+		`SELECT
+			p.id,
+			p.source_audio_bucket_key,
+			p.source_background_bucket_key,
+			p.category_id,
+			c.default_source_background_bucket_key
+		 FROM podcasts p
+		 JOIN categories c ON p.category_id = c.id
+		 WHERE p.status = ?
 		 ORDER BY
-			 CASE WHEN scheduled_publish_at IS NOT NULL THEN 0 ELSE 1 END, -- Prioritize scheduled
-			 scheduled_publish_at ASC, -- Newer scheduled first (among scheduled)
-			 created_at ASC -- Oldest created first (among non-scheduled or if scheduled times are equal)
+			 CASE WHEN p.scheduled_publish_at IS NOT NULL THEN 0 ELSE 1 END, -- Prioritize scheduled
+			 p.scheduled_publish_at ASC, -- Newer scheduled first (among scheduled)
+			 p.created_at ASC -- Oldest created first (among non-scheduled or if scheduled times are equal)
 		 LIMIT 1`
-	).bind('pending').first<{ id: number; source_audio_bucket_key: string; source_background_bucket_key: string }>();
+	).bind('pending').first<{
+		id: number;
+		source_audio_bucket_key: string;
+		source_background_bucket_key: string | null;
+		category_id: number;
+		default_source_background_bucket_key: string;
+	}>();
 
 	if (!podcastToProcess) {
 		console.log('No pending podcasts found.');
@@ -31,6 +43,13 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 	}
 
 	console.log(`Found podcast to process: ID ${podcastToProcess.id}`);
+
+	// Determine the background image key
+	let backgroundImageKey = podcastToProcess.source_background_bucket_key;
+	if (!backgroundImageKey) { // Checks for null, undefined, or empty string
+		console.log(`Podcast ID ${podcastToProcess.id} is missing source_background_bucket_key. Using category default: ${podcastToProcess.default_source_background_bucket_key}`);
+		backgroundImageKey = podcastToProcess.default_source_background_bucket_key;
+	}
 
 	const videoServiceUrl = env.ENVIRONMENT === 'production'
 		? 'https://video-service.xeocast.com'
@@ -57,7 +76,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 			body: JSON.stringify({
 				callback_url: callbackUrl,
 				audio_file_key: podcastToProcess.source_audio_bucket_key,
-				background_image_key: podcastToProcess.source_background_bucket_key,
+				background_image_key: backgroundImageKey, // Use the determined key
 			}),
 		});
 
