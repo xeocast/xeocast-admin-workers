@@ -1,4 +1,4 @@
-import type { Env } from './env.d';
+import type { Env } from '../env.d';
 
 // Define the expected payload structure
 interface VideoGenerationPayload {

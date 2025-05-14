@@ -1,4 +1,4 @@
-import type { Env } from './env.d';
+import type { Env } from '../env.d';
 
 export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
 	console.log(`trigger fired at ${event.cron}`);

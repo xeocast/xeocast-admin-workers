@@ -15,23 +15,13 @@
  * Learn more at https://developers.cloudflare.com/workers/
  */
 
-import { handleScheduled } from './scheduled-handler';
-import { handleVideoGenerationCallback } from './video-generation-callback-handler';
-import type { Env } from './env.d';
+import { handleScheduled } from './handlers/scheduled.handler'; // Updated path
+import { handleFetch } from './routes/index'; // New import for router
+import type { Env } from './env.d'; // Path remains the same
 
 export default {
 	async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-		const url = new URL(req.url);
-
-		if (req.method === 'POST' && url.pathname === '/video-generation-callback') {
-			return handleVideoGenerationCallback(req, env);
-		}
-
-		// Default route for testing scheduled handler
-		const testUrl = new URL(req.url);
-		testUrl.pathname = '/__scheduled';
-		testUrl.searchParams.append('cron', '* * * * *');
-		return new Response(`To test the scheduled handler, ensure you have used the "--test-scheduled" then try running "curl ${testUrl.href}". For the callback, use GET /video-generation-callback?videoId=...&status=...`, { status: 200 });
+		return handleFetch(req, env, ctx); // Delegate to the router
 	},
 
 	// The scheduled handler is invoked at the interval set in our wrangler.jsonc's
