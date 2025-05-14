@@ -40,7 +40,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('Test:', 5);
+	console.log('Test:', 7);
 		
 	const videoServiceTasksResponse = await fetch('http://video-srv.xeocast.com:8765/tasks', {
 		headers: {
