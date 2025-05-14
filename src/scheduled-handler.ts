@@ -41,7 +41,8 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		: 'http://localhost:8787/video-generation-callback';
 
 	console.log('Test:', 9);
-	
+	console.log('Video service URL:', videoServiceUrl);
+	console.log('Callback URL:', callbackUrl);
 		
 	const videoServiceTasksResponse = await fetch('https://video-service.xeocast.com/tasks', {
 		headers: {
