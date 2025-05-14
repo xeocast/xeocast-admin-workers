@@ -40,7 +40,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('Test:', 5);
+	console.log('Test:', 6);
 		
 	const videoServiceTasksResponse = await fetch('https://video-service.xeocast.com/tasks', {
 		headers: {
@@ -50,20 +50,16 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 	const videoServiceTasksJson = await videoServiceTasksResponse.json();	
 	console.log('Current tasks on video service:', videoServiceTasksResponse.status, videoServiceTasksJson);
 
-
 	try {
-		const response = await fetch(videoServiceUrl, {
-			method: 'POST',
+		const url = new URL(videoServiceUrl);
+		url.searchParams.append('callbackUrl', callbackUrl);
+		url.searchParams.append('sourceAudioBucketKey', podcastToProcess.source_audio_bucket_key);
+		url.searchParams.append('sourceBackgroundBucketKey', podcastToProcess.source_background_bucket_key);
+		const response = await fetch(url.toString(), {
+			method: 'GET',
 			headers: {
 				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
-				'Content-Type': 'application/json',
-				'Accept': '*/*'
 			},
-			body: JSON.stringify({
-				callbackUrl,
-				sourceAudioBucketKey: podcastToProcess.source_audio_bucket_key,
-				sourceBackgroundBucketKey: podcastToProcess.source_background_bucket_key,
-			}),
 		});
 
 		if (!response.ok) {
