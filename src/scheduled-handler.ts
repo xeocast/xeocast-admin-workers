@@ -59,12 +59,11 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 			headers: {
 				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
 				'Content-Type': 'application/json',
-				'Accept': '*/*'
 			},
 			body: JSON.stringify({
-				callbackUrl,
-				sourceAudioBucketKey: podcastToProcess.source_audio_bucket_key,
-				sourceBackgroundBucketKey: podcastToProcess.source_background_bucket_key,
+				callback_url: callbackUrl,
+				audio_file_key: podcastToProcess.source_audio_bucket_key,
+				background_image_key: podcastToProcess.source_background_bucket_key,
 			}),
 		});
 
