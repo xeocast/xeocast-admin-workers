@@ -40,6 +40,8 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
+	console.log('X-API-Key', env.VIDEO_SERVICE_API_KEY);
+		
 	try {
 		const response = await fetch(videoServiceUrl, {
 			method: 'POST',

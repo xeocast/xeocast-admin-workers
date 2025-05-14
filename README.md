@@ -30,3 +30,5 @@ wrangler d1 migrations apply xeocast_db --remote --preview
 
 wrangler dev --test-scheduled --persist-to ../web-app/.wrangler/state
 http://localhost:8787/__scheduled?cron=*+*+*+*+*
+
+wrangler secret put VIDEO_SERVICE_API_KEY
