@@ -40,11 +40,11 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('Test:', 3);
+	console.log('Test:', 4);
 		
 	const videoServiceTasksResponse = await fetch('https://video-service.xeocast.com/tasks');
 	const videoServiceTasksJson = await videoServiceTasksResponse.json();	
-	console.log('Current tasks on video service:', videoServiceTasksJson);
+	console.log('Current tasks on video service:', videoServiceTasksResponse.status, videoServiceTasksJson);
 
 
 	try {
