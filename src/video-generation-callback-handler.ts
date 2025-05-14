@@ -3,10 +3,9 @@ import type { Env } from './env.d';
 // Define the expected payload structure
 interface VideoGenerationPayload {
 	taskId: string;
-	// podcastId: string; // podcastId is no longer directly in the payload
-	status: 'completed' | 'failed' | string; // Allow other potential statuses
-	video_url?: string; // Optional as it might not be present on failure
-	error?: string; // Optional error message
+	status: 'completed' | 'error'; // Status can be 'completed' or 'error'
+	video_bucket_key?: string; // Present if status is 'completed', contains the S3 bucket key
+	error?: string; // Present if status is 'error', contains error message
 }
 
 export async function handleVideoGenerationCallback(request: Request, env: Env): Promise<Response> {
@@ -25,7 +24,7 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 	}
 
 	// Validate required fields
-	if (!payload.taskId || !payload.status) { // podcastId is no longer directly in the payload
+	if (!payload.taskId || !payload.status) {
 		return new Response('Missing required fields in payload (taskId, status)', { status: 400 });
 	}
 
@@ -56,9 +55,9 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 	}
 
 	if (payload.status === 'completed') {
-		if (!payload.video_url) {
-			console.error('Missing video_url for completed status, Task ID:', payload.taskId);
-			return new Response('Missing video_url for completed status', { status: 400 });
+		if (!payload.video_bucket_key) {
+			console.error('Missing video_bucket_key for completed status, Task ID:', payload.taskId);
+			return new Response('Missing video_bucket_key for completed status. Payload expects "video_bucket_key".', { status: 400 });
 		}
 
 		try {
@@ -66,10 +65,29 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 			const stmt = env.DB.prepare(
 				'UPDATE podcasts SET video_bucket_key = ?, status = \'generated\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
 			);
-			const result = await stmt.bind(payload.video_url, now, now, podcastId).run();
+			const result = await stmt.bind(payload.video_bucket_key, now, now, podcastId).run();
 
 			if (result.success && result.meta.changes > 0) {
 				console.log(`Successfully updated podcast ${podcastId} status to generated.`);
+
+				// Update external_service_tasks status to 'completed'
+				try {
+					const taskUpdateStmt = env.DB.prepare(
+						'UPDATE external_service_tasks SET status = \'completed\', updated_at = ? WHERE external_task_id = ?'
+					);
+					const taskUpdateResult = await taskUpdateStmt.bind(now, payload.taskId).run(); // 'now' is in scope
+
+					if (taskUpdateResult.success && taskUpdateResult.meta.changes > 0) {
+						console.log(`Successfully updated external_service_tasks for ${payload.taskId} to completed.`);
+					} else if (taskUpdateResult.success && taskUpdateResult.meta.changes === 0) {
+						console.warn(`external_service_tasks entry for ${payload.taskId} not found or no changes needed for completed status.`);
+					} else {
+						console.error(`Failed to update external_service_tasks for ${payload.taskId} to completed:`, taskUpdateResult.error);
+					}
+				} catch (estError) {
+					 console.error(`Database error updating external_service_tasks for ${payload.taskId} to completed:`, estError);
+				}
+
 				return new Response(`Callback processed successfully for podcast ${podcastId}`, { status: 200 });
 			} else if (result.success && result.meta.changes === 0) {
 				console.warn(`Podcast with ID ${podcastId} not found or no changes needed.`);
@@ -82,14 +100,57 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 			console.error('Database error during update for podcast:', podcastId, dbError);
 			return new Response('Internal server error during database update', { status: 500 });
 		}
+	} else if (payload.status === 'error') {
+		console.error(`Video generation failed for Task ID: ${payload.taskId}, Podcast ID: ${podcastId}. Error: ${payload.error || 'No error details provided'}`);
+		// Optionally, update the podcast status to indicate failure
+		try {
+			const now = new Date().toISOString();
+			// Set status to its previous value to retry the video generation
+			const stmt = env.DB.prepare(
+				// Consider adding a specific column for generation_error_message to store payload.error
+				'UPDATE podcasts SET status = \'pending\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
+			);
+			const result = await stmt.bind(now, now, podcastId).run();
+
+			if (result.success && result.meta.changes > 0) {
+				console.log(`Successfully updated podcast ${podcastId} status to pending.`);
+
+				// Update external_service_tasks status to 'error'
+				try {
+					const taskUpdateStmt = env.DB.prepare(
+						'UPDATE external_service_tasks SET status = \'error\', updated_at = ? WHERE external_task_id = ?'
+					);
+					const taskUpdateResult = await taskUpdateStmt.bind(now, payload.taskId).run(); // 'now' is in scope
+
+					if (taskUpdateResult.success && taskUpdateResult.meta.changes > 0) {
+						console.log(`Successfully updated external_service_tasks for ${payload.taskId} to error.`);
+					} else if (taskUpdateResult.success && taskUpdateResult.meta.changes === 0) {
+						console.warn(`external_service_tasks entry for ${payload.taskId} not found or no changes needed for error status.`);
+					} else {
+						console.error(`Failed to update external_service_tasks for ${payload.taskId} to error:`, taskUpdateResult.error);
+					}
+				} catch (estError) {
+					console.error(`Database error updating external_service_tasks for ${payload.taskId} to error:`, estError);
+				}
+
+				// Even though it's an error from the video generation service,
+				// the callback handler itself processed this error state successfully.
+				return new Response(`Callback processed for podcast ${podcastId}, video generation failed.`, { status: 200 });
+			} else if (result.success && result.meta.changes === 0) {
+				console.warn(`Podcast with ID ${podcastId} not found when attempting to mark as pending.`);
+				return new Response(`Podcast ${podcastId} not found for pending update.`, { status: 404 });
+			} else {
+				console.error('Failed to update database for podcast pending status:', podcastId, result.error);
+				return new Response('Failed to update database for pending status.', { status: 500 });
+			}
+		} catch (dbError) {
+			console.error('Database error during update for podcast pending status:', podcastId, dbError);
+			return new Response('Internal server error during database update for pending status.', { status: 500 });
+		}
 	} else {
-		// Handle other statuses (e.g., 'failed') if necessary
-		console.log(`Received non-completed status '${payload.status}' for Task ID: ${payload.taskId}. No database update performed for podcast ${podcastId}.`);
-		// Optionally update the status to 'failed' or log the error
-		// const now = new Date().toISOString();
-		// await env.DB.prepare('UPDATE podcasts SET status = ?, last_status_change_at = ?, updated_at = ? WHERE id = ?')
-		//    .bind(payload.status, now, now, podcastId)
-		//    .run();
-		return new Response(`Callback received for podcast ${podcastId} with status ${payload.status}`, { status: 200 });
+		// This case should ideally not be reached if the payload.status is strictly 'completed' or 'error'
+		// as per the updated VideoGenerationPayload interface.
+		console.warn(`Received unexpected status '${payload.status}' for Task ID: ${payload.taskId}, Podcast ID: ${podcastId}.`);
+		return new Response(`Callback received with unexpected status: ${payload.status}`, { status: 400 });
 	}
 }
