@@ -32,8 +32,8 @@
 		{
 			"binding": "DB",
 			"database_name": "xeocast_db",
-			"database_id": "15592870-3f6c-4db9-a490-35f15f124411",			
-			"preview_database_id": "e59b165e-c50e-4f42-bba2-5e7f6e0f40c9",
+			"database_id": "b02b2c0d-6693-44e6-8105-5ba7862adb28",			
+			// "preview_database_id": "",
 			"migrations_dir": "../../migrations"
 		}
 	 ],

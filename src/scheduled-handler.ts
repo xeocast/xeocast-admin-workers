@@ -31,21 +31,28 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 	}
 
 	console.log(`Found podcast to process: ID ${podcastToProcess.id}`);
-	return;
+	console.log(`Source audio bucket key: ${podcastToProcess.source_audio_bucket_key}`);
+	console.log(`Source background bucket key: ${podcastToProcess.source_background_bucket_key}`);
 
 	// Call the video generation service
-	const videoServiceUrl = 'https://video-service.xeocast.com/generate-video';
+	const videoServiceUrl = env.ENVIRONMENT === 'production'
+		? 'https://video-service.xeocast.com/generate-video'
+		: 'http://localhost:8001/generate-video';
+	const callbackUrl = env.ENVIRONMENT === 'production'
+		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
+		: 'http://localhost:8787/video-generation-callback';
+
 	try {
 		const response = await fetch(videoServiceUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'Authorization': `Bearer ${env.VIDEO_SERVICE_API_KEY}`,
+				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
 			},
 			body: JSON.stringify({
-				callback_url: 'dash-cron-worker.xeocast.workers.dev/video-generation-callback',
-				source_audio_bucket_key: podcastToProcess.source_audio_bucket_key,
-				source_background_bucket_key: podcastToProcess.source_background_bucket_key,
+				callbackUrl,
+				sourceAudioBucketKey: podcastToProcess.source_audio_bucket_key,
+				sourceBackgroundBucketKey: podcastToProcess.source_background_bucket_key,
 			}),
 		});
 

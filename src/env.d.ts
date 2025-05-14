@@ -21,4 +21,5 @@ export interface Env {
 
 	// Example binding to a Worker secret. Learn more at https://developers.cloudflare.com/workers/configuration/secrets/
 	VIDEO_SERVICE_API_KEY: string;
+	ENVIRONMENT: string; // Added to distinguish between prod/dev environments
 }

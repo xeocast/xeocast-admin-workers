@@ -5,7 +5,7 @@
 	"packageManager": "pnpm@9.14.2",
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev --test-scheduled --persist-to ../web-app/.wrangler/state",
+		"dev": "wrangler dev --test-scheduled --persist-to ../xeocast-admin-dash/.wrangler/state",
 		"start": "wrangler dev --test-scheduled",
 		"preview": "wrangler dev --test-scheduled --remote",
 		"cf-typegen": "wrangler types"
