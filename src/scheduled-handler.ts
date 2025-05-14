@@ -41,6 +41,8 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		: 'http://localhost:8787/video-generation-callback';
 
 	console.log('Test:', 8);
+	console.log('X-API-Key', env.VIDEO_SERVICE_API_KEY);
+	
 		
 	const videoServiceTasksResponse = await fetch('http://51.222.30.159:8765/tasks', {
 		headers: {
