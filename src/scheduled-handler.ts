@@ -51,6 +51,11 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 	const videoServiceTasksJson = await videoServiceTasksResponse.json();	
 	console.log('Current tasks on video service:', videoServiceTasksResponse.status, videoServiceTasksJson);
 
+	console.log('Body:', JSON.stringify({
+		callback_url: callbackUrl,
+		audio_file_key: podcastToProcess.source_audio_bucket_key,
+		background_image_key: podcastToProcess.source_background_bucket_key,
+	}));
 
 	try {
 		const response = await fetch(videoServiceUrl, {
