@@ -32,34 +32,23 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 
 	console.log(`Found podcast to process: ID ${podcastToProcess.id}`);
 
-	// Call the video generation service
 	const videoServiceUrl = env.ENVIRONMENT === 'production'
-		? 'https://video-service.xeocast.com/generate-video'
-		: 'http://localhost:8001/generate-video';
+		? 'https://video-service.xeocast.com'
+		: 'http://localhost:8001';
+
+	// Check if video service is healthy
+	const healthResponse = await fetch(`${videoServiceUrl}/health`, { method: 'GET' });
+	if (healthResponse.status !== 200) {
+		console.log(`Video service is not healthy. Response status: ${healthResponse.status}`);
+		return;
+	}
+
 	const callbackUrl = env.ENVIRONMENT === 'production'
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('Test:', 9);
-	console.log('Video service URL:', videoServiceUrl);
-	console.log('Callback URL:', callbackUrl);
-		
-	const videoServiceTasksResponse = await fetch('https://video-service.xeocast.com/tasks', {
-		headers: {
-			'X-API-Key': env.VIDEO_SERVICE_API_KEY,
-		},
-	});
-	const videoServiceTasksJson = await videoServiceTasksResponse.json();	
-	console.log('Current tasks on video service:', videoServiceTasksResponse.status, videoServiceTasksJson);
-
-	console.log('Body:', JSON.stringify({
-		callback_url: callbackUrl,
-		audio_file_key: podcastToProcess.source_audio_bucket_key,
-		background_image_key: podcastToProcess.source_background_bucket_key,
-	}));
-
 	try {
-		const response = await fetch(videoServiceUrl, {
+		const response = await fetch(`${videoServiceUrl}/generate-video`, {
 			method: 'POST',
 			headers: {
 				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
@@ -79,19 +68,19 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		}
 
 		// Process successful response from video service
-		let responseData: { taskId?: string }; // Type assertion for responseData
+		let responseData: { task_id?: string }; // Type assertion for responseData
 		try {
-			responseData = await response.json() as { taskId?: string }; // Type assertion after parsing
+			responseData = await response.json() as { task_id?: string }; // Type assertion after parsing
 		} catch (parseError) {
 			console.error(`Failed to parse JSON response from video service for podcast ${podcastToProcess.id}:`, parseError);
 			return; // Stop processing this podcast if parsing fails
 		}
 
-		const externalTaskId = responseData.taskId;
+		const externalTaskId = responseData.task_id;
 
 		if (!externalTaskId) {
-			console.error(`Video service response for podcast ${podcastToProcess.id} did not contain an 'taskId'. Response:`, JSON.stringify(responseData));
-			return; // Stop processing if taskId is missing
+			console.error(`Video service response for podcast ${podcastToProcess.id} did not contain an 'task_id'. Response:`, JSON.stringify(responseData));
+			return; // Stop processing if task_id is missing
 		}
 
 		// Record the successful call and external_task_id in external_service_tasks
@@ -99,7 +88,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		try {
 			const externalTaskInsertResult = await env.DB.prepare(
 				'INSERT INTO external_service_tasks (external_task_id, type, data, status) VALUES (?, ?, ?, ?)'
-			).bind(externalTaskId, 'video_generation_request', newExternalTaskData, 'initiated').run();
+			).bind(externalTaskId, 'video_generation_request', newExternalTaskData, 'processing').run();
 
 			if (externalTaskInsertResult.success) {
 				console.log(`Successfully created external_service_task for podcast ${podcastToProcess.id} with external_task_id ${externalTaskId}.`);
