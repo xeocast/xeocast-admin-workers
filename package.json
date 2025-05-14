@@ -1,0 +1,19 @@
+{
+	"name": "cron-worker",
+	"version": "0.0.0",
+	"private": true,
+	"packageManager": "pnpm@9.14.2",
+	"scripts": {
+		"deploy": "wrangler deploy",
+		"dev": "wrangler dev --test-scheduled --persist-to ../web-app/.wrangler/state",
+		"start": "wrangler dev --test-scheduled",
+		"preview": "wrangler dev --test-scheduled --remote",
+		"cf-typegen": "wrangler types"
+	},
+	"devDependencies": {
+		"typescript": "^5.5.2",
+		"wrangler": "^4.14.3"
+	},
+	"dependencies": {
+	}
+}
