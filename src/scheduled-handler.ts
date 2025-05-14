@@ -32,6 +32,13 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 
 	console.log(`Found podcast to process: ID ${podcastToProcess.id}`);
 
+	
+	// Check video service health
+	const healthCheckResponse = await fetch('https://video-service.xeocast.com/health');
+	const healthCheckText = await healthCheckResponse.text();
+	console.log(`Video service health check: ${healthCheckResponse.status} ${healthCheckResponse.statusText} - ${healthCheckText}`);
+
+
 	// Call the video generation service
 	const videoServiceUrl = env.ENVIRONMENT === 'production'
 		? 'https://video-service.xeocast.com/generate-video'
@@ -40,14 +47,12 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('X-API-KEY');
-		
 	try {
 		const response = await fetch(videoServiceUrl, {
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-API-KEY': env.VIDEO_SERVICE_API_KEY,
+				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
 			},
 			body: JSON.stringify({
 				callbackUrl,
