@@ -60,6 +60,7 @@
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
 	// "vars": { "VIDEO_SERVICE_API_KEY": "placeholder_secret_put_via_wrangler_cli" },
+	"vars": { "ENVIRONMENT": "production" },
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/
