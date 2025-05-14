@@ -47,7 +47,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 			method: 'POST',
 			headers: {
 				'Content-Type': 'application/json',
-				'X-API-Key': env.VIDEO_SERVICE_API_KEY,
+				'X-API-KEY': env.VIDEO_SERVICE_API_KEY,
 			},
 			body: JSON.stringify({
 				callbackUrl,
