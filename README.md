@@ -14,7 +14,6 @@ https://github.com/cloudflare/workers-sdk/issues/new/choose
 💬 Join our Community
 https://discord.cloudflare.com
 
-
 npm run cf-typegen
 wrangler types
 
