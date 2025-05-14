@@ -34,15 +34,15 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 
 	// Call the video generation service
 	const videoServiceUrl = env.ENVIRONMENT === 'production'
-		? 'http://video-srv.xeocast.com:8765/generate-video'
+		? 'http://51.222.30.159:8765/generate-video'
 		: 'http://localhost:8001/generate-video';
 	const callbackUrl = env.ENVIRONMENT === 'production'
 		? 'https://dash-cron-worker.xeocast.workers.dev/video-generation-callback'
 		: 'http://localhost:8787/video-generation-callback';
 
-	console.log('Test:', 7);
+	console.log('Test:', 8);
 		
-	const videoServiceTasksResponse = await fetch('http://video-srv.xeocast.com:8765/tasks', {
+	const videoServiceTasksResponse = await fetch('http://51.222.30.159:8765/tasks', {
 		headers: {
 			'X-API-Key': env.VIDEO_SERVICE_API_KEY,
 		},
