@@ -32,13 +32,6 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 
 	console.log(`Found podcast to process: ID ${podcastToProcess.id}`);
 
-	
-	// Check video service health
-	const healthCheckResponse = await fetch('https://video-service.xeocast.com/health');
-	const healthCheckText = await healthCheckResponse.text();
-	console.log(`Video service health check: ${healthCheckResponse.status} ${healthCheckResponse.statusText} - ${healthCheckText}`);
-
-
 	// Call the video generation service
 	const videoServiceUrl = env.ENVIRONMENT === 'production'
 		? 'https://video-service.xeocast.com/generate-video'
@@ -62,6 +55,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
 		});
 
 		if (!response.ok) {
+			console.log('Video service response:', await response.text());
 			const errorText = await response.text();
 			console.error(`Failed to call video service for podcast ${podcastToProcess.id}: ${response.status} ${response.statusText} - ${errorText}`);
 			return; // Stop processing this podcast for now
