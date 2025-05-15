@@ -35,7 +35,6 @@ interface SeriesInfo {
     title: string;
     description: string | null;
     category_id: number;
-    youtube_playlist_id: number | null; // Internal DB ID
 }
 
 interface YouTubePlaylist {
@@ -44,6 +43,7 @@ interface YouTubePlaylist {
     title: string;
     description: string | null;
     channel_id: number; // Internal DB ID of the youtube_channel
+    series_id: number; // Internal DB ID of the series
 }
 
 const VIDEO_SERVICE_BASE_URL = (env: Env) => 
@@ -91,8 +91,9 @@ async function ensureYouTubePlaylist(
     youtubeChannelPlatformId: string // YouTube Channel's Platform ID to associate the playlist
 ): Promise<string | null> {
     console.log(`Ensuring playlist for series_id: ${seriesId}`);
+    // Fetch series data (title and description are passed as params, but category_id might be useful if needed later)
     const seriesData = await db.prepare(
-        'SELECT id, title, description, category_id, youtube_playlist_id FROM series WHERE id = ?'
+        'SELECT id, category_id FROM series WHERE id = ?'
     ).bind(seriesId).first<SeriesInfo>();
 
     if (!seriesData) {
@@ -103,38 +104,39 @@ async function ensureYouTubePlaylist(
     let playlistPlatformId: string | null = null;
     const videoServiceUrl = VIDEO_SERVICE_BASE_URL(env);
 
-    if (seriesData.youtube_playlist_id) {
-        const existingPlaylist = await db.prepare(
-            'SELECT id, youtube_platform_id, title, description, channel_id FROM youtube_playlists WHERE id = ?'
-        ).bind(seriesData.youtube_playlist_id).first<YouTubePlaylist>();
+    // Try to find an existing playlist for this series in our DB
+    const existingPlaylistResult = await db.prepare(
+        'SELECT id, youtube_platform_id, title, description, channel_id, series_id FROM youtube_playlists WHERE series_id = ?'
+    ).bind(seriesId).first<YouTubePlaylist | undefined>();
 
-        if (existingPlaylist && existingPlaylist.youtube_platform_id) {
-            console.log(`Found existing playlist in DB: ${existingPlaylist.youtube_platform_id} for series_id: ${seriesId}`);
-            // Verify with YouTube
-            try {
-                const playlistCheckResponse = await fetch(`${videoServiceUrl}/youtube/playlists/${existingPlaylist.youtube_platform_id}`, {
-                    method: 'GET',
-                    headers: { 'X-API-Key': env.VIDEO_SERVICE_API_KEY },
-                });
-                if (playlistCheckResponse.ok) {
-                    const playlistDetails = await playlistCheckResponse.json() as { id: string, title: string, description: string };
-                    console.log(`Playlist ${existingPlaylist.youtube_platform_id} confirmed on YouTube titled: ${playlistDetails.title}`);
-                    playlistPlatformId = existingPlaylist.youtube_platform_id;
-                } else if (playlistCheckResponse.status === 404) {
-                    console.log(`Playlist ${existingPlaylist.youtube_platform_id} (DB ID: ${existingPlaylist.id}) not found on YouTube. Will attempt to recreate.`);
-                    // Playlist not found on YouTube, proceed to create it below
-                } else {
-                    console.error(`Error checking playlist ${existingPlaylist.youtube_platform_id} on YouTube: ${playlistCheckResponse.status} ${await playlistCheckResponse.text()}`);
-                    return null; // Stop if there's an API error other than 404
-                }
-            } catch (error) {
-                console.error(`Network error while checking playlist ${existingPlaylist.youtube_platform_id} on YouTube:`, error);
-                return null;
+    if (existingPlaylistResult && existingPlaylistResult.youtube_platform_id) {
+        const existingPlaylist = existingPlaylistResult;
+        console.log(`Found existing playlist in DB: ${existingPlaylist.youtube_platform_id} for series_id: ${seriesId}`);
+        // Verify with YouTube
+        try {
+            const playlistCheckResponse = await fetch(`${videoServiceUrl}/youtube/playlists/${existingPlaylist.youtube_platform_id}`, {
+                method: 'GET',
+                headers: { 'X-API-Key': env.VIDEO_SERVICE_API_KEY },
+            });
+            if (playlistCheckResponse.ok) {
+                const playlistDetails = await playlistCheckResponse.json() as { id: string, title: string, description: string };
+                console.log(`Playlist ${existingPlaylist.youtube_platform_id} confirmed on YouTube titled: ${playlistDetails.title}`);
+                playlistPlatformId = existingPlaylist.youtube_platform_id;
+            } else if (playlistCheckResponse.status === 404) {
+                console.log(`Playlist ${existingPlaylist.youtube_platform_id} (DB ID: ${existingPlaylist.id}) not found on YouTube. Will attempt to recreate.`);
+                // Playlist not found on YouTube, proceed to create it below. 
+                // The existing local DB record for this playlist might need to be updated or handled.
+            } else {
+                console.error(`Error checking playlist ${existingPlaylist.youtube_platform_id} on YouTube: ${playlistCheckResponse.status} ${await playlistCheckResponse.text()}`);
+                return null; // Stop if there's an API error other than 404
             }
+        } catch (error) {
+            console.error(`Network error while checking playlist ${existingPlaylist.youtube_platform_id} on YouTube:`, error);
+            return null;
         }
     }
 
-    // If playlistPlatformId is still null, it means it wasn't found in DB or wasn't confirmed on YouTube, so create it.
+    // If playlistPlatformId is still null, it means it wasn't found in DB, or wasn't confirmed/found on YouTube, so create/recreate it.
     if (!playlistPlatformId) {
         console.log(`No confirmed YouTube playlist for series_id: ${seriesId}. Attempting to create one.`);
         try {
@@ -183,11 +185,10 @@ async function ensureYouTubePlaylist(
                     console.log(`Inserted new local youtube_playlists record ID: ${playlistDbId}`);
                 }
                 
-                // Link this new/updated playlist to the series
-                await db.prepare('UPDATE series SET youtube_playlist_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?')
-                    .bind(playlistDbId, seriesData.id)
-                    .run();
-                console.log(`Linked playlist (DB ID: ${playlistDbId}) to series (DB ID: ${seriesData.id})`);
+                // The link between series and playlist is maintained by youtube_playlists.series_id,
+                // which is set during INSERT or UPDATE of the youtube_playlists table.
+                // No separate update to the 'series' table is needed for this.
+                console.log(`Upserted local youtube_playlists record ID: ${playlistDbId} for series_id: ${seriesId}`);
 
             } else {
                 console.error(`Failed to create playlist on YouTube: ${createPlaylistResponse.status} ${await createPlaylistResponse.text()}`);
