@@ -28,6 +28,7 @@ interface YouTubeChannelInfo {
     video_description_template: string;
     first_comment_template: string;
     language_code: string;
+    default_source_thumbnail_bucket_key: string | null; // Added for category default thumbnail
 }
 
 interface SeriesInfo {
@@ -62,13 +63,15 @@ async function getYouTubeChannelInfo(db: D1Database, categoryId: number): Promis
             yc.description,
             yc.video_description_template,
             yc.first_comment_template,
-            yc.language_code
+            yc.language_code,
+            c.default_source_thumbnail_bucket_key -- Added from categories table
          FROM youtube_channels yc
+         JOIN categories c ON yc.category_id = c.id -- Join with categories table
          WHERE yc.category_id = ?`
     ).bind(categoryId).first<YouTubeChannelInfo>();
 
     if (!channelInfo) {
-        console.error(`No YouTube channel found for category_id: ${categoryId}`);
+        console.error(`No YouTube channel found (or category info) for category_id: ${categoryId}`);
         return null;
     }
     return channelInfo;
@@ -316,7 +319,7 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
         youtube_channel_id: channelInfo.youtube_platform_id, // YouTube Channel ID (platform ID)
         category_id: channelInfo.youtube_platform_category_id, // YouTube's category ID from channel settings
         video_file_key: podcastToProcess.video_bucket_key,
-        video_thumbnail_key: podcastToProcess.thumbnail_bucket_key || '', // Can be null
+        video_thumbnail_key: podcastToProcess.thumbnail_bucket_key || channelInfo.default_source_thumbnail_bucket_key || '', // Use podcast's, then category's, then empty
         privacy_status: podcastToProcess.scheduled_publish_at ? 'private' : 'public', // 'private' if scheduled, else 'public'
         publish_at: podcastToProcess.scheduled_publish_at || undefined, // ISO 8601 format, optional
         first_comment: firstCommentText // Optional
