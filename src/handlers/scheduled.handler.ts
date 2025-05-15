@@ -12,10 +12,8 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
     if (currentMinute % 2 === 0) {
         console.log('Current minute is even, dispatching to video generation module.');
         await triggerVideoGeneration(env);
-    } else if (currentMinute % 2 !== 0) {
+    } else {
         console.log('Current minute is odd, dispatching to YouTube upload module.');
         await triggerYouTubeUpload(env);
-    } else {
-        console.log('Conditions not met for video generation or YouTube upload. Skipping this run.');
     }
 }
