@@ -32,7 +32,7 @@
 		{
 			"binding": "DB",
 			"database_name": "xeocast_db",
-			"database_id": "11b9d865-e9ec-4557-93fe-a2bf0bd45132",			
+			"database_id": "62841e0c-649c-484e-b005-229f9e782b50",			
 			// "preview_database_id": "",
 			"migrations_dir": "../../migrations"
 		}
