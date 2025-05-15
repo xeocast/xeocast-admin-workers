@@ -1,7 +1,7 @@
 import type { Env } from '../env.d';
 import type { ScheduledEvent, ExecutionContext } from '@cloudflare/workers-types';
 import { triggerVideoGeneration } from '../lib/generateVideo';
-import { uploadVideoToYouTube } from '../lib/uploadToYouTube';
+import { triggerYouTubeUpload } from '../lib/uploadToYouTube';
 
 export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext): Promise<void> {
     const now = new Date();
@@ -16,7 +16,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
     } else if (currentSecond % 2 !== 0) {
         console.log('Current second is odd, dispatching to YouTube upload module.');
         // In the future, you might pass specific video details if needed, e.g., after a video is generated.
-        await uploadVideoToYouTube(env /*, potentialVideoDetails */);
+        await triggerYouTubeUpload(env);
     } else {
         console.log('Conditions not met for video generation or YouTube upload. Skipping this run.');
     }

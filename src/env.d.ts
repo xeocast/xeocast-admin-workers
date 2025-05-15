@@ -3,6 +3,17 @@ export interface Env {
 	// replace this list with the variable name you chose.
 	DB: D1Database;
 
+	// Variables for YouTube Uploads
+	YOUTUBE_UPLOAD_CALLBACK_URL: string;
+	VIDEO_OUTPUT_BUCKET: string;
+	THUMBNAIL_BUCKET: string;
+
+	// For Video Service API Key
+	VIDEO_SERVICE_API_KEY: string;
+
+	// General Environment Setting
+	ENVIRONMENT: 'development' | 'production';
+
 	// If you set another name in wrangler.toml as the value for 'binding',
 	// replace this list with the variable name you chose.
 	// MY_BUCKET: R2Bucket;
@@ -18,8 +29,4 @@ export interface Env {
 
 	// Example binding to a Queue. Learn more at https://developers.cloudflare.com/queues/javascript-apis/
 	// MY_QUEUE: Queue;
-
-	// Example binding to a Worker secret. Learn more at https://developers.cloudflare.com/workers/configuration/secrets/
-	VIDEO_SERVICE_API_KEY: string;
-	ENVIRONMENT: string; // Added to distinguish between prod/dev environments
 }
