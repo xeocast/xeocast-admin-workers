@@ -16,7 +16,7 @@ export async function handleScheduled(event: ScheduledEvent, env: Env, ctx: Exec
     } else if (currentSecond % 2 !== 0) {
         console.log('Current second is odd, dispatching to YouTube upload module.');
         // In the future, you might pass specific video details if needed, e.g., after a video is generated.
-        // await triggerYouTubeUpload(env);
+        await triggerYouTubeUpload(env);
     } else {
         console.log('Conditions not met for video generation or YouTube upload. Skipping this run.');
     }
