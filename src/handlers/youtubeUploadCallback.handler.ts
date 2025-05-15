@@ -4,7 +4,8 @@ import type { Env } from '../env.d';
 interface YouTubeUploadPayload {
 	taskId: string; // This will be the external_task_id from external_service_tasks
 	status: 'completed' | 'error';
-	youtube_video_platform_id?: string; // Present if status is 'completed'
+	youtube_video_id?: string; // Present if status is 'completed', this is the YouTube Video ID.
+	youtube_video_url?: string; // Present if status is 'completed'
 	error?: string; // Present if status is 'error'
 }
 
@@ -59,12 +60,17 @@ export async function handleYouTubeUploadCallback(request: Request, env: Env): P
 	const now = new Date().toISOString();
 
 	if (payload.status === 'completed') {
-		if (!payload.youtube_video_platform_id) {
-			console.error('Missing youtube_video_platform_id for completed YouTube upload status, Task ID:', payload.taskId);
-			// Even if youtube_video_platform_id is missing, we might still want to mark the task as 'error'
+		if (!payload.youtube_video_id) {
+			console.error('Missing youtube_video_id for completed YouTube upload status, Task ID:', payload.taskId);
+			// Even if youtube_video_id is missing, we might still want to mark the task as 'error'
             // and podcast as 'generated' to allow for manual intervention or re-trigger.
             // For now, strict check and return 400.
-			return new Response('Missing youtube_video_platform_id for completed status.', { status: 400 });
+			return new Response('Missing youtube_video_id for completed status.', { status: 400 });
+		}
+
+		// Optionally log the youtube_video_url if present
+		if (payload.youtube_video_url) {
+			console.log(`YouTube video URL for Task ID ${payload.taskId}: ${payload.youtube_video_url}`);
 		}
 
 		try {
@@ -72,7 +78,7 @@ export async function handleYouTubeUploadCallback(request: Request, env: Env): P
 			const podcastUpdateStmt = env.DB.prepare(
 				'UPDATE podcasts SET youtube_video_platform_id = ?, status = \'uploaded\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
 			);
-			const podcastUpdateResult = await podcastUpdateStmt.bind(payload.youtube_video_platform_id, now, now, podcastId).run();
+			const podcastUpdateResult = await podcastUpdateStmt.bind(payload.youtube_video_id, now, now, podcastId).run();
 
 			if (podcastUpdateResult.success && podcastUpdateResult.meta.changes > 0) {
 				console.log(`Successfully updated podcast ${podcastId} status to uploaded and set youtube_video_platform_id.`);
