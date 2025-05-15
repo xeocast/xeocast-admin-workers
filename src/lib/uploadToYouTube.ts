@@ -113,7 +113,7 @@ async function ensureYouTubePlaylist(
             console.log(`Found existing playlist in DB: ${existingPlaylist.youtube_platform_id} for series_id: ${seriesId}`);
             // Verify with YouTube
             try {
-                const playlistCheckResponse = await fetch(`${videoServiceUrl}/youtube-playlists/${existingPlaylist.youtube_platform_id}`, {
+                const playlistCheckResponse = await fetch(`${videoServiceUrl}/youtube/playlists/${existingPlaylist.youtube_platform_id}`, {
                     method: 'GET',
                     headers: { 'X-API-Key': env.VIDEO_SERVICE_API_KEY },
                 });
@@ -139,7 +139,7 @@ async function ensureYouTubePlaylist(
     if (!playlistPlatformId) {
         console.log(`No confirmed YouTube playlist for series_id: ${seriesId}. Attempting to create one.`);
         try {
-            const createPlaylistResponse = await fetch(`${videoServiceUrl}/youtube-playlists/`, {
+            const createPlaylistResponse = await fetch(`${videoServiceUrl}/youtube/playlists/`, {
                 method: 'POST',
                 headers: {
                     'X-API-Key': env.VIDEO_SERVICE_API_KEY,
@@ -326,7 +326,7 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
     console.log(`Attempting to upload video for podcast ${podcastToProcess.id} to YouTube channel ${channelInfo.youtube_platform_id}. Payload:`, JSON.stringify(uploadPayload, null, 2));
 
     try {
-        const response = await fetch(`${videoServiceUrl}/youtube-videos/upload`, {
+        const response = await fetch(`${videoServiceUrl}/youtube/videos/upload`, {
             method: 'POST',
             headers: {
                 'X-API-Key': env.VIDEO_SERVICE_API_KEY,
