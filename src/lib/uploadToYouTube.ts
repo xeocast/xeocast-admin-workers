@@ -317,7 +317,7 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
         youtube_channel_id: channelInfo.youtube_platform_id, // YouTube Channel ID (platform ID)
         category_id: channelInfo.youtube_platform_category_id, // YouTube's category ID from channel settings
         video_file_key: podcastToProcess.video_bucket_key,
-        video_thumbnail_key: podcastToProcess.thumbnail_bucket_key, // Can be null
+        video_thumbnail_key: podcastToProcess.thumbnail_bucket_key || '', // Can be null
         privacy_status: podcastToProcess.scheduled_publish_at ? 'private' : 'public', // 'private' if scheduled, else 'public'
         publish_at: podcastToProcess.scheduled_publish_at || undefined, // ISO 8601 format, optional
         first_comment: firstCommentText // Optional
