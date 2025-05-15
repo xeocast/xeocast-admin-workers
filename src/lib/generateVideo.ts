@@ -13,7 +13,7 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
         return;
     }
 
-    // Find the next pending podcast, prioritizing scheduled ones
+    // Find the next podcast with status 'audioGenerated' and a valid audio key, prioritizing scheduled ones
     const podcastToProcess = await env.DB.prepare(
         `SELECT
             p.id,
@@ -24,21 +24,23 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
          FROM podcasts p
          JOIN categories c ON p.category_id = c.id
          WHERE p.status = ?
+           AND p.source_audio_bucket_key IS NOT NULL
+           AND p.source_audio_bucket_key <> ''
          ORDER BY
              CASE WHEN p.scheduled_publish_at IS NOT NULL THEN 0 ELSE 1 END,
              p.scheduled_publish_at ASC,
              p.created_at ASC
          LIMIT 1`
-    ).bind('pending').first<{
+    ).bind('audioGenerated').first<{
         id: number;
-        source_audio_bucket_key: string;
+        source_audio_bucket_key: string; // Ensured by the query
         source_background_bucket_key: string | null;
         category_id: number;
         default_source_background_bucket_key: string;
     }>();
 
     if (!podcastToProcess) {
-        console.log('No pending podcasts found for video generation.');
+        console.log('No podcasts with status "audioGenerated" and valid audio key found for video generation.');
         return;
     }
 

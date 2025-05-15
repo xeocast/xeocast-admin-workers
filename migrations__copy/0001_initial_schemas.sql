@@ -49,7 +49,7 @@ CREATE TABLE IF NOT EXISTS categories (
     name TEXT NOT NULL UNIQUE,
     description TEXT NOT NULL,
     default_source_background_bucket_key TEXT NOT NULL,
-    youtube_channel_id INTEGER,
+    default_source_thumbnail_bucket_key TEXT NOT NULL,
     prompt_template_to_gen_evergreen_titles TEXT NOT NULL,
     prompt_template_to_gen_news_titles TEXT NOT NULL,
     prompt_template_to_gen_series_titles TEXT NOT NULL,
@@ -62,8 +62,7 @@ CREATE TABLE IF NOT EXISTS categories (
     prompt_template_to_gen_article_image TEXT NOT NULL,
     language_code TEXT CHECK (LENGTH(language_code) = 2) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (youtube_channel_id) REFERENCES youtube_channels(id)
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS series (
@@ -71,11 +70,9 @@ CREATE TABLE IF NOT EXISTS series (
     title TEXT NOT NULL,
     description TEXT,
     category_id INTEGER NOT NULL,
-    youtube_playlist_id INTEGER,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (category_id) REFERENCES categories(id),
-    FOREIGN KEY (youtube_playlist_id) REFERENCES youtube_playlists(id)
+    FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
 CREATE TABLE IF NOT EXISTS podcasts (
@@ -93,7 +90,7 @@ CREATE TABLE IF NOT EXISTS podcasts (
     first_comment TEXT,
     type TEXT NOT NULL CHECK (type IN ('evergreen', 'news')),
     scheduled_publish_at DATETIME,
-    status TEXT NOT NULL CHECK (status IN ('draft', 'pending', 'generating', 'generated', 'uploading', 'uploaded', 'published', 'unpublished')),
+    status TEXT NOT NULL CHECK (status IN ('draft', 'draftApproved', 'researching', 'researched', 'generatingThumbnail', 'thumbnailGenerated', 'generatingAudio', 'audioGenerated', 'generating', 'generated', 'generatedApproved', 'uploading', 'uploaded', 'published', 'unpublished')),
     last_status_change_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
@@ -103,6 +100,7 @@ CREATE TABLE IF NOT EXISTS podcasts (
 
 CREATE TABLE IF NOT EXISTS youtube_channels (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
+    category_id INTEGER NOT NULL,
     youtube_platform_id TEXT NOT NULL UNIQUE,
     youtube_platform_category_id TEXT NOT NULL,
     title TEXT NOT NULL,
@@ -111,7 +109,8 @@ CREATE TABLE IF NOT EXISTS youtube_channels (
     first_comment_template TEXT NOT NULL,
     language_code TEXT CHECK (LENGTH(language_code) = 2) NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
 );
 
 CREATE TABLE IF NOT EXISTS youtube_playlists (
@@ -120,9 +119,22 @@ CREATE TABLE IF NOT EXISTS youtube_playlists (
     title TEXT NOT NULL,
     description TEXT,
     channel_id INTEGER NOT NULL,
+    series_id INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (channel_id) REFERENCES youtube_channels(id)
+    FOREIGN KEY (channel_id) REFERENCES youtube_channels(id),
+    FOREIGN KEY (series_id) REFERENCES series(id)
+);
+
+CREATE TABLE IF NOT EXISTS youtube_videos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    podcast_id INTEGER NOT NULL,
+    youtube_channel_id INTEGER NOT NULL,
+    youtube_platform_id TEXT NOT NULL UNIQUE,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (podcast_id) REFERENCES podcasts(id) ON DELETE CASCADE,
+    FOREIGN KEY (youtube_channel_id) REFERENCES youtube_channels(id) ON DELETE CASCADE
 );
 
 CREATE TABLE IF NOT EXISTS external_service_tasks (

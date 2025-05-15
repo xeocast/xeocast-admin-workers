@@ -108,12 +108,12 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 			// Set status to its previous value to retry the video generation
 			const stmt = env.DB.prepare(
 				// Consider adding a specific column for generation_error_message to store payload.error
-				'UPDATE podcasts SET status = \'pending\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
+				'UPDATE podcasts SET status = \'audioGenerated\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
 			);
 			const result = await stmt.bind(now, now, podcastId).run();
 
 			if (result.success && result.meta.changes > 0) {
-				console.log(`Successfully updated podcast ${podcastId} status to pending.`);
+				console.log(`Successfully updated podcast ${podcastId} status to audioGenerated.`);
 
 				// Update external_service_tasks status to 'error'
 				try {
@@ -137,15 +137,15 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 				// the callback handler itself processed this error state successfully.
 				return new Response(`Callback processed for podcast ${podcastId}, video generation failed.`, { status: 200 });
 			} else if (result.success && result.meta.changes === 0) {
-				console.warn(`Podcast with ID ${podcastId} not found when attempting to mark as pending.`);
-				return new Response(`Podcast ${podcastId} not found for pending update.`, { status: 404 });
+				console.warn(`Podcast with ID ${podcastId} not found when attempting to mark as audioGenerated.`);
+				return new Response(`Podcast ${podcastId} not found for audioGenerated update.`, { status: 404 });
 			} else {
-				console.error('Failed to update database for podcast pending status:', podcastId, result.error);
-				return new Response('Failed to update database for pending status.', { status: 500 });
+				console.error('Failed to update database for podcast audioGenerated status:', podcastId, result.error);
+				return new Response('Failed to update database for audioGenerated status.', { status: 500 });
 			}
 		} catch (dbError) {
-			console.error('Database error during update for podcast pending status:', podcastId, dbError);
-			return new Response('Internal server error during database update for pending status.', { status: 500 });
+			console.error('Database error during update for podcast audioGenerated status:', podcastId, dbError);
+			return new Response('Internal server error during database update for audioGenerated status.', { status: 500 });
 		}
 	} else {
 		// This case should ideally not be reached if the payload.status is strictly 'completed' or 'error'

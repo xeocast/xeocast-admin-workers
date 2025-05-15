@@ -63,9 +63,8 @@ async function getYouTubeChannelInfo(db: D1Database, categoryId: number): Promis
             yc.video_description_template,
             yc.first_comment_template,
             yc.language_code
-         FROM categories c
-         JOIN youtube_channels yc ON c.youtube_channel_id = yc.id
-         WHERE c.id = ?`
+         FROM youtube_channels yc
+         WHERE yc.category_id = ?`
     ).bind(categoryId).first<YouTubeChannelInfo>();
 
     if (!channelInfo) {
@@ -86,7 +85,7 @@ async function getYouTubeChannelInfo(db: D1Database, categoryId: number): Promis
 async function ensureYouTubePlaylist(
     db: D1Database, 
     env: Env, 
-    seriesId: number, 
+    seriesId: number, // This is series.id from the podcasts table
     seriesTitle: string, 
     seriesDescription: string | null, 
     youtubeChannelPlatformId: string // YouTube Channel's Platform ID to associate the playlist
@@ -172,14 +171,14 @@ async function ensureYouTubePlaylist(
                     // Playlist with this platform_id exists, update it
                     playlistDbId = localPlaylistRecord.id;
                     await db.prepare(
-                        'UPDATE youtube_playlists SET title = ?, description = ?, channel_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
-                    ).bind(newPlaylistData.title, newPlaylistData.description, channelDbInfo.id, playlistDbId).run();
+                        'UPDATE youtube_playlists SET title = ?, description = ?, channel_id = ?, series_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+                    ).bind(newPlaylistData.title, newPlaylistData.description, channelDbInfo.id, seriesId, playlistDbId).run();
                     console.log(`Updated local youtube_playlists record ID: ${playlistDbId}`);
                 } else {
                     // Playlist with this platform_id does not exist, insert new record
                     const insertResult = await db.prepare(
-                        'INSERT INTO youtube_playlists (youtube_platform_id, title, description, channel_id) VALUES (?, ?, ?, ?)'
-                    ).bind(playlistPlatformId, newPlaylistData.title, newPlaylistData.description, channelDbInfo.id).run();
+                        'INSERT INTO youtube_playlists (youtube_platform_id, title, description, channel_id, series_id) VALUES (?, ?, ?, ?, ?)'
+                    ).bind(playlistPlatformId, newPlaylistData.title, newPlaylistData.description, channelDbInfo.id, seriesId).run();
                     playlistDbId = insertResult.meta.last_row_id as number;
                     console.log(`Inserted new local youtube_playlists record ID: ${playlistDbId}`);
                 }
@@ -218,7 +217,7 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
         return;
     }
 
-    // Find the next 'generated' podcast, prioritizing scheduled_publish_at
+    // Find the next 'generatedApproved' podcast, prioritizing scheduled_publish_at
     const podcastToProcess = await db.prepare(
         `SELECT
             p.id, p.title, p.description, p.video_bucket_key, p.thumbnail_bucket_key, p.category_id, p.series_id,
@@ -228,18 +227,17 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
             yc.first_comment_template,
             yc.language_code
          FROM podcasts p
-         JOIN categories cat ON p.category_id = cat.id
-         JOIN youtube_channels yc ON cat.youtube_channel_id = yc.id
+         JOIN youtube_channels yc ON p.category_id = yc.category_id
          WHERE p.status = ?
          ORDER BY
              CASE WHEN p.scheduled_publish_at IS NOT NULL THEN 0 ELSE 1 END,
              p.scheduled_publish_at ASC,
              p.created_at ASC
          LIMIT 1`
-    ).bind('generated').first<PodcastForUpload>();
+    ).bind('generatedApproved').first<PodcastForUpload>();
 
     if (!podcastToProcess) {
-        console.log('No podcasts with status "generated" found for YouTube upload.');
+        console.log('No podcasts with status "generatedApproved" found for YouTube upload.');
         return;
     }
 
