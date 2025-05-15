@@ -351,8 +351,6 @@ export async function triggerYouTubeUpload(env: Env): Promise<void> {
         // Record the successful call and external_task_id
         const externalTaskInsertData = JSON.stringify({ 
             podcast_id: podcastToProcess.id,
-            youtube_channel_platform_id: channelInfo.youtube_platform_id,
-            ...(youTubePlaylistPlatformId && { youtube_playlist_platform_id: youTubePlaylistPlatformId }),
         });
         await db.prepare(
             'INSERT INTO external_service_tasks (external_task_id, type, data, status) VALUES (?, ?, ?, ?)'

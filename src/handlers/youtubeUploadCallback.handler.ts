@@ -33,9 +33,8 @@ export async function handleYouTubeUploadCallback(request: Request, env: Env): P
 
 	console.log(`YouTube upload callback received for Task ID: ${payload.taskId}, Status: ${payload.status}`);
 
-	// Fetch podcast_id and youtube_channel_id from external_service_tasks table
+	// Fetch podcast_id from external_service_tasks table
 	let podcastId: string;
-	let youtubeChannelId: string;
 	try {
 		const taskStmt = env.DB.prepare('SELECT data FROM external_service_tasks WHERE external_task_id = ? AND type = \'youtube_upload_request\'');
 		const taskResult = await taskStmt.bind(payload.taskId).first<{ data: string }>();
@@ -50,13 +49,8 @@ export async function handleYouTubeUploadCallback(request: Request, env: Env): P
 			console.error(`podcast_id missing in data for external_task_id: ${payload.taskId}`, taskData);
 			return new Response(`podcast_id not found in task data for taskId: ${payload.taskId}`, { status: 400 });
 		}
-		if (!taskData.youtube_channel_id) {
-			console.error(`youtube_channel_id missing in data for external_task_id: ${payload.taskId}`, taskData);
-			return new Response(`youtube_channel_id not found in task data for taskId: ${payload.taskId}`, { status: 400 });
-		}
 		podcastId = taskData.podcast_id.toString();
-		youtubeChannelId = taskData.youtube_channel_id.toString();
-		console.log(`Retrieved Podcast ID: ${podcastId} and YouTube Channel ID: ${youtubeChannelId} for Task ID: ${payload.taskId}`);
+		console.log(`Retrieved Podcast ID: ${podcastId} for Task ID: ${payload.taskId}`);
 
 	} catch (dbError) {
 		console.error('Database error fetching task details for YouTube upload, external_task_id:', payload.taskId, dbError);
@@ -80,6 +74,30 @@ export async function handleYouTubeUploadCallback(request: Request, env: Env): P
 		}
 
 		try {
+			const now = new Date().toISOString();
+
+            // Get category_id from podcast
+            const podcastCategoryQuery = 'SELECT category_id FROM podcasts WHERE id = ?';
+            const podcastCategoryStmt = env.DB.prepare(podcastCategoryQuery);
+            const podcastInfo = await podcastCategoryStmt.bind(podcastId).first<{ category_id: string }>();
+
+            if (!podcastInfo || !podcastInfo.category_id) {
+                console.error(`Could not find category_id for podcast ${podcastId}. Task ID: ${payload.taskId}`);
+                return new Response(`Could not find category information for podcast ${podcastId}.`, { status: 404 });
+            }
+            const podcastCategoryId = podcastInfo.category_id;
+
+            // Get youtube_channel_id from youtube_channels table using category_id
+            const youtubeChannelQuery = 'SELECT id FROM youtube_channels WHERE category_id = ?';
+            const youtubeChannelStmt = env.DB.prepare(youtubeChannelQuery);
+            const youtubeChannelInfo = await youtubeChannelStmt.bind(podcastCategoryId).first<{ id: string }>();
+
+            if (!youtubeChannelInfo || !youtubeChannelInfo.id) {
+                console.error(`Could not find YouTube channel for category_id ${podcastCategoryId} (associated with podcast ${podcastId}). Task ID: ${payload.taskId}`);
+                return new Response(`Could not find YouTube channel configuration for podcast ${podcastId} (category ${podcastCategoryId}).`, { status: 404 });
+            }
+            const youtubeChannelId = youtubeChannelInfo.id; // This is the required youtube_channel_id
+
 			const podcastUpdateStmt = env.DB.prepare(
 				'UPDATE podcasts SET status = \'uploaded\', last_status_change_at = ?, updated_at = ? WHERE id = ?'
 			);
