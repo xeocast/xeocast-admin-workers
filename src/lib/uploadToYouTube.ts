@@ -128,12 +128,28 @@ async function ensureYouTubePlaylist(
                 console.log(`Playlist ${existingPlaylist.youtube_platform_id} confirmed on YouTube titled: ${playlistDetails.title}`);
                 playlistPlatformId = existingPlaylist.youtube_platform_id;
             } else if (playlistCheckResponse.status === 404) {
-                console.log(`Playlist ${existingPlaylist.youtube_platform_id} (DB ID: ${existingPlaylist.id}) not found on YouTube. Will attempt to recreate.`);
-                // Playlist not found on YouTube, proceed to create it below. 
-                // The existing local DB record for this playlist might need to be updated or handled.
+                console.log(`Playlist ${existingPlaylist.youtube_platform_id} (DB ID: ${existingPlaylist.id}) not found on YouTube (direct 404). Will attempt to recreate.`);
+                // Playlist not found on YouTube, proceed to create it below.
             } else {
-                console.error(`Error checking playlist ${existingPlaylist.youtube_platform_id} on YouTube: ${playlistCheckResponse.status} ${await playlistCheckResponse.text()}`);
-                return null; // Stop if there's an API error other than 404
+                const errorText = await playlistCheckResponse.text();
+                let effectivelyNotFound = false;
+                if (playlistCheckResponse.status === 500) {
+                    try {
+                        const errorJson = JSON.parse(errorText);
+                        if (errorJson.detail && typeof errorJson.detail === 'string' && errorJson.detail.includes('404') && errorJson.detail.toLowerCase().includes('playlist') && errorJson.detail.toLowerCase().includes('not found')) {
+                            console.log(`Playlist ${existingPlaylist.youtube_platform_id} (DB ID: ${existingPlaylist.id}) reported as not found by video service (500 error wrapping 404). Will attempt to recreate. Error detail: ${errorJson.detail}`);
+                            effectivelyNotFound = true;
+                        }
+                    } catch (parseError) {
+                        console.warn(`Could not parse 500 error response from video service as JSON while checking playlist: ${parseError}. Original error text: ${errorText}`);
+                    }
+                }
+
+                if (!effectivelyNotFound) {
+                    console.error(`Error checking playlist ${existingPlaylist.youtube_platform_id} on YouTube: ${playlistCheckResponse.status} ${errorText}`);
+                    return null; // Stop for other critical errors
+                }
+                // If effectivelyNotFound is true, we fall through, and the playlist creation logic will run.
             }
         } catch (error) {
             console.error(`Network error while checking playlist ${existingPlaylist.youtube_platform_id} on YouTube:`, error);
