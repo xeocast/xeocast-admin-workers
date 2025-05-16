@@ -117,7 +117,9 @@ async function ensureYouTubePlaylist(
         console.log(`Found existing playlist in DB: ${existingPlaylist.youtube_platform_id} for series_id: ${seriesId}`);
         // Verify with YouTube
         try {
-            const playlistCheckResponse = await fetch(`${videoServiceUrl}/youtube/playlists/${existingPlaylist.youtube_platform_id}`, {
+            const playlistCheckUrl = new URL(`${videoServiceUrl}/youtube/playlists/${existingPlaylist.youtube_platform_id}`);
+            playlistCheckUrl.searchParams.append('youtube_channel_id', youtubeChannelPlatformId);
+            const playlistCheckResponse = await fetch(playlistCheckUrl.toString(), {
                 method: 'GET',
                 headers: { 'X-API-Key': env.VIDEO_SERVICE_API_KEY },
             });
