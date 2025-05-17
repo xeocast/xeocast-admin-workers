@@ -48,7 +48,7 @@ interface YouTubePlaylist {
 }
 
 const VIDEO_SERVICE_BASE_URL = (env: Env) => 
-    env.ENVIRONMENT === 'production' ? 'https://video-service.xeocast.com' : 'http://localhost:8001';
+    env.ENVIRONMENT === 'production' ? 'https://video-srv.xeocast.com' : 'http://localhost:8001';
 
 /**
  * Fetches YouTube channel information from the database.

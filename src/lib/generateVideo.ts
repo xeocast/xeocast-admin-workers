@@ -53,7 +53,7 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
     }
 
     const videoServiceUrl = env.ENVIRONMENT === 'production'
-        ? 'https://video-service.xeocast.com'
+        ? 'https://video-srv.xeocast.com'
         : 'http://localhost:8001';
 
     // Check if video service is healthy
