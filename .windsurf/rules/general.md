@@ -1,8 +1,7 @@
 ---
 trigger: always_on
-description: 
-globs: 
 ---
+
 About this project:
 
 - Is a admin dashboard for a website of podcasts organized in categories.
@@ -18,6 +17,7 @@ About Astro usage:
 
 About TypeScript usage:
 
+- Always use pnpm as package manager
 - Always check that new npm dependencies to be installed are not deprecated
 - You can see [package.json](mdc:package.json) for packages already installed
 
