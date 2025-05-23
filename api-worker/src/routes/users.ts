@@ -20,6 +20,11 @@ import {
   PathIdParamSchema,
   GeneralServerErrorSchema
 } from '../schemas/commonSchemas';
+import { createUserHandler } from '../handlers/users/createUser.handler';
+import { listUsersHandler } from '../handlers/users/listUsers.handler';
+import { getUserByIdHandler } from '../handlers/users/getUserById.handler';
+import { updateUserHandler } from '../handlers/users/updateUser.handler';
+import { deleteUserHandler } from '../handlers/users/deleteUser.handler';
 
 const userRoutes = new OpenAPIHono();
 
@@ -51,11 +56,7 @@ const createUserRouteDef = createRoute({
   tags: ['Users'],
 });
 
-userRoutes.openapi(createUserRouteDef, (c) => {
-  // const body = c.req.valid('json');
-  // Mock logic: if (body.email === 'exists@example.com') return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists'}), 400);
-  return c.json({ success: true, message: 'User created successfully.' as const, userId: Math.floor(Math.random() * 1000) + 1 }, 201);
-});
+userRoutes.openapi(createUserRouteDef, createUserHandler);
 
 // GET /users - List Users
 const listUsersRouteDef = createRoute({
@@ -83,20 +84,7 @@ const listUsersRouteDef = createRoute({
   tags: ['Users'],
 });
 
-userRoutes.openapi(listUsersRouteDef, (c) => {
-  // const query = c.req.valid('query');
-  const placeholderUser = UserSchema.parse({
-    id: 1,
-    email: 'user1@example.com',
-    name: 'User One',
-    role_id: 1,
-    status: 'active',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  const responsePayload = { success: true, users: [placeholderUser] };
-  return c.json(ListUsersResponseSchema.parse(responsePayload), 200);
-});
+userRoutes.openapi(listUsersRouteDef, listUsersHandler);
 
 // GET /users/{id} - Get User by ID
 const getUserByIdRouteDef = createRoute({
@@ -123,22 +111,7 @@ const getUserByIdRouteDef = createRoute({
   tags: ['Users'],
 });
 
-userRoutes.openapi(getUserByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  if (id === '1') {
-    const placeholderUser = UserSchema.parse({
-      id: parseInt(id as string),
-      email: 'founduser@example.com',
-      name: 'Found User',
-      role_id: 2,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, user: placeholderUser }, 200);
-  }
-  return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
-});
+userRoutes.openapi(getUserByIdRouteDef, getUserByIdHandler);
 
 // PUT /users/{id} - Update User
 const updateUserRouteDef = createRoute({
@@ -173,14 +146,7 @@ const updateUserRouteDef = createRoute({
   tags: ['Users'],
 });
 
-userRoutes.openapi(updateUserRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  // const body = c.req.valid('json');
-  if (id === '1') {
-    return c.json({ success: true, message: 'User updated successfully.' as const }, 200);
-  }
-  return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
-});
+userRoutes.openapi(updateUserRouteDef, updateUserHandler);
 
 // DELETE /users/{id} - Delete User
 const deleteUserRouteDef = createRoute({
@@ -207,12 +173,6 @@ const deleteUserRouteDef = createRoute({
   tags: ['Users'],
 });
 
-userRoutes.openapi(deleteUserRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  if (id === '1') {
-    return c.json({ success: true, message: 'User deleted successfully.' as const }, 200);
-  }
-  return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
-});
+userRoutes.openapi(deleteUserRouteDef, deleteUserHandler);
 
 export default userRoutes;

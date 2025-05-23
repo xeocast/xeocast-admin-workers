@@ -11,6 +11,8 @@ import {
   LogoutSuccessResponseSchema,
   LogoutFailedErrorSchema,
 } from '../schemas/authSchemas';
+import { loginHandler } from '../handlers/auth/login.handler';
+import { logoutHandler } from '../handlers/auth/logout.handler';
 
 const authRoutes = new OpenAPIHono();
 
@@ -71,11 +73,7 @@ const loginRouteDef = createRoute({
   tags: ['Authentication'],
 });
 
-authRoutes.openapi(loginRouteDef, (c) => {
-  console.log('Login attempt:', c.req.valid('json'));
-  // Placeholder: In a real app, set a session cookie here.
-  return c.json({ success: true }, 200);
-});
+authRoutes.openapi(loginRouteDef, loginHandler);
 
 
 // POST /auth/logout
@@ -105,10 +103,6 @@ const logoutRouteDef = createRoute({
   tags: ['Authentication'],
 });
 
-authRoutes.openapi(logoutRouteDef, (c) => {
-  console.log('Logout attempt');
-  // Placeholder: In a real app, clear the session cookie here.
-  return c.json({ success: true, message: 'Logged out successfully.' as const }, 200);
-});
+authRoutes.openapi(logoutRouteDef, logoutHandler);
 
 export default authRoutes;

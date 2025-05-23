@@ -16,6 +16,11 @@ import {
   RoleDeleteFailedErrorSchema
 } from '../schemas/roleSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { createRoleHandler } from '../handlers/roles/createRole.handler';
+import { listRolesHandler } from '../handlers/roles/listRoles.handler';
+import { getRoleByIdHandler } from '../handlers/roles/getRoleById.handler';
+import { updateRoleHandler } from '../handlers/roles/updateRole.handler';
+import { deleteRoleHandler } from '../handlers/roles/deleteRole.handler';
 
 const roleRoutes = new OpenAPIHono();
 
@@ -34,13 +39,7 @@ const createRoleRouteDef = createRoute({
   summary: 'Creates a new role.',
   tags: ['Roles'],
 });
-roleRoutes.openapi(createRoleRouteDef, (c) => {
-  const newRoleData = c.req.valid('json');
-  console.log('Create role:', newRoleData);
-  // Placeholder: Actual role creation logic here
-  const createdRoleId = Math.floor(Math.random() * 1000) + 1;
-  return c.json({ success: true, message: 'Role created successfully.' as const, roleId: createdRoleId }, 201);
-});
+roleRoutes.openapi(createRoleRouteDef, createRoleHandler);
 
 // GET /roles - List Roles
 const listRolesRouteDef = createRoute({
@@ -53,20 +52,7 @@ const listRolesRouteDef = createRoute({
   summary: 'Lists all roles.',
   tags: ['Roles'],
 });
-roleRoutes.openapi(listRolesRouteDef, (c) => {
-  console.log('List roles');
-  // Placeholder: Actual role listing logic here
-  const placeholderRole = RoleSchema.parse({
-    id: 1,
-    name: 'Administrator',
-    description: 'Full access',
-    permissions: ['manage_users', 'manage_settings'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  const responsePayload = { success: true, roles: [placeholderRole] };
-  return c.json(ListRolesResponseSchema.parse(responsePayload), 200);
-});
+roleRoutes.openapi(listRolesRouteDef, listRolesHandler);
 
 // GET /roles/{id} - Get Role by ID
 const getRoleByIdRouteDef = createRoute({
@@ -81,23 +67,7 @@ const getRoleByIdRouteDef = createRoute({
   summary: 'Gets a role by ID.',
   tags: ['Roles'],
 });
-roleRoutes.openapi(getRoleByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Get role by ID:', id);
-  // Placeholder: Actual role retrieval logic here
-  if (id === '999') { // Simulate not found
-    return c.json(RoleNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'Role not found.' }), 404);
-  }
-  const placeholderRole = RoleSchema.parse({
-    id: parseInt(id),
-    name: 'Editor',
-    description: 'Can edit content',
-    permissions: ['edit_articles', 'publish_articles'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  return c.json({ success: true, role: placeholderRole }, 200);
-});
+roleRoutes.openapi(getRoleByIdRouteDef, getRoleByIdHandler);
 
 // PUT /roles/{id} - Update Role
 const updateRoleRouteDef = createRoute({
@@ -116,16 +86,7 @@ const updateRoleRouteDef = createRoute({
   summary: 'Updates an existing role.',
   tags: ['Roles'],
 });
-roleRoutes.openapi(updateRoleRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  const updatedRoleData = c.req.valid('json');
-  console.log('Update role:', id, updatedRoleData);
-  // Placeholder: Actual role update logic here
-  if (id === '999') { // Simulate not found
-    return c.json(RoleNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'Role not found.' }), 404);
-  }
-  return c.json({ success: true, message: 'Role updated successfully.' as const }, 200);
-});
+roleRoutes.openapi(updateRoleRouteDef, updateRoleHandler);
 
 // DELETE /roles/{id} - Delete Role
 const deleteRoleRouteDef = createRoute({
@@ -141,18 +102,6 @@ const deleteRoleRouteDef = createRoute({
   summary: 'Deletes a role.',
   tags: ['Roles'],
 });
-roleRoutes.openapi(deleteRoleRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Delete role:', id);
-  // Placeholder: Actual role deletion logic here
-  if (id === '999') { // Simulate not found
-    return c.json(RoleNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'Role not found.' }), 404);
-  }
-  // Simulate deletion constraint failure
-  // if (id === '1') { 
-  //   return c.json(RoleDeleteFailedErrorSchema.parse({ success: false, error: 'delete_failed', message: 'Cannot delete role: It is assigned to active users.' }), 400);
-  // }
-  return c.json({ success: true, message: 'Role deleted successfully.' as const }, 200);
-});
+roleRoutes.openapi(deleteRoleRouteDef, deleteRoleHandler);
 
 export default roleRoutes;

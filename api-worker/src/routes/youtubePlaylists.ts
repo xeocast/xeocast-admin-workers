@@ -18,6 +18,12 @@ import {
   YouTubePlaylistDeleteFailedErrorSchema
 } from '../schemas/youtubePlaylistSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema, MessageResponseSchema } from '../schemas/commonSchemas';
+import { createYouTubePlaylistHandler } from '../handlers/youtubePlaylists/createYouTubePlaylist.handler';
+import { listYouTubePlaylistsHandler } from '../handlers/youtubePlaylists/listYouTubePlaylists.handler';
+import { getYouTubePlaylistByIdHandler } from '../handlers/youtubePlaylists/getYouTubePlaylistById.handler';
+import { updateYouTubePlaylistHandler } from '../handlers/youtubePlaylists/updateYouTubePlaylist.handler';
+import { updateYouTubePlaylistPlatformIdHandler } from '../handlers/youtubePlaylists/updateYouTubePlaylistPlatformId.handler';
+import { deleteYouTubePlaylistHandler } from '../handlers/youtubePlaylists/deleteYouTubePlaylist.handler';
 
 const youtubePlaylistRoutes = new OpenAPIHono();
 
@@ -36,13 +42,7 @@ const createPlaylistRouteDef = createRoute({
   summary: 'Creates a new YouTube playlist link.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(createPlaylistRouteDef, (c) => {
-  const newPlaylistData = c.req.valid('json');
-  console.log('Create YouTube playlist:', newPlaylistData);
-  // Placeholder: Check for existing youtube_platform_id for the channel
-  const createdPlaylistId = Math.floor(Math.random() * 1000) + 1;
-  return c.json({ success: true, message: 'YouTube playlist created successfully.' as const, playlistId: createdPlaylistId }, 201);
-});
+youtubePlaylistRoutes.openapi(createPlaylistRouteDef, createYouTubePlaylistHandler);
 
 // GET /youtube-playlists - List YouTube Playlists
 const listPlaylistsRouteDef = createRoute({
@@ -58,24 +58,7 @@ const listPlaylistsRouteDef = createRoute({
   summary: 'Lists all YouTube playlists, optionally filtered.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(listPlaylistsRouteDef, (c) => {
-  const { series_id, youtube_channel_id } = c.req.valid('query');
-  console.log('List YouTube playlists - Query Params:', { series_id, youtube_channel_id });
-
-  const placeholderPlaylist = YouTubePlaylistSchema.parse({
-    id: 1,
-    series_id: series_id || 1,
-    youtube_channel_id: youtube_channel_id || 1,
-    youtube_platform_id: 'PLsampleplaylist123',
-    title: 'Sample Playlist',
-    description: 'This is a sample YouTube playlist.',
-    thumbnail_url: 'https://i.ytimg.com/vi/sample/hqdefault.jpg',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  const responsePayload = { success: true, playlists: [placeholderPlaylist] };
-  return c.json(ListYouTubePlaylistsResponseSchema.parse(responsePayload), 200);
-});
+youtubePlaylistRoutes.openapi(listPlaylistsRouteDef, listYouTubePlaylistsHandler);
 
 // GET /youtube-playlists/{id} - Get YouTube Playlist by ID
 const getPlaylistByIdRouteDef = createRoute({
@@ -90,25 +73,7 @@ const getPlaylistByIdRouteDef = createRoute({
   summary: 'Gets a YouTube playlist by its internal ID.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(getPlaylistByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Get YouTube playlist by ID:', id);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube playlist not found.' }), 404);
-  }
-  const placeholderPlaylist = YouTubePlaylistSchema.parse({
-    id: parseInt(id),
-    series_id: 2,
-    youtube_channel_id: 1,
-    youtube_platform_id: 'PLanotherplaylist789',
-    title: 'Another Sample Playlist',
-    description: 'Details about this other playlist.',
-    thumbnail_url: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  return c.json({ success: true, playlist: placeholderPlaylist }, 200);
-});
+youtubePlaylistRoutes.openapi(getPlaylistByIdRouteDef, getYouTubePlaylistByIdHandler);
 
 // PUT /youtube-playlists/{id} - Update YouTube Playlist (General)
 const updatePlaylistRouteDef = createRoute({
@@ -127,15 +92,7 @@ const updatePlaylistRouteDef = createRoute({
   summary: 'Updates an existing YouTube playlist link.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(updatePlaylistRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  const updatedPlaylistData = c.req.valid('json');
-  console.log('Update YouTube playlist:', id, updatedPlaylistData);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube playlist not found.' }), 404);
-  }
-  return c.json({ success: true, message: 'YouTube playlist updated successfully.' as const }, 200);
-});
+youtubePlaylistRoutes.openapi(updatePlaylistRouteDef, updateYouTubePlaylistHandler);
 
 // PUT /youtube-playlists/{id}/platform-id - Update YouTube Playlist Platform ID (Specific)
 const updatePlatformIdRouteDef = createRoute({
@@ -154,15 +111,7 @@ const updatePlatformIdRouteDef = createRoute({
   summary: 'Updates the YouTube Platform ID of an existing YouTube playlist.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(updatePlatformIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  const { youtube_platform_id } = c.req.valid('json');
-  console.log('Update YouTube playlist platform ID:', id, youtube_platform_id);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube playlist not found.' }), 404);
-  }
-  return c.json({ success: true, message: 'YouTube playlist platform ID updated successfully.' as const }, 200);
-});
+youtubePlaylistRoutes.openapi(updatePlatformIdRouteDef, updateYouTubePlaylistPlatformIdHandler);
 
 
 // DELETE /youtube-playlists/{id} - Delete YouTube Playlist
@@ -179,13 +128,6 @@ const deletePlaylistRouteDef = createRoute({
   summary: 'Deletes a YouTube playlist link.',
   tags: ['YouTubePlaylists'],
 });
-youtubePlaylistRoutes.openapi(deletePlaylistRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Delete YouTube playlist:', id);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube playlist not found.' }), 404);
-  }
-  return c.json({ success: true, message: 'YouTube playlist deleted successfully.' as const }, 200);
-});
+youtubePlaylistRoutes.openapi(deletePlaylistRouteDef, deleteYouTubePlaylistHandler);
 
 export default youtubePlaylistRoutes;

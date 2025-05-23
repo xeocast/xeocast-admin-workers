@@ -17,6 +17,11 @@ import {
   CategorySummarySchema, // For placeholder in LIST
 } from '../schemas/categorySchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { createCategoryHandler } from '../handlers/categories/createCategory.handler';
+import { listCategoriesHandler } from '../handlers/categories/listCategories.handler';
+import { getCategoryByIdHandler } from '../handlers/categories/getCategoryById.handler';
+import { updateCategoryHandler } from '../handlers/categories/updateCategory.handler';
+import { deleteCategoryHandler } from '../handlers/categories/deleteCategory.handler';
 
 const categoryRoutes = new OpenAPIHono();
 
@@ -34,10 +39,7 @@ const createCategoryRouteDef = createRoute({
   },
   summary: 'Creates a new category.', tags: ['Categories'],
 });
-categoryRoutes.openapi(createCategoryRouteDef, (c) => {
-  console.log('Create category:', c.req.valid('json'));
-  return c.json({ success: true, message: 'Category created successfully.' as const, categoryId: 1 }, 201);
-});
+categoryRoutes.openapi(createCategoryRouteDef, createCategoryHandler);
 
 // GET /categories
 const listCategoriesRouteDef = createRoute({
@@ -48,12 +50,7 @@ const listCategoriesRouteDef = createRoute({
   },
   summary: 'Lists all categories.', tags: ['Categories'],
 });
-categoryRoutes.openapi(listCategoriesRouteDef, (c) => {
-  console.log('List categories');
-  const placeholderCategory = CategorySummarySchema.parse({ id: 1, name: 'Sample Category', language_code: 'en' });
-  const responsePayload = { success: true, categories: [placeholderCategory] };
-  return c.json(ListCategoriesResponseSchema.parse(responsePayload), 200);
-});
+categoryRoutes.openapi(listCategoriesRouteDef, listCategoriesHandler);
 
 // GET /categories/{id}
 const getCategoryByIdRouteDef = createRoute({
@@ -66,21 +63,7 @@ const getCategoryByIdRouteDef = createRoute({
   },
   summary: 'Gets a category by ID.', tags: ['Categories'],
 });
-categoryRoutes.openapi(getCategoryByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Get category by ID:', id);
-  const placeholderCategory = CategorySchema.parse({
-    id: parseInt(id) || 1, name: "Tech", description: "...", default_source_background_bucket_key: "a",
-    default_source_thumbnail_bucket_key: "b", prompt_template_to_gen_evergreen_titles: "c",
-    prompt_template_to_gen_news_titles: "d", prompt_template_to_gen_series_titles: "e",
-    prompt_template_to_gen_article_content: "f", prompt_template_to_gen_description: "g",
-    prompt_template_to_gen_short_description: "h", prompt_template_to_gen_tag_list: "i",
-    prompt_template_to_gen_audio_podcast: "j", prompt_template_to_gen_video_thumbnail: "k",
-    prompt_template_to_gen_article_image: "l", language_code: "en",
-    created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
-  });
-  return c.json({ success: true, category: placeholderCategory }, 200);
-});
+categoryRoutes.openapi(getCategoryByIdRouteDef, getCategoryByIdHandler);
 
 // PUT /categories/{id}
 const updateCategoryRouteDef = createRoute({
@@ -97,11 +80,7 @@ const updateCategoryRouteDef = createRoute({
   },
   summary: 'Updates a category.', tags: ['Categories'],
 });
-categoryRoutes.openapi(updateCategoryRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Update category:', id, c.req.valid('json'));
-  return c.json({ success: true, message: 'Category updated successfully.' as const }, 200);
-});
+categoryRoutes.openapi(updateCategoryRouteDef, updateCategoryHandler);
 
 // DELETE /categories/{id}
 const deleteCategoryRouteDef = createRoute({
@@ -115,10 +94,6 @@ const deleteCategoryRouteDef = createRoute({
   },
   summary: 'Deletes a category.', tags: ['Categories'],
 });
-categoryRoutes.openapi(deleteCategoryRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Delete category:', id);
-  return c.json({ success: true, message: 'Category deleted successfully.' as const }, 200);
-});
+categoryRoutes.openapi(deleteCategoryRouteDef, deleteCategoryHandler);
 
 export default categoryRoutes;

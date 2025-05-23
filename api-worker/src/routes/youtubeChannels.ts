@@ -17,6 +17,11 @@ import {
   YouTubeChannelDeleteFailedErrorSchema
 } from '../schemas/youtubeChannelSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { createYouTubeChannelHandler } from '../handlers/youtubeChannels/createYouTubeChannel.handler';
+import { listYouTubeChannelsHandler } from '../handlers/youtubeChannels/listYouTubeChannels.handler';
+import { getYouTubeChannelByIdHandler } from '../handlers/youtubeChannels/getYouTubeChannelById.handler';
+import { updateYouTubeChannelHandler } from '../handlers/youtubeChannels/updateYouTubeChannel.handler';
+import { deleteYouTubeChannelHandler } from '../handlers/youtubeChannels/deleteYouTubeChannel.handler';
 
 const youtubeChannelRoutes = new OpenAPIHono();
 
@@ -35,16 +40,7 @@ const createChannelRouteDef = createRoute({
   summary: 'Creates a new YouTube channel link.',
   tags: ['YouTubeChannels'],
 });
-youtubeChannelRoutes.openapi(createChannelRouteDef, (c) => {
-  const newChannelData = c.req.valid('json');
-  console.log('Create YouTube channel:', newChannelData);
-  // Placeholder: Check for existing youtube_platform_id
-  // if (newChannelData.youtube_platform_id === 'EXISTING_ID') {
-  //   return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, error: 'platform_id_exists', message: 'YouTube platform ID already exists.' }), 400);
-  // }
-  const createdChannelId = Math.floor(Math.random() * 1000) + 1;
-  return c.json({ success: true, message: 'YouTube channel created successfully.' as const, channelId: createdChannelId }, 201);
-});
+youtubeChannelRoutes.openapi(createChannelRouteDef, createYouTubeChannelHandler);
 
 // GET /youtube-channels - List YouTube Channels
 const listChannelsRouteDef = createRoute({
@@ -60,30 +56,7 @@ const listChannelsRouteDef = createRoute({
   summary: 'Lists all YouTube channels, optionally filtered by category ID.',
   tags: ['YouTubeChannels'],
 });
-youtubeChannelRoutes.openapi(listChannelsRouteDef, (c) => {
-  const { category_id } = c.req.valid('query');
-  console.log('List YouTube channels - Query Params:', { category_id });
-
-  const placeholderChannel = YouTubeChannelSchema.parse({
-    id: 1,
-    category_id: category_id || 1,
-    youtube_platform_id: 'UCexamplechannel123',
-    name: 'Sample Channel',
-    description: 'This is a sample YouTube channel.',
-    custom_url: '@SampleChannel',
-    thumbnail_url: 'https://yt3.ggpht.com/sample_thumbnail.jpg',
-    default_language: 'en-US',
-    default_category_id_on_youtube: '22',
-    prompt_template_for_title: 'Video Title: {topic}',
-    prompt_template_for_description: 'Video Description: {details}',
-    prompt_template_for_tags: 'tag1, tag2, {topic_tag}',
-    prompt_template_for_first_comment: 'First comment: {engagement_question}',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  const responsePayload = { success: true, channels: [placeholderChannel] };
-  return c.json(ListYouTubeChannelsResponseSchema.parse(responsePayload), 200);
-});
+youtubeChannelRoutes.openapi(listChannelsRouteDef, listYouTubeChannelsHandler);
 
 // GET /youtube-channels/{id} - Get YouTube Channel by ID
 const getChannelByIdRouteDef = createRoute({
@@ -98,31 +71,7 @@ const getChannelByIdRouteDef = createRoute({
   summary: 'Gets a YouTube channel by its internal ID.',
   tags: ['YouTubeChannels'],
 });
-youtubeChannelRoutes.openapi(getChannelByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Get YouTube channel by ID:', id);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube channel not found.' }), 404);
-  }
-  const placeholderChannel = YouTubeChannelSchema.parse({
-    id: parseInt(id),
-    category_id: 1,
-    youtube_platform_id: 'UCanotherchannel789',
-    name: 'Another Sample Channel',
-    description: 'Details about this other channel.',
-    custom_url: '@AnotherChannel',
-    thumbnail_url: 'https://yt3.ggpht.com/another_thumbnail.jpg',
-    default_language: 'es-ES',
-    default_category_id_on_youtube: '24',
-    prompt_template_for_title: null,
-    prompt_template_for_description: null,
-    prompt_template_for_tags: null,
-    prompt_template_for_first_comment: null,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  return c.json({ success: true, channel: placeholderChannel }, 200);
-});
+youtubeChannelRoutes.openapi(getChannelByIdRouteDef, getYouTubeChannelByIdHandler);
 
 // PUT /youtube-channels/{id} - Update YouTube Channel
 const updateChannelRouteDef = createRoute({
@@ -141,16 +90,7 @@ const updateChannelRouteDef = createRoute({
   summary: 'Updates an existing YouTube channel link.',
   tags: ['YouTubeChannels'],
 });
-youtubeChannelRoutes.openapi(updateChannelRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  const updatedChannelData = c.req.valid('json');
-  console.log('Update YouTube channel:', id, updatedChannelData);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube channel not found.' }), 404);
-  }
-  // Placeholder: Check for existing youtube_platform_id if it's being changed and is not the current one
-  return c.json({ success: true, message: 'YouTube channel updated successfully.' as const }, 200);
-});
+youtubeChannelRoutes.openapi(updateChannelRouteDef, updateYouTubeChannelHandler);
 
 // DELETE /youtube-channels/{id} - Delete YouTube Channel
 const deleteChannelRouteDef = createRoute({
@@ -166,16 +106,6 @@ const deleteChannelRouteDef = createRoute({
   summary: 'Deletes a YouTube channel link.',
   tags: ['YouTubeChannels'],
 });
-youtubeChannelRoutes.openapi(deleteChannelRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  console.log('Delete YouTube channel:', id);
-  if (id === '999') { // Simulate not found
-    return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, error: 'not_found', message: 'YouTube channel not found.' }), 404);
-  }
-  // if (id === '1' && channel_has_dependencies) { // Simulate constraint error
-  //   return c.json(YouTubeChannelDeleteFailedErrorSchema.parse({ success: false, error: 'delete_failed', message: 'Cannot delete YouTube Channel: It is referenced by existing YouTube videos or playlists.' }), 400);
-  // }
-  return c.json({ success: true, message: 'YouTube channel deleted successfully.' as const }, 200);
-});
+youtubeChannelRoutes.openapi(deleteChannelRouteDef, deleteYouTubeChannelHandler);
 
 export default youtubeChannelRoutes;

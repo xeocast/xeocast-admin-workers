@@ -21,6 +21,11 @@ import {
   PathIdParamSchema,
   GeneralServerErrorSchema
 } from '../schemas/commonSchemas';
+import { createPodcastHandler } from '../handlers/podcasts/createPodcast.handler';
+import { listPodcastsHandler } from '../handlers/podcasts/listPodcasts.handler';
+import { getPodcastByIdHandler } from '../handlers/podcasts/getPodcastById.handler';
+import { updatePodcastHandler } from '../handlers/podcasts/updatePodcast.handler';
+import { deletePodcastHandler } from '../handlers/podcasts/deletePodcast.handler';
 
 const podcastRoutes = new OpenAPIHono();
 
@@ -53,10 +58,7 @@ const createPodcastRouteDef = createRoute({
   tags: ['Podcasts'],
 });
 
-podcastRoutes.openapi(createPodcastRouteDef, (c) => {
-  // const body = c.req.valid('json');
-  return c.json({ success: true, message: 'Podcast created successfully.' as const, podcastId: 101 }, 201);
-});
+podcastRoutes.openapi(createPodcastRouteDef, createPodcastHandler);
 
 // GET /podcasts
 const listPodcastsRouteDef = createRoute({
@@ -86,30 +88,7 @@ const listPodcastsRouteDef = createRoute({
   tags: ['Podcasts'],
 });
 
-podcastRoutes.openapi(listPodcastsRouteDef, (c) => {
-  // const query = c.req.valid('query');
-  const placeholderPodcast = PodcastSchema.parse({
-    id: 1,
-    title: 'Sample Podcast Episode',
-    description: 'This is a sample episode.',
-    markdown_content: '# Sample',
-    category_id: 1,
-    series_id: 1,
-    status: 'published',
-    scheduled_publish_at: null,
-    slug: 'sample-podcast-episode',
-    audio_bucket_key: 'audio.mp3',
-    video_bucket_key: 'video.mp4',
-    thumbnail_bucket_key: 'thumb.png',
-    duration_seconds: 1800,
-    youtube_video_id: 'ytvid',
-    youtube_playlist_id: 'ytplaylist',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    published_at: new Date().toISOString(),
-  });
-  return c.json({ success: true, podcasts: [placeholderPodcast] }, 200);
-});
+podcastRoutes.openapi(listPodcastsRouteDef, listPodcastsHandler);
 
 // GET /podcasts/{id}
 const getPodcastByIdRouteDef = createRoute({
@@ -136,33 +115,7 @@ const getPodcastByIdRouteDef = createRoute({
   tags: ['Podcasts'],
 });
 
-podcastRoutes.openapi(getPodcastByIdRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  if (id === '1') { 
-    const placeholderPodcast = PodcastSchema.parse({
-        id: parseInt(id as string),
-        title: 'Fetched Podcast Episode',
-        description: 'Details for fetched episode.',
-        markdown_content: '# Fetched',
-        category_id: 1,
-        series_id: 1,
-        status: 'published',
-        scheduled_publish_at: null,
-        slug: 'fetched-podcast-episode',
-        audio_bucket_key: 'audio_fetched.mp3',
-        video_bucket_key: 'video_fetched.mp4',
-        thumbnail_bucket_key: 'thumb_fetched.png',
-        duration_seconds: 2000,
-        youtube_video_id: 'ytvid_fetched',
-        youtube_playlist_id: 'ytplaylist_fetched',
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        published_at: new Date().toISOString(),
-      });
-    return c.json({ success: true, podcast: placeholderPodcast }, 200);
-  }
-  return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.'}), 404);
-});
+podcastRoutes.openapi(getPodcastByIdRouteDef, getPodcastByIdHandler);
 
 // PUT /podcasts/{id}
 const updatePodcastRouteDef = createRoute({
@@ -197,14 +150,7 @@ const updatePodcastRouteDef = createRoute({
   tags: ['Podcasts'],
 });
 
-podcastRoutes.openapi(updatePodcastRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  // const body = c.req.valid('json');
-  if (id === '1') { 
-    return c.json({ success: true, message: 'Podcast updated successfully.' as const }, 200);
-  }
-  return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.'}), 404);
-});
+podcastRoutes.openapi(updatePodcastRouteDef, updatePodcastHandler);
 
 // DELETE /podcasts/{id}
 const deletePodcastRouteDef = createRoute({
@@ -231,12 +177,6 @@ const deletePodcastRouteDef = createRoute({
   tags: ['Podcasts'],
 });
 
-podcastRoutes.openapi(deletePodcastRouteDef, (c) => {
-  const { id } = c.req.valid('param');
-  if (id === '1') { 
-     return c.json({ success: true, message: 'Podcast deleted successfully.' as const }, 200);
-  }
-  return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.'}), 404);
-});
+podcastRoutes.openapi(deletePodcastRouteDef, deletePodcastHandler);
 
 export default podcastRoutes;

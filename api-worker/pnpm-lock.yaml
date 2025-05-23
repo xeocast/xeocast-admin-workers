@@ -13,16 +13,16 @@ importers:
         version: 0.5.1(hono@4.7.10)
       '@hono/zod-openapi':
         specifier: ^0.19.6
-        version: 0.19.6(hono@4.7.10)(zod@3.25.21)
+        version: 0.19.6(hono@4.7.10)(zod@3.25.23)
       '@hono/zod-validator':
         specifier: ^0.5.0
-        version: 0.5.0(hono@4.7.10)(zod@3.25.21)
+        version: 0.5.0(hono@4.7.10)(zod@3.25.23)
       hono:
         specifier: ^4.7.10
         version: 4.7.10
       zod:
         specifier: ^3.25.20
-        version: 3.25.21
+        version: 3.25.23
     devDependencies:
       wrangler:
         specifier: ^4.16.0
@@ -548,15 +548,15 @@ packages:
   zod@3.22.3:
     resolution: {integrity: sha512-EjIevzuJRiRPbVH4mGc8nApb/lVLKVpmUhAaR5R5doKGfAnGJ6Gr3CViAVjP+4FWSxCsybeWQdcgCtbX+7oZug==}
 
-  zod@3.25.21:
-    resolution: {integrity: sha512-k3MXcS5jrVo00Irs53CngVH4gHL1LgcCfOd9fOmZ7Pq/BP8eBop0P5RJDX5SsKchuxTMewJI0/AuK7MdD6ePXw==}
+  zod@3.25.23:
+    resolution: {integrity: sha512-Od2bdMosahjSrSgJtakrwjMDb1zM1A3VIHCPGveZt/3/wlrTWBya2lmEh2OYe4OIu8mPTmmr0gnLHIWQXdtWBg==}
 
 snapshots:
 
-  '@asteasolutions/zod-to-openapi@7.3.0(zod@3.25.21)':
+  '@asteasolutions/zod-to-openapi@7.3.0(zod@3.25.23)':
     dependencies:
       openapi3-ts: 4.4.0
-      zod: 3.25.21
+      zod: 3.25.23
 
   '@cloudflare/kv-asset-handler@0.4.0':
     dependencies:
@@ -673,17 +673,17 @@ snapshots:
     dependencies:
       hono: 4.7.10
 
-  '@hono/zod-openapi@0.19.6(hono@4.7.10)(zod@3.25.21)':
+  '@hono/zod-openapi@0.19.6(hono@4.7.10)(zod@3.25.23)':
     dependencies:
-      '@asteasolutions/zod-to-openapi': 7.3.0(zod@3.25.21)
-      '@hono/zod-validator': 0.5.0(hono@4.7.10)(zod@3.25.21)
+      '@asteasolutions/zod-to-openapi': 7.3.0(zod@3.25.23)
+      '@hono/zod-validator': 0.5.0(hono@4.7.10)(zod@3.25.23)
       hono: 4.7.10
-      zod: 3.25.21
+      zod: 3.25.23
 
-  '@hono/zod-validator@0.5.0(hono@4.7.10)(zod@3.25.21)':
+  '@hono/zod-validator@0.5.0(hono@4.7.10)(zod@3.25.23)':
     dependencies:
       hono: 4.7.10
-      zod: 3.25.21
+      zod: 3.25.23
 
   '@img/sharp-darwin-arm64@0.33.5':
     optionalDependencies:
@@ -978,4 +978,4 @@ snapshots:
 
   zod@3.22.3: {}
 
-  zod@3.25.21: {}
+  zod@3.25.23: {}

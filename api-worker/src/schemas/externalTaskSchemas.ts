@@ -72,8 +72,7 @@ export const ListExternalTasksQuerySchema = PaginationQuerySchema.extend({
 }).openapi('ListExternalTasksQuery');
 
 // Schema for listing external tasks (paginated)
-export const ListExternalTasksResponseSchema = PaginatedResponseSchema(ExternalTaskSchema, 'tasks')
-  .openapi('ListExternalTasksResponse');
+export const ListExternalTasksResponseSchema = PaginatedResponseSchema(ExternalTaskSchema, 'tasks');
 
 // Schema for getting a single external task
 export const GetExternalTaskResponseSchema = z.object({

@@ -20,6 +20,7 @@ About TypeScript usage:
 - Always use pnpm as package manager
 - Always check that new npm dependencies to be installed are not deprecated
 - You can see [package.json](mdc:package.json) for packages already installed
+- Always put the import statements at the top of the files
 
 About Cloudflare usage:
 
