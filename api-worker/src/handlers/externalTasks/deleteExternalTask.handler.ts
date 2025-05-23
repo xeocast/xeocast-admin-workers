@@ -1,27 +1,35 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import { ExternalTaskDeleteResponseSchema } from '../../schemas/externalTaskSchemas';
+import {
+  PathIdParamSchema,
+  GeneralBadRequestErrorSchema,
+  GeneralNotFoundErrorSchema,
+  GeneralServerErrorSchema
+} from '../../schemas/commonSchemas';
 
-export const deleteExternalTaskHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+export const deleteExternalTaskHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to delete external task ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual task deletion logic
-  // 1. Find task by ID
-  // 2. Check if task can be deleted (e.g., not in a non-terminal state like 'processing')
-  // 3. Delete task from the database
+  try {
+    const stmt = c.env.DB.prepare('DELETE FROM external_service_tasks WHERE id = ?1').bind(id);
+    const result = await stmt.run();
 
-  // Simulate success / not found / constraint violation
-  if (id === 1) { // Assuming task with ID 1 exists for mock
-    // if (id === 2) { // Simulate task is processing
-    //   throw new HTTPException(400, { message: 'Cannot delete task: It is currently processing.' });
-    // }
-    return c.json({ success: true, message: 'External task deleted successfully.' as const }, 200);
+    if (result.success && result.meta.changes > 0) {
+      return c.json(ExternalTaskDeleteResponseSchema.parse({ success: true, message: 'External task deleted successfully.' }), 200);
+    } else if (result.success && result.meta.changes === 0) {
+      return c.json(GeneralNotFoundErrorSchema.parse({ success: false, message: 'External task not found.' }), 404);
+    } else {
+      console.error('Failed to delete external task, D1 result:', result);
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to delete external task.' }), 500);
+    }
+  } catch (error) {
+    console.error(`Error deleting external task ID ${id}:`, error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to delete external task due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'External task not found.' });
 };

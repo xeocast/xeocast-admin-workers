@@ -1,34 +1,75 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { SeriesCreateRequestSchema } from '../../schemas/seriesSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  SeriesCreateRequestSchema,
+  SeriesCreateResponseSchema,
+  SeriesCreateFailedErrorSchema
+} from '../../schemas/seriesSchemas';
+import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas'; // For category not found
 
-export const createSeriesHandler = async (c: Context) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = SeriesCreateRequestSchema.safeParse(body);
-
+  const validationResult = SeriesCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Create series validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for creating series.', cause: validationResult.error });
+    return c.json(SeriesCreateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for creating series.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
-  const seriesData = validationResult.data;
-  console.log('Attempting to create series with data:', seriesData);
+  const { title, description, category_id, youtube_playlist_id } = validationResult.data;
 
-  // Placeholder for actual series creation logic
-  // 1. Validate category_id
-  // 2. Check if series title already exists within the same category_id
-  // 3. Store series in the database
+  try {
+    // 1. Validate category_id
+    const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1')
+      .bind(category_id)
+      .first<{ id: number }>();
 
-  // Simulate success for now
-  const mockSeriesId = Math.floor(Math.random() * 1000) + 1;
-  // Simulate title exists error
-  // if (seriesData.title === 'existing_series_title' && seriesData.category_id === 1) {
-  //   throw new HTTPException(400, { message: 'Series title already exists in this category.'});
-  // }
-  return c.json({ success: true, message: 'Series created successfully.' as const, seriesId: mockSeriesId }, 201);
+    if (!categoryExists) {
+      return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Category not found.' }), 400);
+    }
+
+    // 2. Check if series title already exists within the same category_id
+    const existingSeries = await c.env.DB.prepare('SELECT id FROM series WHERE title = ?1 AND category_id = ?2')
+      .bind(title, category_id)
+      .first<{ id: number }>();
+
+    if (existingSeries) {
+      return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category.' }), 400);
+    }
+
+    // 3. Store series in the database
+    const stmt = c.env.DB.prepare(
+      'INSERT INTO series (title, description, category_id, youtube_playlist_id) VALUES (?1, ?2, ?3, ?4)'
+    ).bind(title, description, category_id, youtube_playlist_id === undefined ? null : youtube_playlist_id);
+    
+    const result = await stmt.run();
+
+    if (result.success && result.meta.last_row_id) {
+      return c.json(SeriesCreateResponseSchema.parse({
+        success: true,
+        message: 'Series created successfully.',
+        seriesId: result.meta.last_row_id
+      }), 201);
+    } else {
+      console.error('Failed to insert series, D1 result:', result);
+      // This could be a D1 error or the unique constraint (category_id, title) if not caught above (race condition, though unlikely here)
+      return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create series.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error creating series:', error);
+    // Check for unique constraint violation error (specific to D1/SQLite syntax if possible)
+    if (error instanceof Error && error.message.includes('UNIQUE constraint failed: series.category_id, series.title')) {
+        return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category.' }), 400);
+    }
+    return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create series due to a server error.' }), 500);
+  }
 };

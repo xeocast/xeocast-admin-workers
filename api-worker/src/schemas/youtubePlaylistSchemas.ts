@@ -35,7 +35,7 @@ export const YouTubePlaylistSchema = YouTubePlaylistBaseSchema.extend({
 export const YouTubePlaylistCreateRequestSchema = YouTubePlaylistBaseSchema;
 
 export const YouTubePlaylistCreateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube playlist created successfully.'),
+  message: z.string().openapi({ example: 'YouTube playlist created successfully.' }),
   playlistId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubePlaylistCreateResponse');
 
@@ -66,7 +66,7 @@ export const GetYouTubePlaylistResponseSchema = z.object({
 export const YouTubePlaylistUpdateRequestSchema = YouTubePlaylistBaseSchema.partial().openapi('YouTubePlaylistUpdateRequest');
 
 export const YouTubePlaylistUpdateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube playlist updated successfully.')
+  message: z.string().openapi({ example: 'YouTube playlist updated successfully.' })
 }).openapi('YouTubePlaylistUpdateResponse');
 
 // Schema for specifically updating the youtube_platform_id (if a dedicated route is desired)
@@ -77,20 +77,20 @@ export const YouTubePlaylistUpdatePlatformIdRequestSchema = z.object({
 
 // Schema for deleting a YouTube playlist
 export const YouTubePlaylistDeleteResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube playlist deleted successfully.')
+  message: z.string().openapi({ example: 'YouTube playlist deleted successfully.' })
 }).openapi('YouTubePlaylistDeleteResponse');
 
 // --- Specific Error Schemas for YouTube Playlists ---
 export const YouTubePlaylistPlatformIdExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('YouTube playlist platform ID already exists for this channel.')
+  message: z.string().openapi({ example: 'YouTube playlist platform ID already exists for this channel.' })
 }).openapi('YouTubePlaylistPlatformIdExistsError');
 
 export const YouTubePlaylistCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to create YouTube playlist.')
+  message: z.string().openapi({ example: 'Failed to create YouTube playlist.' })
 }).openapi('YouTubePlaylistCreateFailedError');
 
 export const YouTubePlaylistUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to update YouTube playlist.')
+  message: z.string().openapi({ example: 'Failed to update YouTube playlist.' })
 }).openapi('YouTubePlaylistUpdateFailedError');
 
 export const YouTubePlaylistDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
@@ -98,5 +98,5 @@ export const YouTubePlaylistDeleteFailedErrorSchema = GeneralBadRequestErrorSche
 }).openapi('YouTubePlaylistDeleteFailedError');
 
 export const YouTubePlaylistNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
-  message: z.literal('YouTube playlist not found.')
+  message: z.string().openapi({ example: 'YouTube playlist not found.' })
 }).openapi('YouTubePlaylistNotFoundError');

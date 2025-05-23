@@ -72,7 +72,7 @@ export const PodcastCreateFailedErrorSchema = GeneralBadRequestErrorSchema.exten
 }).openapi('PodcastCreateFailedError');
 
 export const PodcastUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-    message: z.literal("Failed to update podcast.")
+    message: z.string().openapi({ example: "Failed to update podcast." })
 }).openapi('PodcastUpdateFailedError');
 
 export const PodcastNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
@@ -80,5 +80,5 @@ export const PodcastNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
 }).openapi('PodcastNotFoundError');
 
 export const PodcastDeleteFailedErrorSchema = GeneralServerErrorSchema.extend({
-    message: z.literal("Failed to delete podcast.")
+    message: z.string().openapi({ example: "Failed to delete podcast." })
 }).openapi('PodcastDeleteFailedError');

@@ -1,21 +1,61 @@
 import { Context } from 'hono';
-import { RoleSchema } from '../../schemas/roleSchemas'; // For mock data
+import type { CloudflareEnv } from '../../env';
+import { RoleSchema, ListRolesResponseSchema } from '../../schemas/roleSchemas';
+import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const listRolesHandler = async (c: Context) => {
-  console.log('Listing roles');
+interface RoleFromDB {
+  id: number;
+  name: string;
+  description: string | null;
+  permissions: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
 
-  // Placeholder for actual role listing logic
-  // 1. Fetch roles from database
+export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  try {
+    const { results } = await c.env.DB.prepare('SELECT id, name, description, permissions, created_at, updated_at FROM roles ORDER BY name ASC').all<RoleFromDB>();
 
-  // Simulate success with mock data
-  const placeholderRole = RoleSchema.parse({
-    id: 1,
-    name: 'Administrator',
-    description: 'Full access to all system features.',
-    permissions: ['manage_users', 'manage_settings', 'manage_roles', 'manage_categories', 'manage_podcasts'],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
-  const responsePayload = { success: true, roles: [placeholderRole] };
-  return c.json(responsePayload, 200);
+    if (!results) {
+      // This case might occur if the query itself fails in a way D1 doesn't throw, or if results is undefined/null
+      return c.json(ListRolesResponseSchema.parse({ success: true, roles: [] }), 200);
+    }
+
+    const roles = results.map(dbRole => {
+      let parsedPermissions: string[];
+      try {
+        parsedPermissions = JSON.parse(dbRole.permissions);
+        if (!Array.isArray(parsedPermissions) || !parsedPermissions.every(p => typeof p === 'string')) {
+          console.warn(`Invalid permissions format for role ID ${dbRole.id}:`, dbRole.permissions);
+          parsedPermissions = []; // Default to empty array or handle as error
+        }
+      } catch (e) {
+        console.warn(`Failed to parse permissions for role ID ${dbRole.id}:`, e);
+        parsedPermissions = []; // Default to empty array or handle as error
+      }
+      
+      // Validate each role against the RoleSchema after parsing permissions
+      // This ensures the structure is correct before sending it in the response.
+      const roleForValidation = {
+        ...dbRole,
+        description: dbRole.description === null ? undefined : dbRole.description, // Handle null description for optional field
+        permissions: parsedPermissions,
+      };
+
+      const validation = RoleSchema.safeParse(roleForValidation);
+      if (!validation.success) {
+        console.error(`Data for role ID ${dbRole.id} failed RoleSchema validation after DB fetch:`, validation.error.flatten());
+        // Decide how to handle: skip this role, return error, etc.
+        // For now, we'll filter out invalid roles. A more robust solution might log and alert.
+        return null;
+      }
+      return validation.data;
+    }).filter(role => role !== null); // Filter out any roles that failed validation
+
+    return c.json(ListRolesResponseSchema.parse({ success: true, roles }), 200);
+
+  } catch (error) {
+    console.error('Error listing roles:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list roles due to a server error.' }), 500);
+  }
 };

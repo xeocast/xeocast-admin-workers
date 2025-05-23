@@ -1,40 +1,113 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { RoleUpdateRequestSchema } from '../../schemas/roleSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  RoleUpdateRequestSchema,
+  RoleUpdateResponseSchema,
+  RoleNotFoundErrorSchema,
+  RoleNameExistsErrorSchema,
+  RoleUpdateFailedErrorSchema
+} from '../../schemas/roleSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const updateRoleHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+interface RoleFromDB {
+  id: number;
+  name: string;
+}
+
+export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = RoleUpdateRequestSchema.safeParse(body);
+  const validationResult = RoleUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Update role validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for updating role.', cause: validationResult.error });
+    return c.json(RoleUpdateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for updating role.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
   const updateData = validationResult.data;
-  console.log('Attempting to update role ID:', id, 'with data:', updateData);
 
-  // Placeholder for actual role update logic
-  // 1. Find role by ID
-  // 2. Check if new role name (if changed) already exists for another role
-  // 3. Update role in the database
-
-  // Simulate success / not found / name exists
-  if (id === 1) { // Assuming role with ID 1 exists for mock
-    // if (updateData.name === 'existing_role_name') {
-    //   throw new HTTPException(400, { message: 'Role name already exists.'});
-    // }
-    return c.json({ success: true, message: 'Role updated successfully.' as const }, 200);
+  // If updateData is empty, no changes to make.
+  if (Object.keys(updateData).length === 0) {
+    return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
   }
-  throw new HTTPException(404, { message: 'Role not found.' });
+
+  try {
+    // Check if role exists
+    const currentRole = await c.env.DB.prepare('SELECT id, name FROM roles WHERE id = ?1')
+      .bind(id)
+      .first<RoleFromDB>();
+
+    if (!currentRole) {
+      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found.' }), 404);
+    }
+
+    // If name is being updated, check for uniqueness
+    if (updateData.name && updateData.name !== currentRole.name) {
+      const existingRoleWithNewName = await c.env.DB.prepare('SELECT id FROM roles WHERE name = ?1 AND id != ?2')
+        .bind(updateData.name, id)
+        .first<{ id: number }>();
+      if (existingRoleWithNewName) {
+        return c.json(RoleNameExistsErrorSchema.parse({ success: false, message: 'Role name already exists.' }), 400);
+      }
+    }
+
+    const fieldsToUpdate: string[] = [];
+    const valuesToBind: (string | null)[] = [];
+    let bindIndex = 1;
+
+    if (updateData.name !== undefined) {
+      fieldsToUpdate.push(`name = ?${bindIndex}`);
+      valuesToBind.push(updateData.name);
+      bindIndex++;
+    }
+    if (updateData.description !== undefined) {
+      fieldsToUpdate.push(`description = ?${bindIndex}`);
+      valuesToBind.push(updateData.description === null ? null : updateData.description);
+      bindIndex++;
+    }
+    if (updateData.permissions !== undefined) {
+      fieldsToUpdate.push(`permissions = ?${bindIndex}`);
+      valuesToBind.push(JSON.stringify(updateData.permissions));
+      bindIndex++;
+    }
+
+    // If, after checks, there are no actual fields to update (e.g. name was same as current)
+    // This can happen if the only field provided was 'name' but it matched currentRole.name
+    if (fieldsToUpdate.length === 0) {
+        return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
+    }
+
+    valuesToBind.push(id.toString()); // For the WHERE clause (D1 expects all bind params as strings or compatible)
+    const query = `UPDATE roles SET ${fieldsToUpdate.join(', ')} WHERE id = ?${bindIndex}`;
+    
+    const stmt = c.env.DB.prepare(query).bind(...valuesToBind);
+    const result = await stmt.run();
+
+    if (result.success) {
+      // D1 .run() for UPDATE returns meta.changes for rows changed.
+      // If meta.changes is 0, it might mean the data provided was identical to existing data for the matched row.
+      // This is still considered a successful update operation.
+      return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
+    } else {
+      console.error('Failed to update role, D1 result:', result);
+      return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update role.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error updating role:', error);
+    return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update role due to a server error.' }), 500);
+  }
 };

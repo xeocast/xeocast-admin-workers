@@ -1,5 +1,6 @@
 // src/routes/roles.ts
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   RoleCreateRequestSchema,
   RoleCreateResponseSchema,
@@ -15,14 +16,14 @@ import {
   RoleUpdateFailedErrorSchema,
   RoleDeleteFailedErrorSchema
 } from '../schemas/roleSchemas';
-import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/commonSchemas';
 import { createRoleHandler } from '../handlers/roles/createRole.handler';
 import { listRolesHandler } from '../handlers/roles/listRoles.handler';
 import { getRoleByIdHandler } from '../handlers/roles/getRoleById.handler';
 import { updateRoleHandler } from '../handlers/roles/updateRole.handler';
 import { deleteRoleHandler } from '../handlers/roles/deleteRole.handler';
 
-const roleRoutes = new OpenAPIHono();
+const roleRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /roles - Create Role
 const createRoleRouteDef = createRoute({
@@ -47,6 +48,7 @@ const listRolesRouteDef = createRoute({
   path: '/',
   responses: {
     200: { content: { 'application/json': { schema: ListRolesResponseSchema } }, description: 'List of roles' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Lists all roles.',
@@ -61,6 +63,7 @@ const getRoleByIdRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: GetRoleResponseSchema } }, description: 'Role details' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
     404: { content: { 'application/json': { schema: RoleNotFoundErrorSchema } }, description: 'Role not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },

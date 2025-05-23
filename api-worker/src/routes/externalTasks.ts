@@ -1,5 +1,6 @@
 // src/routes/externalTasks.ts
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   ExternalTaskCreateRequestSchema,
   ExternalTaskCreateResponseSchema,
@@ -13,16 +14,16 @@ import {
   ExternalTaskCreateFailedErrorSchema,
   ExternalTaskNotFoundErrorSchema,
   ExternalTaskUpdateFailedErrorSchema,
-  ExternalTaskDeleteFailedErrorSchema
+  ExternalTaskDeleteFailedErrorSchema,
 } from '../schemas/externalTaskSchemas';
-import { PathIdParamSchema, GeneralServerErrorSchema, PaginationInfoSchema } from '../schemas/commonSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, PaginationInfoSchema, GeneralBadRequestErrorSchema, GeneralNotFoundErrorSchema } from '../schemas/commonSchemas';
 import { createExternalTaskHandler } from '../handlers/externalTasks/createExternalTask.handler';
 import { listExternalTasksHandler } from '../handlers/externalTasks/listExternalTasks.handler';
 import { getExternalTaskByIdHandler } from '../handlers/externalTasks/getExternalTaskById.handler';
 import { updateExternalTaskHandler } from '../handlers/externalTasks/updateExternalTask.handler';
 import { deleteExternalTaskHandler } from '../handlers/externalTasks/deleteExternalTask.handler';
 
-const externalTaskRoutes = new OpenAPIHono();
+const externalTaskRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /external-tasks - Create External Task
 const createTaskRouteDef = createRoute({
@@ -50,6 +51,7 @@ const listTasksRouteDef = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: ListExternalTasksResponseSchema } }, description: 'Paginated list of external tasks' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Lists all external tasks with pagination and filtering.',
@@ -64,7 +66,8 @@ const getTaskByIdRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: GetExternalTaskResponseSchema } }, description: 'External task details' },
-    404: { content: { 'application/json': { schema: ExternalTaskNotFoundErrorSchema } }, description: 'External task not found' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
+    404: { content: { 'application/json': { schema: GeneralNotFoundErrorSchema } }, description: 'External task not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Gets an external task by ID.',
@@ -82,8 +85,8 @@ const updateTaskRouteDef = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: ExternalTaskUpdateResponseSchema } }, description: 'External task updated' },
-    400: { content: { 'application/json': { schema: ExternalTaskUpdateFailedErrorSchema } }, description: 'Invalid input' },
-    404: { content: { 'application/json': { schema: ExternalTaskNotFoundErrorSchema } }, description: 'External task not found' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Invalid input' },
+    404: { content: { 'application/json': { schema: GeneralNotFoundErrorSchema } }, description: 'External task not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Updates an existing external task.',
@@ -98,8 +101,8 @@ const deleteTaskRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: ExternalTaskDeleteResponseSchema } }, description: 'External task deleted' },
-    400: { content: { 'application/json': { schema: ExternalTaskDeleteFailedErrorSchema } }, description: 'Deletion failed' },
-    404: { content: { 'application/json': { schema: ExternalTaskNotFoundErrorSchema } }, description: 'External task not found' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Deletion failed' },
+    404: { content: { 'application/json': { schema: GeneralNotFoundErrorSchema } }, description: 'External task not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Deletes an external task.',

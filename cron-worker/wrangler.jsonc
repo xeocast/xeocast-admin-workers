@@ -34,7 +34,7 @@
 			"database_name": "xeocast_db",
 			"database_id": "62841e0c-649c-484e-b005-229f9e782b50",			
 			// "preview_database_id": "",
-			"migrations_dir": "../../migrations"
+			"migrations_dir": "../migrations"
 		}
 	 ],
 	 "r2_buckets": [

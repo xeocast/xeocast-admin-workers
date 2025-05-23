@@ -1,31 +1,66 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { RoleSchema } from '../../schemas/roleSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  RoleSchema,
+  GetRoleResponseSchema,
+  RoleNotFoundErrorSchema
+} from '../../schemas/roleSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const getRoleByIdHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+interface RoleFromDB {
+  id: number;
+  name: string;
+  description: string | null;
+  permissions: string; // JSON string
+  created_at: string;
+  updated_at: string;
+}
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to get role by ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual logic to fetch role by ID
-  // 1. Fetch role from database
+  try {
+    const dbRole = await c.env.DB.prepare(
+      'SELECT id, name, description, permissions, created_at, updated_at FROM roles WHERE id = ?1'
+    ).bind(id).first<RoleFromDB>();
 
-  // Simulate success / not found
-  if (id === 1) { // Assuming role with ID 1 exists for mock
-    const placeholderRole = RoleSchema.parse({
-      id: id,
-      name: 'Editor',
-      description: 'Can create and manage content.',
-      permissions: ['manage_categories', 'manage_podcasts'],
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, role: placeholderRole }, 200);
+    if (!dbRole) {
+      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found.' }), 404);
+    }
+
+    let parsedPermissions: string[];
+    try {
+      parsedPermissions = JSON.parse(dbRole.permissions);
+      if (!Array.isArray(parsedPermissions) || !parsedPermissions.every(p => typeof p === 'string')) {
+        console.error(`Invalid permissions format in DB for role ID ${dbRole.id}:`, dbRole.permissions);
+        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+      }
+    } catch (e) {
+      console.error(`Failed to parse permissions from DB for role ID ${dbRole.id}:`, e);
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+    }
+
+    const roleForValidation = {
+      ...dbRole,
+      description: dbRole.description === null ? undefined : dbRole.description,
+      permissions: parsedPermissions,
+    };
+
+    const validation = RoleSchema.safeParse(roleForValidation);
+    if (!validation.success) {
+      console.error(`Data for role ID ${dbRole.id} failed RoleSchema validation after DB fetch:`, validation.error.flatten());
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+    }
+
+    return c.json(GetRoleResponseSchema.parse({ success: true, role: validation.data }), 200);
+
+  } catch (error) {
+    console.error('Error getting role by ID:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve role due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'Role not found.' });
 };

@@ -1,27 +1,52 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  RoleDeleteResponseSchema,
+  RoleNotFoundErrorSchema,
+  RoleDeleteFailedErrorSchema
+} from '../../schemas/roleSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const deleteRoleHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+export const deleteRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to delete role ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual role deletion logic
-  // 1. Find role by ID
-  // 2. Check if the role is assigned to any users (deletion constraint)
-  // 3. Delete role from the database
+  try {
+    // 1. Check if the role exists
+    const roleExists = await c.env.DB.prepare('SELECT id FROM roles WHERE id = ?1').bind(id).first<{ id: number }>();
+    if (!roleExists) {
+      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found.' }), 404);
+    }
 
-  // Simulate success / not found / constraint violation
-  if (id === 1) { // Assuming role with ID 1 exists for mock
-    // if (id === 2) { // Simulate role in use
-    //   throw new HTTPException(400, { message: 'Cannot delete role: It is assigned to active users.' });
-    // }
-    return c.json({ success: true, message: 'Role deleted successfully.' as const }, 200);
+    // 2. Check if the role is assigned to any users
+    const assignmentCheck = await c.env.DB.prepare('SELECT user_id FROM user_roles WHERE role_id = ?1 LIMIT 1')
+      .bind(id)
+      .first<{ user_id: number }>();
+
+    if (assignmentCheck) {
+      return c.json(RoleDeleteFailedErrorSchema.parse({ success: false, message: 'Cannot delete role: It is assigned to active users.' }), 400);
+    }
+
+    // 3. Delete role from the database
+    const stmt = c.env.DB.prepare('DELETE FROM roles WHERE id = ?1').bind(id);
+    const result = await stmt.run();
+
+    if (result.success && result.meta.changes > 0) {
+      return c.json(RoleDeleteResponseSchema.parse({ success: true, message: 'Role deleted successfully.' }), 200);
+    } else if (result.success && result.meta.changes === 0) {
+      // This case should ideally be caught by the existence check above, but as a safeguard:
+      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found or already deleted.' }), 404);
+    } else {
+      console.error('Failed to delete role, D1 result:', result);
+      return c.json(RoleDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete role.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error deleting role:', error);
+    return c.json(RoleDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete role due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'Role not found.' });
 };

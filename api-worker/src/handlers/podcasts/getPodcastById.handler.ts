@@ -1,43 +1,39 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PodcastSchema } from '../../schemas/podcastSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  PodcastSchema,
+  GetPodcastResponseSchema,
+  PodcastNotFoundErrorSchema
+} from '../../schemas/podcastSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const getPodcastByIdHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+export const getPodcastByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to get podcast by ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual logic to fetch podcast by ID
-  // 1. Fetch podcast from database
+  try {
+    const podcastData = await c.env.DB.prepare('SELECT * FROM podcasts WHERE id = ?1').bind(id).first<any>();
 
-  // Simulate success / not found
-  if (id === 1) { // Assuming podcast with ID 1 exists for mock
-    const placeholderPodcast = PodcastSchema.parse({
-      id: id,
-      title: 'Fetched Podcast Episode',
-      description: 'Detailed description of the fetched podcast episode.',
-      markdown_content: '# Fetched Episode\nThis is the full markdown content.',
-      category_id: 1,
-      series_id: 1,
-      status: 'published',
-      scheduled_publish_at: null,
-      slug: 'fetched-podcast-episode',
-      audio_bucket_key: 'podcasts/audio/fetched-audio.mp3',
-      video_bucket_key: 'podcasts/video/fetched-video.mp4',
-      thumbnail_bucket_key: 'podcasts/thumbnails/fetched-thumbnail.png',
-      duration_seconds: 2000,
-      youtube_video_id: 'fetchedYouTubeVideoId',
-      youtube_playlist_id: 'fetchedYouTubePlaylistId',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      published_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, podcast: placeholderPodcast }, 200);
+    if (!podcastData) {
+      return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.' }), 404);
+    }
+
+    // Validate the fetched data against the PodcastSchema
+    const validatedPodcast = PodcastSchema.safeParse(podcastData);
+    if (!validatedPodcast.success) {
+      console.error('Podcast data validation error after fetching from DB (getById):', validatedPodcast.error.flatten());
+      // This indicates a mismatch between DB schema and Zod schema, or bad data in DB
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error validating podcast data from database.'}), 500);
+    }
+
+    return c.json(GetPodcastResponseSchema.parse({ success: true, podcast: validatedPodcast.data }), 200);
+
+  } catch (error) {
+    console.error('Error fetching podcast by ID:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to fetch podcast due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'Podcast not found.' });
 };

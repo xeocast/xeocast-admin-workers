@@ -1,6 +1,6 @@
 // src/routes/users.ts
-import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
-import { z } from 'zod';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   UserSchema,
   UserCreateRequestSchema,
@@ -18,7 +18,8 @@ import {
 } from '../schemas/userSchemas';
 import {
   PathIdParamSchema,
-  GeneralServerErrorSchema
+  GeneralServerErrorSchema,
+  GeneralBadRequestErrorSchema
 } from '../schemas/commonSchemas';
 import { createUserHandler } from '../handlers/users/createUser.handler';
 import { listUsersHandler } from '../handlers/users/listUsers.handler';
@@ -26,7 +27,7 @@ import { getUserByIdHandler } from '../handlers/users/getUserById.handler';
 import { updateUserHandler } from '../handlers/users/updateUser.handler';
 import { deleteUserHandler } from '../handlers/users/deleteUser.handler';
 
-const userRoutes = new OpenAPIHono();
+const userRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /users - Create User
 const createUserRouteDef = createRoute({
@@ -44,7 +45,7 @@ const createUserRouteDef = createRoute({
       description: 'User created successfully.',
     },
     400: {
-      content: { 'application/json': { schema: UserCreateFailedErrorSchema } }, // Could also be UserEmailExistsErrorSchema
+      content: { 'application/json': { schema: z.union([UserCreateFailedErrorSchema, UserEmailExistsErrorSchema]) } },
       description: 'Invalid input or user already exists.',
     },
     500: {
@@ -75,6 +76,10 @@ const listUsersRouteDef = createRoute({
       content: { 'application/json': { schema: ListUsersResponseSchema } },
       description: 'A list of users.',
     },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request (e.g., invalid query parameters).',
+    },
     500: {
       content: { 'application/json': { schema: GeneralServerErrorSchema } },
       description: 'An unexpected error occurred.',
@@ -97,6 +102,10 @@ const getUserByIdRouteDef = createRoute({
     200: {
       content: { 'application/json': { schema: GetUserResponseSchema } },
       description: 'Details of the user.',
+    },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request (e.g., invalid ID format).',
     },
     404: {
       content: { 'application/json': { schema: UserNotFoundErrorSchema } },
@@ -130,7 +139,7 @@ const updateUserRouteDef = createRoute({
       description: 'User updated successfully.',
     },
     400: {
-      content: { 'application/json': { schema: UserUpdateFailedErrorSchema } }, // Or UserEmailExistsErrorSchema
+      content: { 'application/json': { schema: z.union([UserUpdateFailedErrorSchema, UserEmailExistsErrorSchema]) } },
       description: 'Invalid input or email already exists.',
     },
     404: {
@@ -159,6 +168,10 @@ const deleteUserRouteDef = createRoute({
     200: {
       content: { 'application/json': { schema: UserDeleteResponseSchema } },
       description: 'User deleted successfully.',
+    },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request (e.g., invalid ID format or deletion constraints).',
     },
     404: {
       content: { 'application/json': { schema: UserNotFoundErrorSchema } },

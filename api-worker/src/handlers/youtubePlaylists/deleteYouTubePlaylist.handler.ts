@@ -1,27 +1,47 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  YouTubePlaylistDeleteResponseSchema,
+  YouTubePlaylistNotFoundErrorSchema,
+  YouTubePlaylistDeleteFailedErrorSchema // Using this for general delete failure
+} from '../../schemas/youtubePlaylistSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
-export const deleteYouTubePlaylistHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
-
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const deleteYouTubePlaylistHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
+  if (!paramsValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format in path.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to delete YouTube playlist ID:', id);
+  const id = parseInt(paramsValidation.data.id, 10);
 
-  // Placeholder for actual playlist deletion logic
-  // 1. Find playlist by ID
-  // 2. Check for dependencies (e.g., associated YouTube videos)
-  // 3. Delete playlist from the database
+  try {
+    // 1. Check if playlist exists before attempting delete
+    const playlistCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE id = ?1').bind(id);
+    const existingPlaylist = await playlistCheckStmt.first();
 
-  // Simulate success / not found / constraint violation
-  if (id === 1) { // Assuming playlist with ID 1 exists for mock
-    // if (id === 2) { // Simulate playlist has dependencies
-    //   throw new HTTPException(400, { message: 'Cannot delete YouTube Playlist: It is referenced by existing YouTube videos.' });
-    // }
-    return c.json({ success: true, message: 'YouTube playlist deleted successfully.' as const }, 200);
+    if (!existingPlaylist) {
+      return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, message: 'YouTube playlist not found.' }), 404);
+    }
+
+    // 2. Delete the playlist
+    // No direct podcast dependencies to check in youtube_playlists table itself based on current schema.
+    // If there were indirect dependencies (e.g. a join table or podcasts having youtube_playlist_id),
+    // those would need checking here.
+    const deleteStmt = c.env.DB.prepare('DELETE FROM youtube_playlists WHERE id = ?1').bind(id);
+    const dbResult = await deleteStmt.run();
+
+    if (dbResult.success) {
+      // D1 success for DELETE means changes > 0 or no error. Check changes if needed.
+      // For a simple delete by ID, if it didn't throw and didn't find (already handled), it's likely fine.
+      return c.json(YouTubePlaylistDeleteResponseSchema.parse({ success: true, message: 'YouTube playlist deleted successfully.' }), 200);
+    } else {
+      // This path might be less common if D1 throws errors for failures.
+      console.error(`DB delete failed for YouTube playlist ID ${id}:`, dbResult.error || 'Unknown D1 error');
+      return c.json(YouTubePlaylistDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete YouTube playlist due to a database error.' }), 500);
+    }
+
+  } catch (error: any) {
+    console.error(`Error deleting YouTube playlist ID ${id}:`, error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to delete YouTube playlist due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'YouTube playlist not found.' });
 };

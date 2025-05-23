@@ -1,5 +1,6 @@
 // src/routes/youtubeChannels.ts
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   YouTubeChannelCreateRequestSchema,
   YouTubeChannelCreateResponseSchema,
@@ -16,14 +17,14 @@ import {
   YouTubeChannelUpdateFailedErrorSchema,
   YouTubeChannelDeleteFailedErrorSchema
 } from '../schemas/youtubeChannelSchemas';
-import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/commonSchemas';
 import { createYouTubeChannelHandler } from '../handlers/youtubeChannels/createYouTubeChannel.handler';
 import { listYouTubeChannelsHandler } from '../handlers/youtubeChannels/listYouTubeChannels.handler';
 import { getYouTubeChannelByIdHandler } from '../handlers/youtubeChannels/getYouTubeChannelById.handler';
 import { updateYouTubeChannelHandler } from '../handlers/youtubeChannels/updateYouTubeChannel.handler';
 import { deleteYouTubeChannelHandler } from '../handlers/youtubeChannels/deleteYouTubeChannel.handler';
 
-const youtubeChannelRoutes = new OpenAPIHono();
+const youtubeChannelRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /youtube-channels - Create YouTube Channel
 const createChannelRouteDef = createRoute({
@@ -51,6 +52,7 @@ const listChannelsRouteDef = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: ListYouTubeChannelsResponseSchema } }, description: 'List of YouTube channels' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid query parameters)' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Lists all YouTube channels, optionally filtered by category ID.',
@@ -65,6 +67,7 @@ const getChannelByIdRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: GetYouTubeChannelResponseSchema } }, description: 'YouTube channel details' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid ID format)' },
     404: { content: { 'application/json': { schema: YouTubeChannelNotFoundErrorSchema } }, description: 'YouTube channel not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },

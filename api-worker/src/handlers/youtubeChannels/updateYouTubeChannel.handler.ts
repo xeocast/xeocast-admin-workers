@@ -1,41 +1,132 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { YouTubeChannelUpdateRequestSchema } from '../../schemas/youtubeChannelSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  YouTubeChannelUpdateRequestSchema,
+  YouTubeChannelUpdateResponseSchema,
+  YouTubeChannelNotFoundErrorSchema,
+  YouTubeChannelUpdateFailedErrorSchema,
+  YouTubeChannelPlatformIdExistsErrorSchema
+} from '../../schemas/youtubeChannelSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
-export const updateYouTubeChannelHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
+  if (!paramsValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format in path.' }), 400);
   }
-  const id = parseInt(params.data.id);
+  const id = parseInt(paramsValidation.data.id, 10);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = YouTubeChannelUpdateRequestSchema.safeParse(body);
+  const validationResult = YouTubeChannelUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Update YouTube channel validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for updating YouTube channel.', cause: validationResult.error });
+    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for updating YouTube channel.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
   const updateData = validationResult.data;
-  console.log('Attempting to update YouTube channel ID:', id, 'with data:', updateData);
 
-  // Placeholder for actual channel update logic
-  // 1. Find channel by ID
-  // 2. Validate category_id if changed
-  // 3. If youtube_platform_id changed, check if the new one already exists for another channel
-  // 4. Update channel in the database
-
-  // Simulate success / not found / platform ID exists error
-  if (id === 1) { // Assuming channel with ID 1 exists for mock
-    // if (updateData.youtube_platform_id === 'EXISTING_ID_DIFFERENT_CHANNEL') {
-    //   throw new HTTPException(400, { message: 'YouTube platform ID already exists for another channel.'});
-    // }
-    return c.json({ success: true, message: 'YouTube channel updated successfully.' as const }, 200);
+  if (Object.keys(updateData).length === 0) {
+    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
   }
-  throw new HTTPException(404, { message: 'YouTube channel not found.' });
+
+  try {
+    // Check if channel exists
+    const existingChannel = await c.env.DB.prepare('SELECT * FROM youtube_channels WHERE id = ?1').bind(id).first();
+    if (!existingChannel) {
+      return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, message: 'YouTube channel not found.' }), 404);
+    }
+
+    // Validate category_id if provided
+    if (updateData.category_id !== undefined) {
+      const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1').bind(updateData.category_id).first();
+      if (!categoryExists) {
+        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Category with id ${updateData.category_id} not found.` }), 400);
+      }
+    }
+
+    // Validate youtube_platform_id uniqueness if provided and changed
+    if (updateData.youtube_platform_id !== undefined && updateData.youtube_platform_id !== existingChannel.youtube_platform_id) {
+      const platformIdExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE youtube_platform_id = ?1 AND id != ?2')
+        .bind(updateData.youtube_platform_id, id).first();
+      if (platformIdExists) {
+        return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube platform ID already exists for another channel.' }), 400);
+      }
+    }
+    
+    // Validate language_code format if provided
+    if (updateData.default_language !== undefined && updateData.default_language !== null) {
+        if (updateData.default_language.length !== 2 && updateData.default_language.length !== 5) { 
+            return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: "Field 'default_language' must be a valid language code (e.g., 'en' or 'en-US')." }), 400);
+        }
+    }
+
+    const fieldsToUpdate: string[] = [];
+    const bindings: any[] = [];
+    let bindingIdx = 1;
+
+    // Map Zod schema fields to DB columns
+    const fieldMapping: { [key: string]: string } = {
+      category_id: 'category_id',
+      youtube_platform_id: 'youtube_platform_id',
+      name: 'title',
+      description: 'description',
+      default_language: 'language_code',
+      default_category_id_on_youtube: 'youtube_platform_category_id',
+      prompt_template_for_description: 'video_description_template',
+      prompt_template_for_first_comment: 'first_comment_template',
+    };
+
+    for (const key in updateData) {
+      if (Object.prototype.hasOwnProperty.call(updateData, key) && fieldMapping[key]) {
+        const dbField = fieldMapping[key];
+        // @ts-ignore
+        const value = updateData[key];
+        
+        // Handle NOT NULL constraints: if a field is NOT NULL in DB, and user tries to set it to null, this will cause DB error.
+        // For now, we pass it through and let DB handle it. A more robust check could be added here.
+        fieldsToUpdate.push(`${dbField} = ?${bindingIdx}`);
+        bindings.push(value);
+        bindingIdx++;
+      }
+    }
+
+    if (fieldsToUpdate.length === 0) {
+      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'No valid fields to update provided.' }), 400);
+    }
+
+    fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
+    const query = `UPDATE youtube_channels SET ${fieldsToUpdate.join(', ')} WHERE id = ?${bindingIdx}`;
+    bindings.push(id);
+
+    const stmt = c.env.DB.prepare(query).bind(...bindings);
+    const result = await stmt.run();
+
+    if (result.success && result.meta.changes > 0) {
+      return c.json(YouTubeChannelUpdateResponseSchema.parse({ success: true, message: 'YouTube channel updated successfully.' }), 200);
+    } else if (result.success && result.meta.changes === 0) {
+      return c.json(YouTubeChannelUpdateResponseSchema.parse({ success: true, message: 'No changes were made to the YouTube channel.' }), 200); // Or a 304 Not Modified, or a specific message
+    } else {
+      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update YouTube channel.' }), 500);
+    }
+
+  } catch (error: any) {
+    console.error('Error updating YouTube channel:', error);
+    if (error.message && error.message.includes('UNIQUE constraint failed: youtube_channels.youtube_platform_id')) {
+      return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube platform ID already exists.' }), 400);
+    }
+    // Catch other DB constraint errors e.g. NOT NULL
+    if (error.message && error.message.toLowerCase().includes('constraint failed')) {
+        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Database constraint failed: ${error.message}`}), 400);
+    }
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update YouTube channel due to a server error.' }), 500);
+  }
 };

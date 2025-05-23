@@ -1,9 +1,11 @@
 {
 	"name": "api-worker",
 	"scripts": {
-		"dev": "wrangler dev",
+		"dev": "wrangler dev --persist-to ../.wrangler/state",
 		"deploy": "wrangler deploy --minify",
-		"cf-typegen": "wrangler types --env-interface CloudflareBindings"
+		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
+		"list-migrations": "wrangler d1 migrations list xeocast_db --local --persist-to ../.wrangler/state",
+		"apply-migrations": "wrangler d1 migrations apply xeocast_db --local --persist-to ../.wrangler/state"
 	},
 	"dependencies": {
 		"@hono/swagger-ui": "^0.5.1",

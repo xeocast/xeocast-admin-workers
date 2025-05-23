@@ -70,12 +70,12 @@ export const SeriesDeleteResponseSchema = MessageResponseSchema.extend({
 
 // --- Specific Error Schemas for Series ---
 export const SeriesCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to create series.')
+  message: z.string().openapi({ example: 'Failed to create series.' })
   // Add specific field errors if needed, e.g., title_exists_in_category
 }).openapi('SeriesCreateFailedError');
 
 export const SeriesUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to update series.')
+  message: z.string().openapi({ example: 'Failed to update series.' })
 }).openapi('SeriesUpdateFailedError');
 
 export const SeriesDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
@@ -83,5 +83,5 @@ export const SeriesDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend
 }).openapi('SeriesDeleteFailedError');
 
 export const SeriesNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
-  message: z.literal('Series not found.')
+  message: z.string().openapi({ example: 'Series not found.' })
 }).openapi('SeriesNotFoundError');

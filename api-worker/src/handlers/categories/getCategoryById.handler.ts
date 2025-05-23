@@ -1,43 +1,67 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { CategorySchema } from '../../schemas/categorySchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  CategorySchema,
+  GetCategoryResponseSchema,
+  CategoryNotFoundErrorSchema
+} from '../../schemas/categorySchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
+import { z } from 'zod';
 
-export const getCategoryByIdHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+export const getCategoryByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({
+        success: false,
+        message: 'Invalid ID format.'
+    }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to get category by ID:', id);
 
-  // Placeholder for actual logic to fetch category by ID
-  // 1. Fetch category from database
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Simulate success / not found
-  if (id === 1) { // Assuming category with ID 1 exists for mock
-    const placeholderCategory = CategorySchema.parse({
-      id: id,
-      name: "Tech Category",
-      description: "All about technology.",
-      default_source_background_bucket_key: "backgrounds/tech.jpg",
-      default_source_thumbnail_bucket_key: "thumbnails/tech.png",
-      prompt_template_to_gen_evergreen_titles: "Generate an evergreen title about {topic} in tech.",
-      prompt_template_to_gen_news_titles: "Latest news on {topic} in the tech world.",
-      prompt_template_to_gen_series_titles: "A series about {topic_in_series} in technology.",
-      prompt_template_to_gen_article_content: "Write an article about {subject} in tech.",
-      prompt_template_to_gen_description: "A brief description of {topic} related to tech.",
-      prompt_template_to_gen_short_description: "Short summary of {topic} in tech.",
-      prompt_template_to_gen_tag_list: "Tags for {topic}: tech, innovation, {sub_topic}",
-      prompt_template_to_gen_audio_podcast: "Create a podcast script about {topic_audio} in tech.",
-      prompt_template_to_gen_video_thumbnail: "Design a thumbnail for a video on {topic_video} in tech.",
-      prompt_template_to_gen_article_image: "Find an image for an article on {topic_image} in tech.",
-      language_code: "en",
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, category: placeholderCategory }, 200);
+  try {
+    const categoryRaw = await c.env.DB.prepare(
+      'SELECT * FROM categories WHERE id = ?1'
+    ).bind(id).first<z.infer<typeof CategorySchema>>();
+
+    if (!categoryRaw) {
+      return c.json(CategoryNotFoundErrorSchema.parse({
+        success: false,
+        message: 'Category not found.'
+      }), 404);
+    }
+    
+    // D1 returns dates as numbers (timestamps) or strings depending on how they were inserted.
+    // The schema expects ISO strings. Ensure conversion if necessary.
+    // For now, assuming they are compatible or D1 driver handles it for `first()`.
+    // If `created_at` and `updated_at` are numbers (timestamps), convert them:
+    // if (typeof categoryRaw.created_at === 'number') {
+    //   categoryRaw.created_at = new Date(categoryRaw.created_at).toISOString();
+    // }
+    // if (typeof categoryRaw.updated_at === 'number') {
+    //   categoryRaw.updated_at = new Date(categoryRaw.updated_at).toISOString();
+    // }
+
+    const category = CategorySchema.parse(categoryRaw);
+
+    return c.json(GetCategoryResponseSchema.parse({
+      success: true,
+      category: category
+    }), 200);
+
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+        console.error('Get category by ID validation error:', error.flatten());
+        return c.json(GeneralServerErrorSchema.parse({
+            success: false,
+            message: 'Response validation failed for category data.'
+        }), 500);
+    }
+    console.error('Error fetching category by ID:', error);
+    return c.json(GeneralServerErrorSchema.parse({
+        success: false,
+        message: 'Failed to retrieve category.'
+    }), 500);
   }
-  throw new HTTPException(404, { message: 'Category not found.' });
 };

@@ -1,30 +1,55 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { ExternalTaskCreateRequestSchema } from '../../schemas/externalTaskSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  ExternalTaskCreateRequestSchema,
+  ExternalTaskCreateResponseSchema,
+  ExternalTaskCreateFailedErrorSchema
+} from '../../schemas/externalTaskSchemas';
+import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const createExternalTaskHandler = async (c: Context) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+export const createExternalTaskHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(ExternalTaskCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = ExternalTaskCreateRequestSchema.safeParse(body);
-
+  const validationResult = ExternalTaskCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Create external task validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for creating external task.', cause: validationResult.error });
+    return c.json(ExternalTaskCreateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for creating external task.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
-  const taskData = validationResult.data;
-  console.log('Attempting to create external task with data:', taskData);
+  const { task_type, payload, external_service_id } = validationResult.data;
+  const status = 'pending'; // Default status for new tasks
 
-  // Placeholder for actual external task creation logic
-  // 1. Validate podcast_id if provided
-  // 2. Store task in the database
-  // 3. Potentially trigger an async process based on task_type
+  try {
+    const jsonData = JSON.stringify(payload); // 'payload' from schema maps to 'data' in DB
 
-  // Simulate success for now
-  const mockTaskId = Math.floor(Math.random() * 10000) + 1;
-  return c.json({ success: true, message: 'External task created successfully.' as const, taskId: mockTaskId }, 201);
+    const stmt = c.env.DB.prepare(
+      'INSERT INTO external_service_tasks (external_task_id, type, data, status) VALUES (?1, ?2, ?3, ?4)'
+    ).bind(external_service_id, task_type, jsonData, status); // map schema fields to DB columns
+    
+    const result = await stmt.run();
+
+    if (result.success && result.meta.last_row_id) {
+      return c.json(ExternalTaskCreateResponseSchema.parse({
+        success: true,
+        message: 'External task created successfully.',
+        taskId: result.meta.last_row_id // Internal ID of the created task, matching ExternalTaskCreateResponseSchema
+      }), 201);
+    } else {
+      console.error('Failed to insert external task, D1 result:', result);
+      return c.json(ExternalTaskCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create external task.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error creating external task:', error);
+    // Check for specific D1 errors like UNIQUE constraint if external_task_id needs to be unique (schema doesn't specify)
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to create external task due to a server error.' }), 500);
+  }
 };

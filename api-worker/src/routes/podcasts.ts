@@ -1,7 +1,6 @@
 // src/routes/podcasts.ts
-import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
-import { z } from 'zod';
-import { Context } from 'hono';
+import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   PodcastCreateRequestSchema,
   PodcastCreateResponseSchema,
@@ -15,11 +14,12 @@ import {
   PodcastUpdateFailedErrorSchema,
   PodcastDeleteFailedErrorSchema,
   PodcastSchema, // For placeholder data
-  PodcastStatusSchema
+  PodcastStatusSchema,
 } from '../schemas/podcastSchemas';
 import {
   PathIdParamSchema,
-  GeneralServerErrorSchema
+  GeneralServerErrorSchema,
+  GeneralBadRequestErrorSchema
 } from '../schemas/commonSchemas';
 import { createPodcastHandler } from '../handlers/podcasts/createPodcast.handler';
 import { listPodcastsHandler } from '../handlers/podcasts/listPodcasts.handler';
@@ -27,7 +27,7 @@ import { getPodcastByIdHandler } from '../handlers/podcasts/getPodcastById.handl
 import { updatePodcastHandler } from '../handlers/podcasts/updatePodcast.handler';
 import { deletePodcastHandler } from '../handlers/podcasts/deletePodcast.handler';
 
-const podcastRoutes = new OpenAPIHono();
+const podcastRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /podcasts
 const createPodcastRouteDef = createRoute({
@@ -78,6 +78,10 @@ const listPodcastsRouteDef = createRoute({
       content: { 'application/json': { schema: ListPodcastsResponseSchema } },
       description: 'A list of podcasts.',
     },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request.',
+    },
     500: {
       content: { 'application/json': { schema: GeneralServerErrorSchema } },
       description: 'An unexpected error occurred.',
@@ -101,6 +105,10 @@ const getPodcastByIdRouteDef = createRoute({
     200: {
       content: { 'application/json': { schema: GetPodcastResponseSchema } },
       description: 'Details of the podcast.',
+    },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request.',
     },
     404: {
       content: { 'application/json': { schema: PodcastNotFoundErrorSchema } },
@@ -134,7 +142,7 @@ const updatePodcastRouteDef = createRoute({
       description: 'Podcast updated successfully.',
     },
     400: {
-      content: { 'application/json': { schema: PodcastUpdateFailedErrorSchema } },
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
       description: 'Invalid input (e.g., validation errors, invalid category/series ID).',
     },
     404: {
@@ -164,13 +172,17 @@ const deletePodcastRouteDef = createRoute({
       content: { 'application/json': { schema: PodcastDeleteResponseSchema } },
       description: 'Podcast deleted successfully.',
     },
+    400: {
+      content: { 'application/json': { schema: GeneralBadRequestErrorSchema } },
+      description: 'Bad request or deletion failed due to constraints.',
+    },
     404: {
       content: { 'application/json': { schema: PodcastNotFoundErrorSchema } },
       description: 'Podcast not found.',
     },
     500: { 
-      content: { 'application/json': { schema: PodcastDeleteFailedErrorSchema } }, // API spec does not specify a 400 for delete constraints
-      description: 'An unexpected error occurred or deletion failed due to constraints.',
+      content: { 'application/json': { schema: GeneralServerErrorSchema } }, 
+      description: 'An unexpected error occurred.',
     },
   },
   summary: 'Deletes a podcast.',

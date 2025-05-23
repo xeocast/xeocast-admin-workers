@@ -1,34 +1,73 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { YouTubePlaylistSchema, ListYouTubePlaylistsQuerySchema, ListYouTubePlaylistsResponseSchema } from '../../schemas/youtubePlaylistSchemas';
-import { z } from 'zod';
+import type { CloudflareEnv } from '../../env';
+import { z } from '@hono/zod-openapi'; // Added for z.infer
+import {
+  YouTubePlaylistSchema,
+  ListYouTubePlaylistsQuerySchema,
+  ListYouTubePlaylistsResponseSchema
+} from '../../schemas/youtubePlaylistSchemas';
+import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
-export const listYouTubePlaylistsHandler = async (c: Context) => {
+// Helper to map DB row to YouTubePlaylistSchema compatible object
+const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSchema> => {
+  return YouTubePlaylistSchema.parse({
+    id: dbRow.id,
+    youtube_platform_id: dbRow.youtube_platform_id,
+    title: dbRow.title,
+    description: dbRow.description,
+    youtube_channel_id: dbRow.channel_id, // DB stores as channel_id
+    series_id: dbRow.series_id,
+    // thumbnail_url is not in the DB table for playlists
+    created_at: typeof dbRow.created_at === 'number' ? new Date(dbRow.created_at * 1000).toISOString() : dbRow.created_at,
+    updated_at: typeof dbRow.updated_at === 'number' ? new Date(dbRow.updated_at * 1000).toISOString() : dbRow.updated_at,
+  });
+};
+
+export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParseResult = ListYouTubePlaylistsQuerySchema.safeParse(c.req.query());
 
   if (!queryParseResult.success) {
-    throw new HTTPException(400, { message: 'Invalid query parameters.', cause: queryParseResult.error });
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid query parameters.'}), 400);
   }
 
   const { series_id, youtube_channel_id } = queryParseResult.data;
-  console.log('Listing YouTube playlists with query:', { series_id, youtube_channel_id });
 
-  // Placeholder for actual playlist listing logic
-  // 1. Fetch playlists from database, applying filters (e.g., by series_id, youtube_channel_id)
+  try {
+    let query = 'SELECT id, youtube_platform_id, title, description, channel_id, series_id, created_at, updated_at FROM youtube_playlists';
+    const conditions: string[] = [];
+    const bindings: any[] = [];
+    let bindingIdx = 1;
 
-  // Simulate success with mock data
-  const placeholderPlaylist = YouTubePlaylistSchema.parse({
-    id: 1,
-    series_id: series_id || 1,
-    youtube_channel_id: youtube_channel_id || 1,
-    youtube_platform_id: 'PLsampleplaylist123',
-    title: 'Sample Playlist',
-    description: 'This is a sample YouTube playlist.',
-    thumbnail_url: 'https://i.ytimg.com/vi/sample/hqdefault.jpg',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  });
+    if (series_id !== undefined) {
+      conditions.push(`series_id = ?${bindingIdx}`);
+      bindings.push(series_id);
+      bindingIdx++;
+    }
 
-  const responsePayload: z.infer<typeof ListYouTubePlaylistsResponseSchema> = { success: true, playlists: [placeholderPlaylist] };
-  return c.json(responsePayload, 200);
+    if (youtube_channel_id !== undefined) {
+      conditions.push(`channel_id = ?${bindingIdx}`); // DB uses channel_id
+      bindings.push(youtube_channel_id);
+      bindingIdx++;
+    }
+
+    if (conditions.length > 0) {
+      query += ' WHERE ' + conditions.join(' AND ');
+    }
+    query += ' ORDER BY created_at DESC';
+
+    const stmt = c.env.DB.prepare(query).bind(...bindings);
+    const dbResult = await stmt.all();
+
+    if (!dbResult || !dbResult.results) {
+        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to fetch playlists: Invalid database response.' }), 500);
+    }
+
+    const playlists = dbResult.results.map(mapDbRowToYouTubePlaylist);
+    
+    return c.json(ListYouTubePlaylistsResponseSchema.parse({ success: true, playlists: playlists }), 200);
+
+  } catch (error: any) {
+    console.error('Error listing YouTube playlists:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list YouTube playlists due to a server error.' }), 500);
+  }
 };

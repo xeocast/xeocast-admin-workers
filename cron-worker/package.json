@@ -5,10 +5,12 @@
 	"packageManager": "pnpm@9.14.2",
 	"scripts": {
 		"deploy": "wrangler deploy",
-		"dev": "wrangler dev --test-scheduled --persist-to ../xeocast-admin-dash/.wrangler/state",
+		"dev": "wrangler dev --test-scheduled --persist-to ../.wrangler/state",
 		"start": "wrangler dev --test-scheduled",
 		"preview": "wrangler dev --test-scheduled --remote",
-		"cf-typegen": "wrangler types"
+		"cf-typegen": "wrangler types",
+		"list-migrations": "wrangler d1 migrations list xeocast_db --local --persist-to ../.wrangler/state",
+		"apply-migrations": "wrangler d1 migrations apply xeocast_db --local --persist-to ../.wrangler/state"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250514.0",

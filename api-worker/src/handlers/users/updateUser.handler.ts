@@ -1,37 +1,119 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { UserUpdateRequestSchema } from '../../schemas/userSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  UserUpdateRequestSchema,
+  UserUpdateResponseSchema,
+  UserUpdateFailedErrorSchema,
+  UserNotFoundErrorSchema,
+  UserEmailExistsErrorSchema
+} from '../../schemas/userSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const updateUserHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = UserUpdateRequestSchema.safeParse(body);
+  const validationResult = UserUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Update user validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for updating user.', cause: validationResult.error });
+    return c.json(UserUpdateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for updating user.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
-  const updateData = validationResult.data;
-  console.log('Attempting to update user ID:', id, 'with data:', updateData);
+  const { email, name, role_id, status, password } = validationResult.data;
 
-  // Placeholder for actual user update logic
-  // 1. Find user by ID
-  // 2. If email is being changed, check if the new email already exists (for another user)
-  // 3. Update user in the database
-
-  // Simulate success / not found
-  if (id === 1) { // Assuming user with ID 1 exists for mock
-    return c.json({ success: true, message: 'User updated successfully.' as const }, 200);
+  if (Object.keys(validationResult.data).length === 0) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
   }
-  throw new HTTPException(404, { message: 'User not found.' });
+
+  try {
+    // 1. Check if user exists
+    const userToUpdate = await c.env.DB.prepare('SELECT id, email FROM users WHERE id = ?1')
+      .bind(id)
+      .first<{ id: number; email: string }>();
+
+    if (!userToUpdate) {
+      return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
+    }
+
+    // 2. If email is being changed, check if the new email already exists for another user
+    if (email && email !== userToUpdate.email) {
+      const existingUserWithNewEmail = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?1 AND id != ?2')
+        .bind(email, id)
+        .first<{ id: number }>();
+      if (existingUserWithNewEmail) {
+        return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
+      }
+    }
+
+    // 3. If role_id is provided, validate it
+    if (role_id !== undefined) {
+      const roleExists = await c.env.DB.prepare('SELECT id FROM roles WHERE id = ?1')
+        .bind(role_id)
+        .first<{ id: number }>();
+      if (!roleExists) {
+        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Role not found.' }), 400);
+      }
+    }
+
+    // 4. Construct dynamic UPDATE statement
+    const updateFields: string[] = [];
+    const bindings: (string | number | null)[] = [];
+    let bindingIndex = 1;
+
+    if (email !== undefined) { updateFields.push(`email = ?${bindingIndex++}`); bindings.push(email); }
+    if (name !== undefined) { updateFields.push(`name = ?${bindingIndex++}`); bindings.push(name); }
+    if (role_id !== undefined) { updateFields.push(`role_id = ?${bindingIndex++}`); bindings.push(role_id); }
+    if (status !== undefined) { updateFields.push(`status = ?${bindingIndex++}`); bindings.push(status); }
+    if (password !== undefined) {
+      // TODO: Hash password securely. Storing plain text for now.
+      const password_hash = password;
+      updateFields.push(`password_hash = ?${bindingIndex++}`); 
+      bindings.push(password_hash); 
+    }
+
+    if (updateFields.length === 0) {
+      // This case should ideally be caught by the initial check for empty data,
+      // but as a safeguard, if all fields were undefined (which UserUpdateRequestSchema allows due to .partial()),
+      // we can return a success or a specific message.
+      return c.json(UserUpdateResponseSchema.parse({ success: true, message: 'No changes applied to the user.' }), 200);
+    }
+
+    updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
+    const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?${bindingIndex}`;
+    bindings.push(id);
+
+    const stmt = c.env.DB.prepare(query).bind(...bindings);
+    const result = await stmt.run();
+
+    if (result.success && result.meta.changes > 0) {
+      return c.json(UserUpdateResponseSchema.parse({ success: true, message: 'User updated successfully.' }), 200);
+    } else if (result.success && result.meta.changes === 0) {
+      // User existed, but no fields were actually different from current values
+      return c.json(UserUpdateResponseSchema.parse({ success: true, message: 'No changes applied to the user as the provided data was the same.' }), 200);
+    } else {
+      // This could be a D1 error or a unique constraint violation if not caught earlier (race condition for email)
+      console.error('Failed to update user, D1 result:', result);
+      return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update user.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error updating user:', error);
+    if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
+        return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
+    }
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update user due to a server error.' }), 500);
+  }
 };

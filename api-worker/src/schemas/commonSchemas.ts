@@ -27,6 +27,7 @@ export const ErrorSchema = z.object({
   message: z.string().openapi({ example: 'A detailed error message.' }),
 }).openapi('ErrorResponse');
 
+
 export const SuccessSchema = z.object({
   success: z.boolean().openapi({ example: true }),
   message: z.string().optional().openapi({ example: 'Operation successful.' }),

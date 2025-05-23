@@ -1,41 +1,132 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { SeriesUpdateRequestSchema } from '../../schemas/seriesSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  SeriesUpdateRequestSchema,
+  SeriesUpdateResponseSchema,
+  SeriesNotFoundErrorSchema,
+  SeriesUpdateFailedErrorSchema
+} from '../../schemas/seriesSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const updateSeriesHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+interface ExistingSeries {
+  id: number;
+  title: string;
+  category_id: number;
+}
+
+export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  const body = await c.req.json().catch(() => null);
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = SeriesUpdateRequestSchema.safeParse(body);
+  const validationResult = SeriesUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Update series validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for updating series.', cause: validationResult.error });
+    return c.json(SeriesUpdateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for updating series.',
+        // errors: validationResult.error.flatten().fieldErrors 
+    }), 400);
   }
 
   const updateData = validationResult.data;
-  console.log('Attempting to update series ID:', id, 'with data:', updateData);
 
-  // Placeholder for actual series update logic
-  // 1. Find series by ID
-  // 2. Validate category_id if changed
-  // 3. Check if new series title (if changed) already exists within the same category_id for another series
-  // 4. Update series in the database
-
-  // Simulate success / not found / title exists error
-  if (id === 1) { // Assuming series with ID 1 exists for mock
-    // if (updateData.title === 'existing_series_title' && updateData.category_id === 1) {
-    //   throw new HTTPException(400, { message: 'Series title already exists in this category.'});
-    // }
-    return c.json({ success: true, message: 'Series updated successfully.' as const }, 200);
+  if (Object.keys(updateData).length === 0) {
+    return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200); // Or a 304 Not Modified like response
   }
-  throw new HTTPException(404, { message: 'Series not found.' });
+
+  try {
+    // 1. Fetch existing series
+    const existingSeries = await c.env.DB.prepare('SELECT id, title, category_id FROM series WHERE id = ?1')
+      .bind(id)
+      .first<ExistingSeries>();
+
+    if (!existingSeries) {
+      return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+    }
+
+    // 2. Validate category_id if changed
+    if (updateData.category_id !== undefined && updateData.category_id !== existingSeries.category_id) {
+      const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1')
+        .bind(updateData.category_id)
+        .first<{ id: number }>();
+      if (!categoryExists) {
+        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'New category not found.' }), 400);
+      }
+    }
+
+    // 3. Check for title uniqueness if title or category_id is changing
+    const newTitle = updateData.title !== undefined ? updateData.title : existingSeries.title;
+    const newCategoryId = updateData.category_id !== undefined ? updateData.category_id : existingSeries.category_id;
+
+    if (updateData.title !== undefined || updateData.category_id !== undefined) {
+      const conflictingSeries = await c.env.DB.prepare(
+        'SELECT id FROM series WHERE title = ?1 AND category_id = ?2 AND id != ?3'
+      ).bind(newTitle, newCategoryId, id).first<{ id: number }>();
+
+      if (conflictingSeries) {
+        return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category for another series.' }), 400);
+      }
+    }
+
+    // 4. Build and execute update query
+    const fieldsToUpdate: string[] = [];
+    const bindings: (string | number | null)[] = [];
+    let bindingIndex = 1;
+
+    if (updateData.title !== undefined) {
+      fieldsToUpdate.push(`title = ?${bindingIndex}`);
+      bindings.push(updateData.title);
+      bindingIndex++;
+    }
+    if (updateData.description !== undefined) {
+      fieldsToUpdate.push(`description = ?${bindingIndex}`);
+      bindings.push(updateData.description);
+      bindingIndex++;
+    }
+    if (updateData.category_id !== undefined) {
+      fieldsToUpdate.push(`category_id = ?${bindingIndex}`);
+      bindings.push(updateData.category_id);
+      bindingIndex++;
+    }
+    // Handle youtube_playlist_id: can be set to a string or null
+    if (Object.prototype.hasOwnProperty.call(updateData, 'youtube_playlist_id')) {
+        fieldsToUpdate.push(`youtube_playlist_id = ?${bindingIndex}`);
+        bindings.push(updateData.youtube_playlist_id === undefined ? null : updateData.youtube_playlist_id);
+        bindingIndex++;
+    }
+
+    if (fieldsToUpdate.length === 0) {
+      return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200);
+    }
+
+    fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
+    bindings.push(id);
+
+    const query = `UPDATE series SET ${fieldsToUpdate.join(', ')} WHERE id = ?${bindingIndex}`;
+    const stmt = c.env.DB.prepare(query).bind(...bindings);
+    const result = await stmt.run();
+
+    if (result.success) {
+      return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200);
+    } else {
+      console.error('Failed to update series, D1 result:', result);
+      return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update series.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error updating series:', error);
+    if (error instanceof Error && error.message.includes('UNIQUE constraint failed: series.category_id, series.title')) {
+        return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category for another series.' }), 400);
+    }
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update series due to a server error.' }), 500);
+  }
 };

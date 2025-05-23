@@ -1,27 +1,55 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  SeriesDeleteResponseSchema,
+  SeriesNotFoundErrorSchema,
+  SeriesDeleteFailedErrorSchema
+} from '../../schemas/seriesSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const deleteSeriesHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to delete series ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual series deletion logic
-  // 1. Find series by ID
-  // 2. Check if the series has any associated podcasts (deletion constraint)
-  // 3. Delete series from the database
+  try {
+    // 1. Check if series exists
+    const seriesExists = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1')
+      .bind(id)
+      .first<{ id: number }>();
 
-  // Simulate success / not found / constraint violation
-  if (id === 1) { // Assuming series with ID 1 exists for mock
-    // if (id === 2) { // Simulate series has podcasts
-    //   throw new HTTPException(400, { message: 'Cannot delete series: It has associated podcasts.' });
-    // }
-    return c.json({ success: true, message: 'Series deleted successfully.' as const }, 200);
+    if (!seriesExists) {
+      return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+    }
+
+    // 2. Check for associated podcasts
+    const associatedPodcast = await c.env.DB.prepare('SELECT id FROM podcasts WHERE series_id = ?1 LIMIT 1')
+      .bind(id)
+      .first<{ id: number }>();
+
+    if (associatedPodcast) {
+      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Cannot delete series: It has associated podcasts.' }), 400);
+    }
+
+    // 3. Delete series
+    const stmt = c.env.DB.prepare('DELETE FROM series WHERE id = ?1').bind(id);
+    const result = await stmt.run();
+
+    if (result.success && result.meta.changes > 0) {
+      return c.json(SeriesDeleteResponseSchema.parse({ success: true, message: 'Series deleted successfully.' }), 200);
+    } else if (result.success && result.meta.changes === 0) {
+        // This case should ideally be caught by the seriesExists check, but as a fallback
+        return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+    }else {
+      console.error('Failed to delete series, D1 result:', result);
+      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete series.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error deleting series:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to delete series due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'Series not found.' });
 };

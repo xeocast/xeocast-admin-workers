@@ -1,33 +1,62 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { RoleCreateRequestSchema } from '../../schemas/roleSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  RoleCreateRequestSchema,
+  RoleCreateResponseSchema,
+  RoleNameExistsErrorSchema,
+  RoleCreateFailedErrorSchema
+} from '../../schemas/roleSchemas';
 
-export const createRoleHandler = async (c: Context) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+export const createRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = RoleCreateRequestSchema.safeParse(body);
-
+  const validationResult = RoleCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Create role validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Invalid input for creating role.', cause: validationResult.error });
+    return c.json(RoleCreateFailedErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid input for creating role.',
+        // errors: validationResult.error.flatten().fieldErrors // Optional for more detailed errors
+    }), 400);
   }
 
-  const roleData = validationResult.data;
-  console.log('Attempting to create role with data:', roleData);
+  const { name, description, permissions } = validationResult.data;
 
-  // Placeholder for actual role creation logic
-  // 1. Check if role name already exists
-  // 2. Store role in the database
+  try {
+    // Check if role name already exists
+    const existingRole = await c.env.DB.prepare('SELECT id FROM roles WHERE name = ?1')
+      .bind(name)
+      .first<{ id: number }>();
 
-  // Simulate success for now
-  const mockRoleId = Math.floor(Math.random() * 1000) + 1;
-  // Simulate role name exists error
-  // if (roleData.name === 'existing_role_name') {
-  //   throw new HTTPException(400, { message: 'Role name already exists.'});
-  // }
-  return c.json({ success: true, message: 'Role created successfully.' as const, roleId: mockRoleId }, 201);
+    if (existingRole) {
+      return c.json(RoleNameExistsErrorSchema.parse({ success: false, message: 'Role name already exists.' }), 400);
+    }
+
+    const permissionsJson = JSON.stringify(permissions);
+
+    const stmt = c.env.DB.prepare(
+      'INSERT INTO roles (name, description, permissions) VALUES (?1, ?2, ?3)'
+    ).bind(name, description, permissionsJson);
+    
+    const result = await stmt.run();
+
+    if (result.success && result.meta.last_row_id) {
+      return c.json(RoleCreateResponseSchema.parse({
+        success: true,
+        message: 'Role created successfully.',
+        roleId: result.meta.last_row_id
+      }), 201);
+    } else {
+      console.error('Failed to insert role, D1 result:', result);
+      return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create role.' }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error creating role:', error);
+    return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create role due to a server error.' }), 500);
+  }
 };

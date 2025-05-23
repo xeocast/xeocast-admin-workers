@@ -1,50 +1,88 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { PodcastSchema, PodcastStatusSchema } from '../../schemas/podcastSchemas'; // For mock data
 import { z } from 'zod';
+import type { CloudflareEnv } from '../../env';
+import {
+  PodcastSchema,
+  PodcastStatusSchema,
+  ListPodcastsResponseSchema
+} from '../../schemas/podcastSchemas';
+import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
-const ListPodcastsQuerySchema = z.object({
-  page: z.string().optional().transform(val => val ? parseInt(val) : undefined),
-  limit: z.string().optional().transform(val => val ? parseInt(val) : undefined),
+// This schema should align with the one in `src/routes/podcasts.ts`
+const ListPodcastsQueryInternalSchema = z.object({
+  page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
+  limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
   status: PodcastStatusSchema.optional(),
-  category_id: z.string().optional().transform(val => val ? parseInt(val) : undefined),
-  series_id: z.string().optional().transform(val => val ? parseInt(val) : undefined),
+  category_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Category ID must be positive' }),
+  series_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Series ID must be positive' }),
+  // Add other potential filters like title_contains, sort_by, sort_order etc. if needed
 });
 
-export const listPodcastsHandler = async (c: Context) => {
-  const queryParseResult = ListPodcastsQuerySchema.safeParse(c.req.query());
+export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const queryParseResult = ListPodcastsQueryInternalSchema.safeParse(c.req.query());
 
   if (!queryParseResult.success) {
-    throw new HTTPException(400, { message: 'Invalid query parameters.', cause: queryParseResult.error });
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid query parameters.', errors: queryParseResult.error.flatten().fieldErrors }), 400);
   }
 
   const { page, limit, status, category_id, series_id } = queryParseResult.data;
-  console.log('Listing podcasts with query:', { page, limit, status, category_id, series_id });
+  const offset = (page - 1) * limit;
 
-  // Placeholder for actual podcast listing logic
-  // 1. Fetch podcasts from database, applying filters and pagination
+  let whereClauses: string[] = [];
+  let bindings: (string | number)[] = [];
+  let paramIndex = 1;
 
-  // Simulate success with mock data
-  const placeholderPodcast = PodcastSchema.parse({
-    id: 1,
-    title: 'Sample Podcast Episode',
-    description: 'This is a sample episode.',
-    markdown_content: '# Sample Markdown Content\nThis is a sample podcast episode description in markdown format.',
-    category_id: category_id || 1,
-    series_id: series_id || 1,
-    status: status || 'published',
-    scheduled_publish_at: null,
-    slug: 'sample-podcast-episode',
-    audio_bucket_key: 'podcasts/audio/sample-audio.mp3',
-    video_bucket_key: 'podcasts/video/sample-video.mp4',
-    thumbnail_bucket_key: 'podcasts/thumbnails/sample-thumbnail.png',
-    duration_seconds: 1800,
-    youtube_video_id: 'sampleYouTubeVideoId',
-    youtube_playlist_id: 'sampleYouTubePlaylistId',
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    published_at: status === 'published' ? new Date().toISOString() : null,
-  });
-  const responsePayload = { success: true, podcasts: [placeholderPodcast], total: 1, page: page || 1, limit: limit || 10 };
-  return c.json(responsePayload, 200);
+  if (status) {
+    whereClauses.push(`status = ?${paramIndex++}`);
+    bindings.push(status);
+  }
+  if (category_id) {
+    whereClauses.push(`category_id = ?${paramIndex++}`);
+    bindings.push(category_id);
+  }
+  if (series_id) {
+    whereClauses.push(`series_id = ?${paramIndex++}`);
+    bindings.push(series_id);
+  }
+
+  const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  try {
+    const podcastsQuery = c.env.DB.prepare(
+      `SELECT * FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+    ).bind(...bindings, limit, offset);
+    
+    const countQuery = c.env.DB.prepare(
+      `SELECT COUNT(*) as total FROM podcasts ${whereString}`
+    ).bind(...bindings);
+
+    const [podcastsResult, countResult] = await Promise.all([
+      podcastsQuery.all<any>(), // D1 returns any[], needs parsing with PodcastSchema
+      countQuery.first<{ total: number }>()
+    ]);
+
+    if (!podcastsResult.results || countResult === null) {
+        console.error('Failed to fetch podcasts or count, D1 results:', podcastsResult, countResult);
+        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve podcasts from the database.'}), 500);
+    }
+
+    // Validate each podcast against the Zod schema
+    const validatedPodcasts = z.array(PodcastSchema).safeParse(podcastsResult.results);
+    if (!validatedPodcasts.success) {
+        console.error('Podcast data validation error after fetching from DB:', validatedPodcasts.error.flatten());
+        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error validating podcast data from database.'}), 500);
+    }
+
+    return c.json(ListPodcastsResponseSchema.parse({
+      success: true,
+      podcasts: validatedPodcasts.data,
+      // total: countResult.total, // The ListPodcastsResponseSchema does not have total, page, limit.
+      // page: page,
+      // limit: limit
+    }), 200);
+
+  } catch (error) {
+    console.error('Error listing podcasts:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list podcasts due to a server error.' }), 500);
+  }
 };

@@ -1,5 +1,6 @@
 // src/routes/categories.ts
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   CategoryCreateRequestSchema,
   CategoryCreateResponseSchema,
@@ -12,18 +13,16 @@ import {
   CategoryCreateFailedErrorSchema,
   CategoryNotFoundErrorSchema,
   CategoryUpdateFailedErrorSchema,
-  CategoryDeleteFailedErrorSchema,
-  CategorySchema, // For placeholder in GET by ID
-  CategorySummarySchema, // For placeholder in LIST
+  CategoryDeleteFailedErrorSchema
 } from '../schemas/categorySchemas';
-import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/commonSchemas';
 import { createCategoryHandler } from '../handlers/categories/createCategory.handler';
 import { listCategoriesHandler } from '../handlers/categories/listCategories.handler';
 import { getCategoryByIdHandler } from '../handlers/categories/getCategoryById.handler';
 import { updateCategoryHandler } from '../handlers/categories/updateCategory.handler';
 import { deleteCategoryHandler } from '../handlers/categories/deleteCategory.handler';
 
-const categoryRoutes = new OpenAPIHono();
+const categoryRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>(); // Typed with CloudflareEnv
 
 // POST /categories
 const createCategoryRouteDef = createRoute({
@@ -58,6 +57,7 @@ const getCategoryByIdRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: GetCategoryResponseSchema } }, description: 'Category details' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Invalid request' }, // Added GeneralBadRequestErrorSchema
     404: { content: { 'application/json': { schema: CategoryNotFoundErrorSchema } }, description: 'Not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
@@ -74,7 +74,7 @@ const updateCategoryRouteDef = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: CategoryUpdateResponseSchema } }, description: 'Category updated' },
-    400: { content: { 'application/json': { schema: z.union([CategoryNameExistsErrorSchema, CategoryUpdateFailedErrorSchema]) } }, description: 'Invalid input' },
+    400: { content: { 'application/json': { schema: z.union([CategoryNameExistsErrorSchema, CategoryUpdateFailedErrorSchema, GeneralBadRequestErrorSchema]) } }, description: 'Invalid input' }, // Added GeneralBadRequestErrorSchema
     404: { content: { 'application/json': { schema: CategoryNotFoundErrorSchema } }, description: 'Not found' },
     500: { content: { 'application/json': { schema: CategoryUpdateFailedErrorSchema } }, description: 'Server error' },
   },

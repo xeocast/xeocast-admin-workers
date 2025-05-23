@@ -47,7 +47,7 @@ export const YouTubeChannelSchema = YouTubeChannelBaseSchema.extend({
 export const YouTubeChannelCreateRequestSchema = YouTubeChannelBaseSchema;
 
 export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube channel created successfully.'),
+  message: z.string().openapi({ example: 'YouTube channel created successfully.' }),
   channelId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubeChannelCreateResponse');
 
@@ -73,25 +73,25 @@ export const GetYouTubeChannelResponseSchema = z.object({
 export const YouTubeChannelUpdateRequestSchema = YouTubeChannelBaseSchema.partial().openapi('YouTubeChannelUpdateRequest');
 
 export const YouTubeChannelUpdateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube channel updated successfully.')
+  message: z.string().openapi({ example: 'YouTube channel updated successfully.' })
 }).openapi('YouTubeChannelUpdateResponse');
 
 // Schema for deleting a YouTube channel
 export const YouTubeChannelDeleteResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('YouTube channel deleted successfully.')
+  message: z.string().openapi({ example: 'YouTube channel deleted successfully.' })
 }).openapi('YouTubeChannelDeleteResponse');
 
 // --- Specific Error Schemas for YouTube Channels ---
 export const YouTubeChannelPlatformIdExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('YouTube platform ID already exists.')
+  message: z.string().openapi({ example: 'YouTube platform ID already exists.' })
 }).openapi('YouTubeChannelPlatformIdExistsError');
 
 export const YouTubeChannelCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to create YouTube channel.')
+  message: z.string().openapi({ example: 'Failed to create YouTube channel.' })
 }).openapi('YouTubeChannelCreateFailedError');
 
 export const YouTubeChannelUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to update YouTube channel.')
+  message: z.string().openapi({ example: 'Failed to update YouTube channel.' })
 }).openapi('YouTubeChannelUpdateFailedError');
 
 export const YouTubeChannelDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
@@ -99,5 +99,5 @@ export const YouTubeChannelDeleteFailedErrorSchema = GeneralBadRequestErrorSchem
 }).openapi('YouTubeChannelDeleteFailedError');
 
 export const YouTubeChannelNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
-  message: z.literal('YouTube channel not found.')
+  message: z.string().openapi({ example: 'YouTube channel not found.' })
 }).openapi('YouTubeChannelNotFoundError');

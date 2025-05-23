@@ -63,15 +63,15 @@ export const RoleDeleteResponseSchema = MessageResponseSchema.extend({
 
 // --- Specific Error Schemas for Roles ---
 export const RoleNameExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Role name already exists.')
+  message: z.string().openapi({ example: 'Role name already exists.' })
 }).openapi('RoleNameExistsError');
 
 export const RoleCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to create role.')
+  message: z.string().openapi({ example: 'Failed to create role.' })
 }).openapi('RoleCreateFailedError');
 
 export const RoleUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to update role.')
+  message: z.string().openapi({ example: 'Failed to update role.' })
 }).openapi('RoleUpdateFailedError');
 
 export const RoleDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
@@ -79,5 +79,5 @@ export const RoleDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
 }).openapi('RoleDeleteFailedError');
 
 export const RoleNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
-  message: z.literal('Role not found.')
+  message: z.string().openapi({ example: 'Role not found.' })
 }).openapi('RoleNotFoundError');

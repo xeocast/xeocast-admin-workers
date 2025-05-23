@@ -1,30 +1,104 @@
 import { Context } from 'hono';
 import { HTTPException } from 'hono/http-exception';
-import { CategoryCreateRequestSchema } from '../../schemas/categorySchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  CategoryCreateRequestSchema,
+  CategoryNameExistsErrorSchema,
+  CategoryCreateFailedErrorSchema,
+  CategoryCreateResponseSchema
+} from '../../schemas/categorySchemas';
+import { z } from 'zod';
 
-export const createCategoryHandler = async (c: Context) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
+export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  let requestBody;
+  try {
+    requestBody = await c.req.json();
+  } catch (error) {
+    return c.json(CategoryCreateFailedErrorSchema.parse({
+      success: false,
+      message: 'Invalid JSON payload.'
+    }), 400);
   }
 
-  const validationResult = CategoryCreateRequestSchema.safeParse(body);
+  const validationResult = CategoryCreateRequestSchema.safeParse(requestBody);
 
   if (!validationResult.success) {
     console.error('Create category validation error:', validationResult.error.flatten());
-    // Consider more specific error messages based on validationResult.error
-    throw new HTTPException(400, { message: 'Invalid input for creating category.', cause: validationResult.error });
+    return c.json(CategoryCreateFailedErrorSchema.parse({
+      success: false,
+      message: 'Invalid input for creating category.',
+      // errors: validationResult.error.flatten().fieldErrors // Optional: include detailed field errors
+    }), 400);
   }
 
-  const { name, language_code } = validationResult.data;
-  console.log('Attempting to create category:', { name, language_code });
+  const categoryData = validationResult.data;
 
-  // Placeholder for actual category creation logic
-  // 1. Check if category name already exists for the language
-  // 2. Store category in the database
+  try {
+    // Check if category name already exists
+    const existingCategory = await c.env.DB.prepare(
+      'SELECT id FROM categories WHERE name = ?1'
+    ).bind(categoryData.name).first<{ id: number }>();
 
-  // Simulate success for now
-  const mockCategoryId = Math.floor(Math.random() * 1000) + 1;
-  return c.json({ success: true, message: 'Category created successfully.' as const, categoryId: mockCategoryId }, 201);
+    if (existingCategory) {
+      return c.json(CategoryNameExistsErrorSchema.parse({
+        success: false,
+        message: 'Category name already exists.'
+      }), 400);
+    }
+
+    // Insert new category
+    const stmt = c.env.DB.prepare(
+      `INSERT INTO categories (
+        name, description, 
+        default_source_background_bucket_key, default_source_thumbnail_bucket_key,
+        prompt_template_to_gen_evergreen_titles, prompt_template_to_gen_news_titles,
+        prompt_template_to_gen_series_titles, prompt_template_to_gen_article_content,
+        prompt_template_to_gen_description, prompt_template_to_gen_short_description,
+        prompt_template_to_gen_tag_list, prompt_template_to_gen_audio_podcast,
+        prompt_template_to_gen_video_thumbnail, prompt_template_to_gen_article_image,
+        language_code
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`
+    ).bind(
+      categoryData.name,
+      categoryData.description,
+      categoryData.default_source_background_bucket_key,
+      categoryData.default_source_thumbnail_bucket_key,
+      categoryData.prompt_template_to_gen_evergreen_titles,
+      categoryData.prompt_template_to_gen_news_titles,
+      categoryData.prompt_template_to_gen_series_titles,
+      categoryData.prompt_template_to_gen_article_content,
+      categoryData.prompt_template_to_gen_description,
+      categoryData.prompt_template_to_gen_short_description,
+      categoryData.prompt_template_to_gen_tag_list,
+      categoryData.prompt_template_to_gen_audio_podcast,
+      categoryData.prompt_template_to_gen_video_thumbnail,
+      categoryData.prompt_template_to_gen_article_image,
+      categoryData.language_code
+    );
+    
+    const result = await stmt.run();
+
+    if (result.success && result.meta.last_row_id) {
+      return c.json(CategoryCreateResponseSchema.parse({
+        success: true,
+        message: 'Category created successfully.',
+        categoryId: result.meta.last_row_id
+      }), 201);
+    } else {
+      console.error('Failed to insert category, D1 result:', result);
+      return c.json(CategoryCreateFailedErrorSchema.parse({
+        success: false,
+        message: 'Failed to create category.'
+      }), 500);
+    }
+
+  } catch (error) {
+    console.error('Error creating category:', error);
+    // Check for specific D1 errors if possible, e.g., unique constraint violation if not caught above
+    // For now, a general server error
+    return c.json(CategoryCreateFailedErrorSchema.parse({
+        success: false,
+        message: 'Failed to create category.'
+    }), 500);
+  }
 };

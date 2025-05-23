@@ -1,32 +1,56 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { UserSchema } from '../../schemas/userSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  UserSchema,
+  UserStatusSchema,
+  GetUserResponseSchema,
+  UserNotFoundErrorSchema
+} from '../../schemas/userSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
+import { z } from 'zod';
 
-export const getUserByIdHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+interface UserFromDB {
+  id: number;
+  email: string;
+  name: string | null;
+  role_id: number;
+  status: z.infer<typeof UserStatusSchema>;
+  created_at: string;
+  updated_at: string;
+}
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to get user by ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual logic to fetch user by ID
-  // 1. Fetch user from database
+  try {
+    const dbUser = await c.env.DB.prepare(
+      'SELECT id, email, name, role_id, status, created_at, updated_at FROM users WHERE id = ?1'
+    ).bind(id).first<UserFromDB>();
 
-  // Simulate success / not found
-  if (id === 1) {
-    const placeholderUser = UserSchema.parse({
-      id: id,
-      email: 'founduser@example.com',
-      name: 'Found User',
-      role_id: 2,
-      status: 'active',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, user: placeholderUser }, 200);
+    if (!dbUser) {
+      return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
+    }
+
+    const userForValidation = {
+      ...dbUser,
+      name: dbUser.name === null ? undefined : dbUser.name,
+    };
+
+    const validation = UserSchema.safeParse(userForValidation);
+    if (!validation.success) {
+      console.error(`Data for user ID ${dbUser.id} failed UserSchema validation after DB fetch:`, validation.error.flatten());
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing user data.' }), 500);
+    }
+
+    return c.json(GetUserResponseSchema.parse({ success: true, user: validation.data }), 200);
+
+  } catch (error) {
+    console.error('Error getting user by ID:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve user due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'User not found.' });
 };

@@ -1,33 +1,72 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { SeriesSummarySchema } from '../../schemas/seriesSchemas'; // For mock data
 import { z } from 'zod';
+import type { CloudflareEnv } from '../../env';
+import {
+  SeriesSummarySchema,
+  ListSeriesResponseSchema
+} from '../../schemas/seriesSchemas';
+import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-// Define a schema for query parameters if needed, e.g., for filtering by category_id
+// Schema for query parameters
 const ListSeriesQuerySchema = z.object({
-  category_id: z.string().optional().transform(val => val ? parseInt(val) : undefined),
+  category_id: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive()).optional(),
 });
 
-export const listSeriesHandler = async (c: Context) => {
+interface SeriesSummaryFromDB {
+  id: number;
+  title: string;
+  category_id: number;
+  youtube_playlist_id: string | null;
+}
+
+export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParseResult = ListSeriesQuerySchema.safeParse(c.req.query());
 
   if (!queryParseResult.success) {
-    throw new HTTPException(400, { message: 'Invalid query parameters.', cause: queryParseResult.error });
+    return c.json(GeneralBadRequestErrorSchema.parse({ 
+        success: false, 
+        message: 'Invalid query parameters.',
+        // errors: queryParseResult.error.flatten().fieldErrors
+    }), 400);
   }
 
   const { category_id } = queryParseResult.data;
-  console.log('Listing series with query:', { category_id });
 
-  // Placeholder for actual series listing logic
-  // 1. Fetch series from database, applying filters (e.g., by category_id)
+  try {
+    let query = 'SELECT id, title, category_id, youtube_playlist_id FROM series';
+    const bindings: (number | string)[] = [];
 
-  // Simulate success with mock data
-  const placeholderSeries = SeriesSummarySchema.parse({
-    id: 1,
-    title: 'My Awesome Podcast Series',
-    category_id: category_id || 1,
-    youtube_playlist_id: 'PLxxxxxxxxxxxxxxxxx',
-  });
-  const responsePayload = { success: true, series: [placeholderSeries] };
-  return c.json(responsePayload, 200);
+    if (category_id !== undefined) {
+      query += ' WHERE category_id = ?1';
+      bindings.push(category_id);
+    }
+    query += ' ORDER BY title ASC';
+
+    const stmt = bindings.length > 0 ? c.env.DB.prepare(query).bind(...bindings) : c.env.DB.prepare(query);
+    const { results } = await stmt.all<SeriesSummaryFromDB>();
+
+    if (!results) {
+      return c.json(ListSeriesResponseSchema.parse({ success: true, series: [] }), 200);
+    }
+
+    // Validate each summary - though if query is specific, this is more of a sanity check
+    const seriesSummaries = results.map(dbSeries => {
+      const validation = SeriesSummarySchema.safeParse({
+        ...dbSeries,
+        // Ensure nullable fields are handled correctly if schema expects optional undefined
+        youtube_playlist_id: dbSeries.youtube_playlist_id === null ? undefined : dbSeries.youtube_playlist_id,
+      });
+      if (!validation.success) {
+        console.warn(`Data for series ID ${dbSeries.id} failed SeriesSummarySchema validation:`, validation.error.flatten());
+        return null; // Filter out invalid ones
+      }
+      return validation.data;
+    }).filter(s => s !== null);
+
+    return c.json(ListSeriesResponseSchema.parse({ success: true, series: seriesSummaries }), 200);
+
+  } catch (error) {
+    console.error('Error listing series:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list series due to a server error.' }), 500);
+  }
 };

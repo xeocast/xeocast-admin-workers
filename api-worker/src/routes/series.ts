@@ -1,5 +1,6 @@
 // src/routes/series.ts
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import type { CloudflareEnv } from '../env';
 import {
   SeriesCreateRequestSchema,
   SeriesCreateResponseSchema,
@@ -15,14 +16,14 @@ import {
   SeriesUpdateFailedErrorSchema,
   SeriesDeleteFailedErrorSchema
 } from '../schemas/seriesSchemas';
-import { PathIdParamSchema, GeneralServerErrorSchema } from '../schemas/commonSchemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/commonSchemas';
 import { createSeriesHandler } from '../handlers/series/createSeries.handler';
 import { listSeriesHandler } from '../handlers/series/listSeries.handler';
 import { getSeriesByIdHandler } from '../handlers/series/getSeriesById.handler';
 import { updateSeriesHandler } from '../handlers/series/updateSeries.handler';
 import { deleteSeriesHandler } from '../handlers/series/deleteSeries.handler';
 
-const seriesRoutes = new OpenAPIHono();
+const seriesRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
 
 // POST /series - Create Series
 const createSeriesRouteDef = createRoute({
@@ -48,6 +49,7 @@ const listSeriesRouteDef = createRoute({
   // Add query params for filtering by category_id if needed in future
   responses: {
     200: { content: { 'application/json': { schema: ListSeriesResponseSchema } }, description: 'List of series' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Lists all series.',
@@ -62,6 +64,7 @@ const getSeriesByIdRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: GetSeriesResponseSchema } }, description: 'Series details' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
     404: { content: { 'application/json': { schema: SeriesNotFoundErrorSchema } }, description: 'Series not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },

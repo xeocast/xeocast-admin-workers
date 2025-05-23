@@ -1,32 +1,56 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
-import { SeriesSchema } from '../../schemas/seriesSchemas';
-import { PathIdParamSchema } from '../../schemas/commonSchemas';
+import type { CloudflareEnv } from '../../env';
+import {
+  SeriesSchema,
+  GetSeriesResponseSchema,
+  SeriesNotFoundErrorSchema
+} from '../../schemas/seriesSchemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-export const getSeriesByIdHandler = async (c: Context) => {
-  const params = PathIdParamSchema.safeParse(c.req.param());
+interface SeriesFromDB {
+  id: number;
+  title: string;
+  description: string | null;
+  category_id: number;
+  youtube_playlist_id: string | null;
+  created_at: string; 
+  updated_at: string;
+}
 
-  if (!params.success) {
-    throw new HTTPException(400, { message: 'Invalid ID format.', cause: params.error });
+export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+
+  if (!paramValidation.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
   }
-  const id = parseInt(params.data.id);
-  console.log('Attempting to get series by ID:', id);
+  const id = parseInt(paramValidation.data.id, 10);
 
-  // Placeholder for actual logic to fetch series by ID
-  // 1. Fetch series from database
+  try {
+    const dbSeries = await c.env.DB.prepare(
+      'SELECT id, title, description, category_id, youtube_playlist_id, created_at, updated_at FROM series WHERE id = ?1'
+    ).bind(id).first<SeriesFromDB>();
 
-  // Simulate success / not found
-  if (id === 1) { // Assuming series with ID 1 exists for mock
-    const placeholderSeries = SeriesSchema.parse({
-      id: id,
-      title: 'Specific Series Title',
-      description: 'Detailed description of this specific series.',
-      category_id: 1,
-      youtube_playlist_id: 'PLyyyyyyyyyyyyyyy',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-    return c.json({ success: true, series: placeholderSeries }, 200);
+    if (!dbSeries) {
+      return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+    }
+
+    // Prepare for validation, ensuring optional fields are handled correctly
+    const seriesForValidation = {
+      ...dbSeries,
+      description: dbSeries.description === null ? undefined : dbSeries.description,
+      youtube_playlist_id: dbSeries.youtube_playlist_id === null ? undefined : dbSeries.youtube_playlist_id,
+    };
+
+    const validation = SeriesSchema.safeParse(seriesForValidation);
+    if (!validation.success) {
+      console.error(`Data for series ID ${dbSeries.id} failed SeriesSchema validation after DB fetch:`, validation.error.flatten());
+      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing series data.' }), 500);
+    }
+
+    return c.json(GetSeriesResponseSchema.parse({ success: true, series: validation.data }), 200);
+
+  } catch (error) {
+    console.error('Error getting series by ID:', error);
+    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve series due to a server error.' }), 500);
   }
-  throw new HTTPException(404, { message: 'Series not found.' });
 };

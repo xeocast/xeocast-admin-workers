@@ -37,7 +37,7 @@ export const UserCreateRequestSchema = UserBaseSchema.extend({
 });
 
 export const UserCreateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('User created successfully.'),
+  message: z.string().openapi({ example: 'User created successfully.' }),
   userId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('UserCreateResponse');
 
@@ -61,29 +61,29 @@ export const UserUpdateRequestSchema = UserBaseSchema.extend({
 }).partial().openapi('UserUpdateRequest');
 
 export const UserUpdateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('User updated successfully.'),
+  message: z.string().openapi({ example: 'User updated successfully.' }),
 }).openapi('UserUpdateResponse');
 
 // Schema for deleting a user
 export const UserDeleteResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('User deleted successfully.'),
+  message: z.string().openapi({ example: 'User deleted successfully.' }),
 }).openapi('UserDeleteResponse');
 
 // Error Schemas specific to Users
 export const UserNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({
-  message: z.literal('User not found.'),
+  message: z.string().openapi({ example: 'User not found.' }),
 }).openapi('UserNotFoundError');
 
 export const UserCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to create user.'),
+  message: z.string().openapi({ example: 'Failed to create user.' }),
   // errors: z.record(z.string()).optional().openapi({ example: { email: 'Invalid email format' } })
 }).openapi('UserCreateFailedError');
 
 export const UserUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal('Failed to update user.'),
+  message: z.string().openapi({ example: 'Failed to update user.' }),
 }).openapi('UserUpdateFailedError');
 
 export const UserEmailExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
-    message: z.literal('A user with this email already exists.'),
+    message: z.string().openapi({ example: 'A user with this email already exists.' }),
     error: z.literal('email_exists').optional()
 }).openapi('UserEmailExistsError');

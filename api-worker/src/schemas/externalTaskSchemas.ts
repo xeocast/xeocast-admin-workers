@@ -91,7 +91,7 @@ export const ExternalTaskUpdateRequestSchema = z.object({
 }).partial().openapi('ExternalTaskUpdateRequest');
 
 export const ExternalTaskUpdateResponseSchema = MessageResponseSchema.extend({
-  message: z.literal('External task updated successfully.')
+  message: z.string().openapi({ example: 'External task updated successfully.' })
 }).openapi('ExternalTaskUpdateResponse');
 
 // Schema for deleting an external task
