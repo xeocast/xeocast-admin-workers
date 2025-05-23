@@ -18,7 +18,7 @@
 	 */
 	"routes": [
 		{
-			"pattern": "dash-api.xeocast.com/*",
+			"pattern": "dash-api.xeocast.com",
 			"custom_domain": true
 		}
 	],
