@@ -12,15 +12,6 @@
 		"enabled": true
 	},
 	/**
-	 * Routes
-	 * Routes allow you to map a URL pattern to your Worker.
-	 * Docs: https://developers.cloudflare.com/workers/configuration/routes/
-	 */
-	"route": {
-		"pattern": "dash-api.xeocast.com/*",
-		"zone_name": "xeocast.com"
-	},
-	/**
 	 * Smart Placement
 	 * Smart Placement automatically places your Worker on the edge to provide the best performance for your users.
 	 * Docs: https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement
