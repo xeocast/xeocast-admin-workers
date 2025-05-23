@@ -13,19 +13,36 @@ import externalTaskRoutes from './routes/externalTasks';
 import youtubeChannelRoutes from './routes/youtubeChannels';
 import youtubePlaylistRoutes from './routes/youtubePlaylists';
 
+// Import middleware
+import { ensureAuth } from './middlewares/auth.middleware';
+
 const app = new OpenAPIHono<{ Bindings: CloudflareBindings }>();
 
-// API routes
-const apiRoutes = app
-  .route('/auth', authRoutes)
-  .route('/categories', categoryRoutes)
-  .route('/podcasts', podcastRoutes)
-  .route('/users', userRoutes)
-  .route('/roles', roleRoutes)
-  .route('/series', seriesRoutes)
-  .route('/external-tasks', externalTaskRoutes)
-  .route('/youtube-channels', youtubeChannelRoutes)
-  .route('/youtube-playlists', youtubePlaylistRoutes);
+// Public routes first
+app.route('/auth', authRoutes);
+
+// Auth middleware instance for protected routes
+const authMiddleware = ensureAuth();
+
+// Apply auth middleware to protected route paths
+app.use('/categories/*', authMiddleware);
+app.use('/podcasts/*', authMiddleware);
+app.use('/users/*', authMiddleware);
+app.use('/roles/*', authMiddleware);
+app.use('/series/*', authMiddleware);
+app.use('/external-tasks/*', authMiddleware);
+app.use('/youtube-channels/*', authMiddleware);
+app.use('/youtube-playlists/*', authMiddleware);
+
+// Mount protected routes
+app.route('/categories', categoryRoutes);
+app.route('/podcasts', podcastRoutes);
+app.route('/users', userRoutes);
+app.route('/roles', roleRoutes);
+app.route('/series', seriesRoutes);
+app.route('/external-tasks', externalTaskRoutes);
+app.route('/youtube-channels', youtubeChannelRoutes);
+app.route('/youtube-playlists', youtubePlaylistRoutes);
 
 // OpenAPI Documentation
 app.doc('/api/doc', {
