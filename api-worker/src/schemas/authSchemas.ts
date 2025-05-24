@@ -38,6 +38,28 @@ export const LoginInternalErrorSchema = ErrorSchema.extend({
 }).openapi('LoginInternalError');
 
 
+// GET /auth/session
+export const SessionUserSchema = z.object({
+  id: z.number().openapi({ example: 1 }),
+  email: z.string().email().openapi({ example: 'user@example.com' }),
+  name: z.string().nullable().openapi({ example: 'John Doe' }),
+  role: z.string().openapi({ example: 'editor' }),
+}).openapi('SessionUser');
+
+export const SessionActiveResponseSchema = z.object({
+  isActive: z.literal(true),
+  user: SessionUserSchema,
+}).openapi('SessionActiveResponse');
+
+export const SessionInactiveResponseSchema = z.object({
+  isActive: z.literal(false),
+}).openapi('SessionInactiveResponse');
+
+export const SessionErrorResponseSchema = ErrorSchema.extend({
+  error: z.literal('session_error'),
+  message: z.literal('An error occurred while fetching session status.'),
+}).openapi('SessionErrorResponse');
+
 // POST /auth/logout
 export const LogoutSuccessResponseSchema = MessageResponseSchema.extend({
     message: z.literal('Logged out successfully.')

@@ -10,9 +10,13 @@ import {
   LoginInternalErrorSchema,
   LogoutSuccessResponseSchema,
   LogoutFailedErrorSchema,
+  SessionActiveResponseSchema,
+  SessionInactiveResponseSchema,
+  SessionErrorResponseSchema,
 } from '../schemas/authSchemas';
 import { loginHandler } from '../handlers/auth/login.handler';
 import { logoutHandler } from '../handlers/auth/logout.handler';
+import { getSessionHandler } from '../handlers/auth/session.handler';
 
 const authRoutes = new OpenAPIHono();
 
@@ -74,6 +78,38 @@ const loginRouteDef = createRoute({
 });
 
 authRoutes.openapi(loginRouteDef, loginHandler);
+
+// GET /auth/session
+const getSessionRouteDef = createRoute({
+  method: 'get',
+  path: '/session',
+  summary: 'Get current session status and user information',
+  description: 'Retrieves the current user session status based on the session_token cookie. Returns user details if the session is active.',
+  tags: ['Authentication'],
+  responses: {
+    200: {
+      description: 'Session status retrieved successfully. isActive will be true if a valid session exists, false otherwise.',
+      content: {
+        'application/json': {
+          schema: z.union([SessionActiveResponseSchema, SessionInactiveResponseSchema]),
+        },
+      },
+    },
+    500: {
+      description: 'Internal Server Error',
+      content: {
+        'application/json': {
+          schema: SessionErrorResponseSchema,
+        },
+      },
+    },
+  },
+  security: [
+    { CookieAuth: [] }, // Indicates that this route expects a cookie
+  ],
+});
+
+authRoutes.openapi(getSessionRouteDef, getSessionHandler);
 
 
 // POST /auth/logout
