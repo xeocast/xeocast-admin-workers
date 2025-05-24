@@ -19,12 +19,12 @@ export const LoginMissingFieldsErrorSchema = ErrorSchema.extend({
 
 export const LoginUserNotFoundErrorSchema = ErrorSchema.extend({
   error: z.literal('invalid'),
-  message: z.literal('User not found.'),
+  message: z.literal('Invalid user or password.'),
 }).openapi('LoginUserNotFoundError');
 
 export const LoginInvalidPasswordErrorSchema = ErrorSchema.extend({
   error: z.literal('invalid'),
-  message: z.literal('Invalid password.'),
+  message: z.literal('Invalid user or password.'),
 }).openapi('LoginInvalidPasswordError');
 
 export const LoginRoleConfigErrorSchema = ErrorSchema.extend({

@@ -1,5 +1,4 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import { setCookie } from 'hono/cookie';
 import bcrypt from 'bcryptjs'; // For password hashing, as in old code
 // crypto.randomUUID() will be used for session tokens, no specific import needed.
@@ -18,26 +17,22 @@ interface RoleRecord {
 }
 
 export const loginHandler = async (c: Context) => {
-  const body = await c.req.json().catch(() => null);
-
-  if (!body) {
-    throw new HTTPException(400, { message: 'Invalid JSON payload' });
-  }
+  const body = await c.req.json().catch(() => {
+    console.error('Login error: Malformed JSON payload or no payload.');
+    return null;
+  });
 
   const validationResult = LoginRequestSchema.safeParse(body);
 
   if (!validationResult.success) {
     console.error('Login validation error:', validationResult.error.flatten());
-    throw new HTTPException(400, { message: 'Missing email or password.', cause: validationResult.error });
+    // Corresponds to LoginMissingFieldsErrorSchema
+    return c.json({ success: false, error: 'missing' as const, message: 'Email and password are required.' as const }, 400);
   }
 
   const { email, password } = validationResult.data;
-
-  console.log('Login attempt with:', { email });
-
-  // Actual login logic starts here
-  const db = c.env.DB as D1Database; // Ensure DB is correctly typed in your Env (e.g., via src/env.d.ts)
-  const environment = (c.env.ENVIRONMENT as string) || 'development'; // Ensure ENVIRONMENT is in your Env
+  const db = c.env.DB as D1Database;
+  const environment = (c.env.ENVIRONMENT as string) || 'development';
 
   try {
     // Step 1: Fetch user by email
@@ -46,14 +41,16 @@ export const loginHandler = async (c: Context) => {
 
     if (!userResult) {
       console.error(`User not found for email: ${email}`);
-      throw new HTTPException(401, { message: 'Invalid email or password.' });
+      // Corresponds to LoginUserNotFoundErrorSchema
+      return c.json({ success: false, error: 'invalid' as const, message: 'Invalid user or password.' as const }, 401);
     }
 
     // Step 2: Verify password
     const validPassword = await bcrypt.compare(password, userResult.password_hash);
     if (!validPassword) {
       console.error(`Password validation failed for user: ${userResult.email}`);
-      throw new HTTPException(401, { message: 'Invalid email or password.' });
+      // Corresponds to LoginInvalidPasswordErrorSchema
+      return c.json({ success: false, error: 'invalid' as const, message: 'Invalid user or password.' as const }, 401);
     }
 
     // Step 3: Fetch user role
@@ -62,7 +59,8 @@ export const loginHandler = async (c: Context) => {
 
     if (!roleResult || !roleResult.role) {
       console.error(`Role not found for user ID: ${userResult.id}`);
-      throw new HTTPException(500, { message: 'User role configuration error. Please contact support.' });
+      // Corresponds to LoginRoleConfigErrorSchema (mapped to 401 in auth.ts for login route)
+      return c.json({ success: false, error: 'authentication_failed' as const, message: 'User role configuration error.' as const }, 401);
     }
 
     // Step 4: Create session
@@ -81,22 +79,12 @@ export const loginHandler = async (c: Context) => {
       maxAge: 60 * 60 * 24, // 1 day in seconds
     });
 
-    return c.json({ success: true, message: 'Login successful' }, 200);
+    // Corresponds to LoginSuccessResponseSchema
+    return c.json({ success: true }, 200);
 
   } catch (e: any) {
-    if (e instanceof HTTPException && (e.status === 400 || e.status === 401)) {
-      // For expected client errors (400, 401), log a more concise message.
-      // The specific reason (e.g., "User not found") was logged before throwing.
-      console.error(`Client error during login: ${e.status} - ${e.message}`);
-    } else {
-      // For other HTTPExceptions (e.g., 500) or unexpected errors, log the full error.
-      console.error("Error during login process:", e);
-    }
-
-    if (e instanceof HTTPException) {
-      throw e; // Re-throw if already an HTTPException
-    }
-    // For other errors, wrap them in a generic 500 HTTPException
-    throw new HTTPException(500, { message: e.message || 'An internal error occurred during login.' });
+    console.error("Error during login process:", e);
+    // Corresponds to LoginInternalErrorSchema
+    return c.json({ success: false, error: 'authentication_failed' as const, message: 'An internal error occurred during login.' as const }, 500);
   }
 };
