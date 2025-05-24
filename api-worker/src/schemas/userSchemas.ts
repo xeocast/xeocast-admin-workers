@@ -8,27 +8,17 @@ import {
   SimpleListResponseSchema
 } from './commonSchemas';
 
-// Enum for User status
-export const UserStatusSchema = z.enum([
-  'active',
-  'invited',
-  'suspended',
-  'pending_verification'
-]).openapi({ description: 'The current status of the user.', example: 'active' });
-
 // Base schema for user properties, used for creation and updates
 const UserBaseSchema = z.object({
   email: z.string().email().max(255).openapi({ example: 'user@example.com' }),
   name: z.string().max(255).optional().openapi({ example: 'John Doe' }),
-  role_id: z.number().int().positive().openapi({ example: 1, description: 'ID of the role assigned to the user.' }),
-  status: UserStatusSchema.default('active').optional(),
 }).openapi('UserBase');
 
 // Full User schema for API responses (excluding sensitive data like password_hash)
 export const UserSchema = UserBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
 }).openapi('User');
 
 // Schema for creating a new user
@@ -56,7 +46,6 @@ export const GetUserResponseSchema = z.object({
 // Schema for updating an existing user (all fields optional)
 export const UserUpdateRequestSchema = UserBaseSchema.extend({
     email: UserBaseSchema.shape.email.optional(),
-    role_id: UserBaseSchema.shape.role_id.optional(),
     password: z.string().min(8).max(255).optional().openapi({ example: 'NewSecurePassword123', description: 'Only provide if changing the password.' }),
 }).partial().openapi('UserUpdateRequest');
 

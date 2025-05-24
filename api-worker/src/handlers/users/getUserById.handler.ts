@@ -2,7 +2,6 @@ import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
 import {
   UserSchema,
-  UserStatusSchema,
   GetUserResponseSchema,
   UserNotFoundErrorSchema
 } from '../../schemas/userSchemas';
@@ -13,8 +12,6 @@ interface UserFromDB {
   id: number;
   email: string;
   name: string | null;
-  role_id: number;
-  status: z.infer<typeof UserStatusSchema>;
   created_at: string;
   updated_at: string;
 }
@@ -29,7 +26,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
 
   try {
     const dbUser = await c.env.DB.prepare(
-      'SELECT id, email, name, role_id, status, created_at, updated_at FROM users WHERE id = ?1'
+      'SELECT id, email, name, created_at, updated_at FROM users WHERE id = ?1'
     ).bind(id).first<UserFromDB>();
 
     if (!dbUser) {

@@ -3,7 +3,6 @@ import { z } from 'zod';
 import type { CloudflareEnv } from '../../env';
 import {
   UserSchema,
-  UserStatusSchema,
   ListUsersResponseSchema
 } from '../../schemas/userSchemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
@@ -12,16 +11,12 @@ import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../sc
 const ListUsersQuerySchema = z.object({
   page: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive().default(1)).optional(),
   limit: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive().max(100).default(10)).optional(),
-  status: UserStatusSchema.optional(),
-  role_id: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive()).optional(),
 });
 
 interface UserFromDB {
   id: number;
   email: string;
   name: string | null;
-  role_id: number;
-  status: z.infer<typeof UserStatusSchema>;
   created_at: string;
   updated_at: string;
 }
@@ -37,30 +32,31 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }), 400);
   }
 
-  const { page = 1, limit = 10, status, role_id } = queryParseResult.data;
+  const { page = 1, limit = 10 } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   try {
-    let query = 'SELECT id, email, name, role_id, status, created_at, updated_at FROM users';
+    // SELECT clause: Select user fields and the minimum role_id for each user.
+    // Assumes 'status' column exists in 'users' table as per UserFromDB and schemas.
+    let selectClause = 'SELECT u.id, u.email, u.name, u.created_at, u.updated_at';
+    // FROM and JOIN clause: Join users with user_roles to access role information.
+    let fromClause = 'FROM users u';
+    
     const conditions: string[] = [];
     const bindings: (string | number)[] = [];
     let bindingIndex = 1;
 
-    if (status) {
-      conditions.push(`status = ?${bindingIndex}`);
-      bindings.push(status);
-      bindingIndex++;
-    }
-    if (role_id !== undefined) {
-      conditions.push(`role_id = ?${bindingIndex}`);
-      bindings.push(role_id);
-      bindingIndex++;
-    }
+    // GROUP BY clause: Ensure each user is listed once, even with multiple roles.
+    // No GROUP BY needed if not aggregating roles
+    let groupByClause = '';
 
+
+    let query = selectClause + ' ' + fromClause;
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-    query += ` ORDER BY email ASC LIMIT ?${bindingIndex} OFFSET ?${bindingIndex + 1}`;
+    query += ' ' + groupByClause;
+    query += ` ORDER BY u.email ASC LIMIT ?${bindingIndex} OFFSET ?${bindingIndex + 1}`;
     bindings.push(limit, offset);
 
     const stmt = c.env.DB.prepare(query).bind(...bindings);

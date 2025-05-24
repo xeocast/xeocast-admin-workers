@@ -30,8 +30,8 @@ const CategoryBaseSchema = z.object({
 
 export const CategorySchema = CategoryBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
 }).openapi('Category');
 // Removed extra }); here
 

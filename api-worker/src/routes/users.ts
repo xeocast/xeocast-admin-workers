@@ -13,8 +13,7 @@ import {
   UserNotFoundErrorSchema,
   UserCreateFailedErrorSchema,
   UserUpdateFailedErrorSchema,
-  UserEmailExistsErrorSchema,
-  UserStatusSchema
+  UserEmailExistsErrorSchema
 } from '../schemas/userSchemas';
 import {
   PathIdParamSchema,
@@ -67,8 +66,6 @@ const listUsersRouteDef = createRoute({
     query: z.object({
       page: z.string().optional().openapi({ example: '1', description: 'Page number for pagination.' }),
       limit: z.string().optional().openapi({ example: '10', description: 'Number of items per page.' }),
-      status: UserStatusSchema.optional().openapi({ description: 'Filter by user status.' }),
-      role_id: z.string().optional().openapi({ description: 'Filter by role ID.' }),
     }).openapi('ListUsersQuery'),
   },
   responses: {

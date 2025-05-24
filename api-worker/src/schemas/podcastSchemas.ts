@@ -11,8 +11,7 @@ import {
 
 // Enum for podcast status, based on typical lifecycle
 export const PodcastStatusSchema = z.enum([
-  'draft', 'scheduled', 'generating_audio', 'generating_video', 'pending_approval',
-  'uploading', 'published', 'archived', 'error'
+  'draft', 'draftApproved', 'researching', 'researched', 'generatingThumbnail', 'thumbnailGenerated', 'generatingAudio', 'audioGenerated', 'generating', 'generated', 'generatedApproved', 'uploading', 'uploaded', 'published', 'unpublished'
 ]).openapi({description: 'The current status of the podcast.', example: 'draft'});
 
 const PodcastBaseSchema = z.object({
@@ -34,8 +33,8 @@ export const PodcastSchema = PodcastBaseSchema.extend({
   duration_seconds: z.number().int().optional().nullable().openapi({ example: 3600 }),
   youtube_video_id: z.string().optional().nullable().openapi({ example: 'dQw4w9WgXcQ' }),
   youtube_playlist_id: z.string().optional().nullable().openapi({ example: 'PL...'} ),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   published_at: z.string().datetime().optional().nullable().openapi({ example: '2023-01-02T12:00:00Z' }),
 }).openapi('Podcast');
 

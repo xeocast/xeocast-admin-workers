@@ -1,4 +1,5 @@
 import { Context } from 'hono';
+import { hash } from 'bcryptjs';
 import type { CloudflareEnv } from '../../env';
 import {
   UserCreateRequestSchema,
@@ -25,7 +26,7 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { email, name, role_id, status, password } = validationResult.data;
+  const { email, name, password } = validationResult.data;
 
   try {
     // 1. Check if email already exists
@@ -37,26 +38,37 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
     }
 
-    // 2. Validate role_id
-    const roleExists = await c.env.DB.prepare('SELECT id FROM roles WHERE id = ?1')
-      .bind(role_id)
-      .first<{ id: number }>();
-
-    if (!roleExists) {
-      return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Role not found.' }), 400);
-    }
-
-    // 3. TODO: Hash password securely. Storing plain text for now.
-    const password_hash = password; 
+    // 3. Hash password securely.
+    const saltRounds = 12;
+    const password_hash = await hash(password, saltRounds); 
 
     // 4. Store user in the database
     const stmt = c.env.DB.prepare(
-      'INSERT INTO users (email, password_hash, name, status, role_id) VALUES (?1, ?2, ?3, ?4, ?5)'
-    ).bind(email, password_hash, name, status || 'active', role_id);
+      'INSERT INTO users (email, password_hash, name) VALUES (?1, ?2, ?3)'
+    ).bind(email, password_hash, name);
     
     const result = await stmt.run();
 
     if (result.success && result.meta.last_row_id) {
+      const newUserId = result.meta.last_row_id;
+      const editorRoleId = 2; // 'editor' role ID
+
+      try {
+        const userRoleStmt = c.env.DB.prepare(
+          'INSERT INTO user_roles (user_id, role_id) VALUES (?1, ?2)'
+        ).bind(newUserId, editorRoleId);
+        const userRoleResult = await userRoleStmt.run();
+
+        if (!userRoleResult.success) {
+          console.error(`Failed to assign editor role to user ${newUserId}. D1 user_roles insert result:`, userRoleResult);
+          // User creation itself was successful, so we proceed.
+          // Depending on requirements, a more complex error handling/rollback might be needed here.
+        }
+      } catch (roleError) {
+        console.error(`Error assigning editor role to user ${newUserId}:`, roleError);
+        // Log and proceed as user creation was successful.
+      }
+
       return c.json(UserCreateResponseSchema.parse({
         success: true,
         message: 'User created successfully.',

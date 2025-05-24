@@ -32,17 +32,6 @@ export const getCategoryByIdHandler = async (c: Context<{ Bindings: CloudflareEn
       }), 404);
     }
     
-    // D1 returns dates as numbers (timestamps) or strings depending on how they were inserted.
-    // The schema expects ISO strings. Ensure conversion if necessary.
-    // For now, assuming they are compatible or D1 driver handles it for `first()`.
-    // If `created_at` and `updated_at` are numbers (timestamps), convert them:
-    // if (typeof categoryRaw.created_at === 'number') {
-    //   categoryRaw.created_at = new Date(categoryRaw.created_at).toISOString();
-    // }
-    // if (typeof categoryRaw.updated_at === 'number') {
-    //   categoryRaw.updated_at = new Date(categoryRaw.updated_at).toISOString();
-    // }
-
     const category = CategorySchema.parse(categoryRaw);
 
     return c.json(GetCategoryResponseSchema.parse({

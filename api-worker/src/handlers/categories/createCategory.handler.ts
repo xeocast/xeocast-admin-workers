@@ -1,5 +1,4 @@
 import { Context } from 'hono';
-import { HTTPException } from 'hono/http-exception';
 import type { CloudflareEnv } from '../../env';
 import {
   CategoryCreateRequestSchema,
@@ -7,7 +6,6 @@ import {
   CategoryCreateFailedErrorSchema,
   CategoryCreateResponseSchema
 } from '../../schemas/categorySchemas';
-import { z } from 'zod';
 
 export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;

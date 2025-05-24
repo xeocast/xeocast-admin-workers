@@ -1,4 +1,5 @@
 import { Context } from 'hono';
+import { hash } from 'bcryptjs';
 import type { CloudflareEnv } from '../../env';
 import {
   UserUpdateRequestSchema,
@@ -32,7 +33,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { email, name, role_id, status, password } = validationResult.data;
+  const { email, name, password } = validationResult.data;
 
   if (Object.keys(validationResult.data).length === 0) {
     return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
@@ -58,16 +59,6 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       }
     }
 
-    // 3. If role_id is provided, validate it
-    if (role_id !== undefined) {
-      const roleExists = await c.env.DB.prepare('SELECT id FROM roles WHERE id = ?1')
-        .bind(role_id)
-        .first<{ id: number }>();
-      if (!roleExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Role not found.' }), 400);
-      }
-    }
-
     // 4. Construct dynamic UPDATE statement
     const updateFields: string[] = [];
     const bindings: (string | number | null)[] = [];
@@ -75,11 +66,10 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     if (email !== undefined) { updateFields.push(`email = ?${bindingIndex++}`); bindings.push(email); }
     if (name !== undefined) { updateFields.push(`name = ?${bindingIndex++}`); bindings.push(name); }
-    if (role_id !== undefined) { updateFields.push(`role_id = ?${bindingIndex++}`); bindings.push(role_id); }
-    if (status !== undefined) { updateFields.push(`status = ?${bindingIndex++}`); bindings.push(status); }
     if (password !== undefined) {
-      // TODO: Hash password securely. Storing plain text for now.
-      const password_hash = password;
+      // Hash password securely.
+      const saltRounds = 12;
+      const password_hash = await hash(password, saltRounds);
       updateFields.push(`password_hash = ?${bindingIndex++}`); 
       bindings.push(password_hash); 
     }
