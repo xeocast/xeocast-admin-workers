@@ -1,9 +1,7 @@
 -- Migration: Add ON DELETE CASCADE to user_logs and user_sessions tables
 
 -- Disable foreign key checks for this transaction (SQLite specific)
-PRAGMA foreign_keys=OFF;
 
-BEGIN TRANSACTION;
 
 -- For user_logs table
 CREATE TABLE IF NOT EXISTS new_user_logs (
@@ -39,7 +37,4 @@ DROP TABLE IF EXISTS user_sessions;
 
 ALTER TABLE new_user_sessions RENAME TO user_sessions;
 
-COMMIT;
 
--- Re-enable foreign key checks (SQLite specific)
-PRAGMA foreign_keys=ON;
