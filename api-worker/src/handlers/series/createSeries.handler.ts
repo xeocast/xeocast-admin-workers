@@ -24,7 +24,7 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }), 400);
   }
 
-  const { title, description, category_id, youtube_playlist_id } = validationResult.data;
+  const { title, description, category_id } = validationResult.data;
 
   try {
     // 1. Validate category_id
@@ -47,8 +47,8 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
     // 3. Store series in the database
     const stmt = c.env.DB.prepare(
-      'INSERT INTO series (title, description, category_id, youtube_playlist_id) VALUES (?1, ?2, ?3, ?4)'
-    ).bind(title, description, category_id, youtube_playlist_id === undefined ? null : youtube_playlist_id);
+      'INSERT INTO series (title, description, category_id) VALUES (?1, ?2, ?3)'
+    ).bind(title, description, category_id);
     
     const result = await stmt.run();
 

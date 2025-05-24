@@ -12,7 +12,6 @@ interface SeriesFromDB {
   title: string;
   description: string | null;
   category_id: number;
-  youtube_playlist_id: string | null;
   created_at: string; 
   updated_at: string;
 }
@@ -27,7 +26,7 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   try {
     const dbSeries = await c.env.DB.prepare(
-      'SELECT id, title, description, category_id, youtube_playlist_id, created_at, updated_at FROM series WHERE id = ?1'
+      'SELECT id, title, description, category_id, created_at, updated_at FROM series WHERE id = ?1'
     ).bind(id).first<SeriesFromDB>();
 
     if (!dbSeries) {
@@ -38,7 +37,6 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const seriesForValidation = {
       ...dbSeries,
       description: dbSeries.description === null ? undefined : dbSeries.description,
-      youtube_playlist_id: dbSeries.youtube_playlist_id === null ? undefined : dbSeries.youtube_playlist_id,
     };
 
     const validation = SeriesSchema.safeParse(seriesForValidation);

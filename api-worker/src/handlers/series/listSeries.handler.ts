@@ -16,7 +16,6 @@ interface SeriesSummaryFromDB {
   id: number;
   title: string;
   category_id: number;
-  youtube_playlist_id: string | null;
 }
 
 export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -33,7 +32,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   const { category_id } = queryParseResult.data;
 
   try {
-    let query = 'SELECT id, title, category_id, youtube_playlist_id FROM series';
+    let query = 'SELECT id, title, category_id FROM series';
     const bindings: (number | string)[] = [];
 
     if (category_id !== undefined) {
@@ -52,9 +51,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     // Validate each summary - though if query is specific, this is more of a sanity check
     const seriesSummaries = results.map(dbSeries => {
       const validation = SeriesSummarySchema.safeParse({
-        ...dbSeries,
-        // Ensure nullable fields are handled correctly if schema expects optional undefined
-        youtube_playlist_id: dbSeries.youtube_playlist_id === null ? undefined : dbSeries.youtube_playlist_id,
+        ...dbSeries
       });
       if (!validation.success) {
         console.warn(`Data for series ID ${dbSeries.id} failed SeriesSummarySchema validation:`, validation.error.flatten());

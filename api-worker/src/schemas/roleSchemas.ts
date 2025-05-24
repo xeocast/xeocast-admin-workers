@@ -25,8 +25,8 @@ const RoleBaseSchema = z.object({
 // Full Role schema for API responses
 export const RoleSchema = RoleBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the role.' }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was created.' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was last updated.' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was created.' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was last updated.' }),
 }).openapi('Role');
 
 // Schema for creating a new role

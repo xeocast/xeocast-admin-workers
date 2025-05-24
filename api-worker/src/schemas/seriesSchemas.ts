@@ -14,16 +14,14 @@ const SeriesBaseSchema = z.object({
   description: z.string().max(5000).optional()
     .openapi({ example: 'A series about interesting topics.', description: 'A detailed description of the series.' }),
   category_id: z.number().int().positive()
-    .openapi({ example: 1, description: 'The ID of the category this series belongs to.' }),
-  youtube_playlist_id: z.string().max(100).nullable().optional() // YouTube Playlist ID can be null or not set initially
-    .openapi({ example: 'PLxxxxxxxxxxxxxxxxx', description: 'The YouTube Playlist ID associated with this series.' }),
+    .openapi({ example: 1, description: 'The ID of the category this series belongs to.' })
 }).openapi('SeriesBase');
 
 // Full Series schema for API responses
 export const SeriesSchema = SeriesBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the series.' }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
 }).openapi('Series');
 
 // Schema for creating a new series
@@ -38,8 +36,7 @@ export const SeriesCreateResponseSchema = MessageResponseSchema.extend({
 export const SeriesSummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   title: z.string().openapi({ example: 'My Awesome Podcast Series' }),
-  category_id: z.number().int().positive().openapi({ example: 1 }),
-  youtube_playlist_id: z.string().max(100).nullable().optional().openapi({ example: 'PLxxxxxxxxxxxxxxxxx' }),
+  category_id: z.number().int().positive().openapi({ example: 1 })
 }).openapi('SeriesSummary');
 
 // Schema for listing series

@@ -4,8 +4,8 @@ on:
   push:
     branches:
       - main # You can change 'main' to your repository's default branch if it's different
-    # paths:
-    #   - 'migrations/**' # Trigger only if files in the root migrations folder change
+    paths:
+      - 'migrations/**' # Trigger only if files in the root migrations folder change
 
 jobs:
   apply_migrations:

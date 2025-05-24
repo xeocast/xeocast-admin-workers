@@ -39,8 +39,8 @@ const YouTubeChannelBaseSchema = z.object({
 // Full YouTubeChannel schema for API responses
 export const YouTubeChannelSchema = YouTubeChannelBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the YouTube channel record.' }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
 }).openapi('YouTubeChannel');
 
 // Schema for creating a new YouTube channel

@@ -97,12 +97,6 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       bindings.push(updateData.category_id);
       bindingIndex++;
     }
-    // Handle youtube_playlist_id: can be set to a string or null
-    if (Object.prototype.hasOwnProperty.call(updateData, 'youtube_playlist_id')) {
-        fieldsToUpdate.push(`youtube_playlist_id = ?${bindingIndex}`);
-        bindings.push(updateData.youtube_playlist_id === undefined ? null : updateData.youtube_playlist_id);
-        bindingIndex++;
-    }
 
     if (fieldsToUpdate.length === 0) {
       return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200);

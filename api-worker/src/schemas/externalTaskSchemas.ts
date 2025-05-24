@@ -14,15 +14,13 @@ export const ExternalTaskStatusSchema = z.enum([
   'pending',
   'processing',
   'completed',
-  'failed'
+  'error'
 ]).openapi({ description: 'The current status of the external task.', example: 'pending' });
 
 // Enum for External Task type
 export const ExternalTaskTypeSchema = z.enum([
   'youtube_upload_request',
-  'video_generation_request',
-  'ai_content_generation',
-  'webhook_processing'
+  'video_generation_request'
   // Add other task types as needed
 ]).openapi({ description: 'The type of the external task.', example: 'youtube_upload_request' });
 
@@ -47,8 +45,8 @@ const ExternalTaskBaseSchema = z.object({
 // Full ExternalTask schema for API responses
 export const ExternalTaskSchema = ExternalTaskBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the external task.' }),
-  created_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
-  updated_at: z.string().datetime().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
+  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
 }).openapi('ExternalTask');
 
 // Schema for creating a new external task

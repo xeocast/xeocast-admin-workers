@@ -7,7 +7,7 @@ export const PaginationInfoSchema = z.object({
   page: z.number().int().positive().openapi({ example: 1, description: 'Current page number.' }),
   limit: z.number().int().positive().openapi({ example: 10, description: 'Number of items per page.' }),
   totalItems: z.number().int().nonnegative().openapi({ example: 100, description: 'Total number of items.' }),
-  totalPages: z.number().int().positive().openapi({ example: 10, description: 'Total number of pages.' }),
+  totalPages: z.number().int().nonnegative().openapi({ example: 10, description: 'Total number of pages.' }),
 }).openapi('PaginationInfo');
 
 // Schema for pagination query parameters in requests
