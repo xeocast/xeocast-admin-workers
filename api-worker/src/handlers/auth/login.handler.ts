@@ -45,12 +45,14 @@ export const loginHandler = async (c: Context) => {
     const userResult = await userStmt.bind(email).first<UserRecord>();
 
     if (!userResult) {
+      console.error(`User not found for email: ${email}`);
       throw new HTTPException(401, { message: 'Invalid email or password.' });
     }
 
     // Step 2: Verify password
     const validPassword = await bcrypt.compare(password, userResult.password_hash);
     if (!validPassword) {
+      console.error(`Password validation failed for user: ${userResult.email}`);
       throw new HTTPException(401, { message: 'Invalid email or password.' });
     }
 
@@ -82,11 +84,19 @@ export const loginHandler = async (c: Context) => {
     return c.json({ success: true, message: 'Login successful' }, 200);
 
   } catch (e: any) {
-    console.error("Error during login process:", e); // Log the actual error
+    if (e instanceof HTTPException && (e.status === 400 || e.status === 401)) {
+      // For expected client errors (400, 401), log a more concise message.
+      // The specific reason (e.g., "User not found") was logged before throwing.
+      console.error(`Client error during login: ${e.status} - ${e.message}`);
+    } else {
+      // For other HTTPExceptions (e.g., 500) or unexpected errors, log the full error.
+      console.error("Error during login process:", e);
+    }
+
     if (e instanceof HTTPException) {
       throw e; // Re-throw if already an HTTPException
     }
-    // For other errors, return a generic server error
+    // For other errors, wrap them in a generic 500 HTTPException
     throw new HTTPException(500, { message: e.message || 'An internal error occurred during login.' });
   }
 };

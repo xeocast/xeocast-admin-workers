@@ -1,5 +1,6 @@
 // src/index.ts
 import { OpenAPIHono } from '@hono/zod-openapi';
+import { cors } from 'hono/cors';
 import { swaggerUI } from '@hono/swagger-ui';
 
 // Import routes
@@ -17,6 +18,28 @@ import youtubePlaylistRoutes from './routes/youtubePlaylists';
 import { ensureAuth } from './middlewares/auth.middleware';
 
 const app = new OpenAPIHono<{ Bindings: CloudflareBindings }>();
+
+// CORS Middleware
+app.use('*', (c, next) => {
+  const middleware = cors({
+    origin: (origin) => {
+      const allowedDevelopmentOrigin = 'http://localhost:4321';
+      const allowedProductionOrigin = 'https://dash.xeocast.com';
+
+      if (c.env.ENVIRONMENT === 'production') {
+        return origin === allowedProductionOrigin ? origin : null;
+      }
+      // Allow requests from localhost for development, and also allow requests with no origin (e.g. curl, Postman)
+      return origin === allowedDevelopmentOrigin || !origin ? origin || allowedDevelopmentOrigin : null;
+    },
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization'],
+    exposeHeaders: ['Content-Length'],
+    maxAge: 600,
+    credentials: true,
+  });
+  return middleware(c, next);
+});
 
 // Public routes first
 app.route('/auth', authRoutes);
