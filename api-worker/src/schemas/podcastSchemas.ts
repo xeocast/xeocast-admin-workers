@@ -10,6 +10,11 @@ import {
 } from './commonSchemas';
 
 // Enum for podcast status, based on typical lifecycle
+export const PodcastMediaFormatSchema = z.enum(['audio', 'video', 'audiovisual']).openapi({ description: 'The media format of the podcast (audio, video, or both).', example: 'audio' });
+
+// Enum for podcast publication type, based on database schema
+export const PodcastPublicationTypeSchema = z.enum(['evergreen', 'news']).openapi({ description: 'The publication type of the podcast (e.g., evergreen content or timely news).', example: 'evergreen' });
+
 export const PodcastStatusSchema = z.enum([
   'draft', 'draftApproved', 'researching', 'researched', 'generatingThumbnail', 'thumbnailGenerated', 'generatingAudio', 'audioGenerated', 'generating', 'generated', 'generatedApproved', 'uploading', 'uploaded', 'published', 'unpublished'
 ]).openapi({description: 'The current status of the podcast.', example: 'draft'});

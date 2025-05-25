@@ -15,6 +15,7 @@ import {
   PodcastDeleteFailedErrorSchema,
   PodcastSchema, // For placeholder data
   PodcastStatusSchema,
+  PodcastPublicationTypeSchema,
 } from '../schemas/podcastSchemas';
 import {
   PathIdParamSchema,
@@ -71,6 +72,8 @@ const listPodcastsRouteDef = createRoute({
       status: PodcastStatusSchema.optional().openapi({ description: 'Filter by podcast status.' }),
       category_id: z.string().optional().openapi({ description: 'Filter by category ID.' }), // Assuming string for ID from query
       series_id: z.string().optional().openapi({ description: 'Filter by series ID.' }), // Assuming string for ID from query
+      title: z.string().optional().openapi({ description: 'Filter by podcast title (case-insensitive, partial match).' }),
+      type: PodcastPublicationTypeSchema.optional().openapi({ description: "Filter by podcast publication type (e.g., 'evergreen', 'news')." }),
     }).openapi('ListPodcastsQuery'),
   },
   responses: {

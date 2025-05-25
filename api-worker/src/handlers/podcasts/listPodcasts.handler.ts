@@ -4,6 +4,7 @@ import type { CloudflareEnv } from '../../env';
 import {
   PodcastSchema,
   PodcastStatusSchema,
+  PodcastPublicationTypeSchema, // Use for 'evergreen'/'news' type filtering
   ListPodcastsResponseSchema
 } from '../../schemas/podcastSchemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
@@ -15,7 +16,8 @@ const ListPodcastsQueryInternalSchema = z.object({
   status: PodcastStatusSchema.optional(),
   category_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Category ID must be positive' }),
   series_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Series ID must be positive' }),
-  // Add other potential filters like title_contains, sort_by, sort_order etc. if needed
+  title: z.string().optional(), // Added for title filtering
+  type: PodcastPublicationTypeSchema.optional() // Use for 'evergreen'/'news' type filtering
 });
 
 export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -25,7 +27,7 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
     return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid query parameters.', errors: queryParseResult.error.flatten().fieldErrors }), 400);
   }
 
-  const { page, limit, status, category_id, series_id } = queryParseResult.data;
+  const { page, limit, status, category_id, series_id, title, type } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -43,6 +45,14 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
   if (series_id) {
     whereClauses.push(`series_id = ?${paramIndex++}`);
     bindings.push(series_id);
+  }
+  if (title) {
+    whereClauses.push(`title LIKE ?${paramIndex++}`);
+    bindings.push(`%${title}%`);
+  }
+  if (type) {
+    whereClauses.push(`type = ?${paramIndex++}`);
+    bindings.push(type);
   }
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
