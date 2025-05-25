@@ -21,26 +21,26 @@ export const PodcastStatusSchema = z.enum([
 
 const PodcastBaseSchema = z.object({
   title: z.string().max(255).openapi({ example: 'My First Podcast Episode' }),
-  description: z.string().max(5000).optional().openapi({ example: 'An introduction to the series.' }), 
-  markdown_content: z.string().optional().openapi({ example: '# Welcome\n\nThis is the content.' }), 
+  description: z.string().max(5000).optional().nullable().openapi({ example: 'An introduction to the series.' }),
+  markdown_content: z.string().optional().nullable().openapi({ example: '# Welcome\n\nThis is the content.' }),
+  source_audio_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/audio/source_audio.mp3' }),
+  source_background_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/backgrounds/background_image.png' }),
+  video_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/video/final_video.mp4' }),
+  thumbnail_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/thumbnails/episode_thumbnail.png' }),
   category_id: z.number().int().positive().openapi({ example: 1 }),
-  series_id: z.number().int().positive().optional().nullable().openapi({ example: 1 }), 
-  status: PodcastStatusSchema.default('draft').optional().openapi({ example: 'draft' }), 
-  scheduled_publish_at: z.string().datetime({ message: "Invalid datetime string. Must be UTC ISO 8601 format." }).optional().nullable().openapi({ example: '2024-12-31T23:59:59Z' }), 
+  series_id: z.number().int().positive().optional().nullable().openapi({ example: 1 }),
+  tags: z.string().optional().nullable().openapi({ example: '["tech", "astro", "cloudflare"]' }), // Stored as JSON string in DB
+  first_comment: z.string().optional().nullable().openapi({ example: 'Check out our website for more!' }),
+  type: PodcastPublicationTypeSchema.openapi({ example: 'evergreen' }),
+  scheduled_publish_at: z.string().datetime({ message: "Invalid datetime string. Must be UTC ISO 8601 format." }).optional().nullable().openapi({ example: '2024-12-31T23:59:59Z' }),
+  status: PodcastStatusSchema.default('draft').optional().openapi({ example: 'draft' }),
 }).openapi('PodcastBase');
 
 export const PodcastSchema = PodcastBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
-  slug: z.string().optional().nullable().openapi({ example: 'my-first-podcast-episode' }),
-  audio_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/audio/1.mp3' }),
-  video_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/video/1.mp4' }),
-  thumbnail_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/thumbnails/1.png' }),
-  duration_seconds: z.number().int().optional().nullable().openapi({ example: 3600 }),
-  youtube_video_id: z.string().optional().nullable().openapi({ example: 'dQw4w9WgXcQ' }),
-  youtube_playlist_id: z.string().optional().nullable().openapi({ example: 'PL...'} ),
+  last_status_change_at: z.coerce.date().openapi({ example: '2023-01-01T12:05:00Z' }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
-  published_at: z.string().datetime().optional().nullable().openapi({ example: '2023-01-02T12:00:00Z' }),
+  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:10:00Z' }),
 }).openapi('Podcast');
 
 export const PodcastCreateRequestSchema = PodcastBaseSchema;
@@ -58,9 +58,19 @@ const PaginationSchema = z.object({
   totalPages: z.number().int().nonnegative().openapi({ example: 10, description: 'Total number of pages.' }),
 }).openapi('Pagination');
 
+// Schema for individual items in the podcast list response
+export const PodcastListItemSchema = PodcastSchema.pick({
+  id: true,
+  title: true,
+  status: true,
+  category_id: true,
+  series_id: true,
+  scheduled_publish_at: true,
+}).openapi('PodcastListItem');
+
 export const ListPodcastsResponseSchema = z.object({
   success: z.boolean().openapi({ example: true }),
-  podcasts: z.array(PodcastSchema),
+  podcasts: z.array(PodcastListItemSchema),
   pagination: PaginationSchema
 }).openapi('ListPodcastsResponse');
 

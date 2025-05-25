@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import type { CloudflareEnv } from '../../env';
 import {
-  PodcastSchema,
+  PodcastListItemSchema, // Changed from PodcastSchema
   PodcastStatusSchema,
   PodcastPublicationTypeSchema, // Use for 'evergreen'/'news' type filtering
   ListPodcastsResponseSchema
@@ -59,7 +59,7 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   try {
     const podcastsQuery = c.env.DB.prepare(
-      `SELECT * FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      `SELECT id, title, status, category_id, series_id, scheduled_publish_at FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(
@@ -77,7 +77,7 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }
 
     // Validate each podcast against the Zod schema
-    const validatedPodcasts = z.array(PodcastSchema).safeParse(podcastsResult.results);
+    const validatedPodcasts = z.array(PodcastListItemSchema).safeParse(podcastsResult.results); // Changed to PodcastListItemSchema
     if (!validatedPodcasts.success) {
         console.error('Podcast data validation error after fetching from DB:', validatedPodcasts.error.flatten());
         return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error validating podcast data from database.'}), 500);
