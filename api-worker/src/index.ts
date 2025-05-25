@@ -33,7 +33,7 @@ app.use('*', (c, next) => {
       return origin === allowedDevelopmentOrigin || !origin ? origin || allowedDevelopmentOrigin : null;
     },
     allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowHeaders: ['Content-Type', 'Authorization'],
+    allowHeaders: ['Content-Type', 'X-Requested-With', 'Cookie', 'Authorization'],
     exposeHeaders: ['Content-Length'],
     maxAge: 600,
     credentials: true,

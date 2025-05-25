@@ -73,12 +73,20 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
         return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error validating podcast data from database.'}), 500);
     }
 
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
+
     return c.json(ListPodcastsResponseSchema.parse({
       success: true,
       podcasts: validatedPodcasts.data,
-      // total: countResult.total, // The ListPodcastsResponseSchema does not have total, page, limit.
-      // page: page,
-      // limit: limit
+      pagination: pagination,
     }), 200);
 
   } catch (error) {

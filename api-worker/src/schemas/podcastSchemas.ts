@@ -45,9 +45,18 @@ export const PodcastCreateResponseSchema = MessageResponseSchema.extend({
   podcastId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('PodcastCreateResponse');
 
+// Schema for pagination details
+const PaginationSchema = z.object({
+  page: z.number().int().positive().openapi({ example: 1, description: 'Current page number.' }),
+  limit: z.number().int().positive().openapi({ example: 10, description: 'Number of items per page.' }),
+  totalItems: z.number().int().nonnegative().openapi({ example: 100, description: 'Total number of items available.' }),
+  totalPages: z.number().int().nonnegative().openapi({ example: 10, description: 'Total number of pages.' }),
+}).openapi('Pagination');
+
 export const ListPodcastsResponseSchema = z.object({
   success: z.boolean().openapi({ example: true }),
-  podcasts: z.array(PodcastSchema)
+  podcasts: z.array(PodcastSchema),
+  pagination: PaginationSchema
 }).openapi('ListPodcastsResponse');
 
 export const GetPodcastResponseSchema = z.object({

@@ -24,7 +24,8 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }), 400);
   }
 
-  const { title, description, category_id } = validationResult.data;
+  const { title, category_id } = validationResult.data;
+  const description = validationResult.data.description ?? null;
 
   try {
     // 1. Validate category_id
