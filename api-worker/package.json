@@ -13,10 +13,12 @@
 		"@hono/zod-validator": "^0.5.0",
 		"bcryptjs": "^3.0.2",
 		"hono": "^4.7.10",
+		"uuid": "^11.1.0",
 		"zod": "^3.25.20"
 	},
 	"devDependencies": {
 		"@cloudflare/workers-types": "^4.20250522.0",
+		"@types/uuid": "^10.0.0",
 		"wrangler": "^4.16.0"
 	}
 }

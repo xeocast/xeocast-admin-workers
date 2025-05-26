@@ -13,6 +13,7 @@ import seriesRoutes from './routes/series';
 import externalTaskRoutes from './routes/externalTasks';
 import youtubeChannelRoutes from './routes/youtubeChannels';
 import youtubePlaylistRoutes from './routes/youtubePlaylists';
+import storageRoutes from './routes/storage';
 
 // Import middleware
 import { ensureAuth } from './middlewares/auth.middleware';
@@ -56,6 +57,7 @@ app.use('/series/*', authMiddleware);
 app.use('/external-tasks/*', authMiddleware);
 app.use('/youtube-channels/*', authMiddleware);
 app.use('/youtube-playlists/*', authMiddleware);
+app.use('/storage/*', authMiddleware);
 
 // Mount protected routes
 app.route('/categories', categoryRoutes);
@@ -66,6 +68,7 @@ app.route('/series', seriesRoutes);
 app.route('/external-tasks', externalTaskRoutes);
 app.route('/youtube-channels', youtubeChannelRoutes);
 app.route('/youtube-playlists', youtubePlaylistRoutes);
+app.route('/storage', storageRoutes);
 
 // OpenAPI Documentation
 app.doc('/api/doc', {
