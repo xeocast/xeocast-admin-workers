@@ -11,6 +11,7 @@ import {
 const SeriesBaseSchema = z.object({
   title: z.string().min(1).max(255)
     .openapi({ example: 'My Awesome Podcast Series', description: 'The title of the series.' }),
+  slug: z.string().max(255).openapi({ example: 'my-awesome-podcast-series', description: 'The URL-friendly slug for the series.' }),
   description: z.string().max(5000).optional()
     .openapi({ example: 'A series about interesting topics.', description: 'A detailed description of the series.' }),
   category_id: z.number().int().positive()
@@ -36,6 +37,7 @@ export const SeriesCreateResponseSchema = MessageResponseSchema.extend({
 export const SeriesSummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   title: z.string().openapi({ example: 'My Awesome Podcast Series' }),
+  slug: z.string().openapi({ example: 'my-awesome-podcast-series' }),
   category_id: z.number().int().positive().openapi({ example: 1 })
 }).openapi('SeriesSummary');
 
@@ -70,6 +72,10 @@ export const SeriesCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend
   message: z.string().openapi({ example: 'Failed to create series.' })
   // Add specific field errors if needed, e.g., title_exists_in_category
 }).openapi('SeriesCreateFailedError');
+
+export const SeriesSlugExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
+  message: z.literal("Series slug already exists in this category.")
+}).openapi('SeriesSlugExistsError');
 
 export const SeriesUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
   message: z.string().openapi({ example: 'Failed to update series.' })

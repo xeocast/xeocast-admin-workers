@@ -4,6 +4,7 @@ import {
   PodcastUpdateRequestSchema,
   PodcastUpdateResponseSchema,
   PodcastNotFoundErrorSchema,
+  PodcastSlugExistsErrorSchema,
   PodcastUpdateFailedErrorSchema
 } from '../../schemas/podcastSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
@@ -50,9 +51,9 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   try {
     // Check if podcast exists
-    const existingPodcast = await c.env.DB.prepare('SELECT id, category_id FROM podcasts WHERE id = ?1')
+    const existingPodcast = await c.env.DB.prepare('SELECT id, category_id, series_id FROM podcasts WHERE id = ?1')
       .bind(id)
-      .first<{ id: number; category_id: number }>();
+      .first<{ id: number; category_id: number; series_id: number | null }>();
 
     if (!existingPodcast) {
       return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.' }), 404);
@@ -78,6 +79,32 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       }
     }
     
+    // Slug uniqueness check
+    if (updatePayload.slug !== undefined) {
+      const slugToCheck = updatePayload.slug;
+      const targetSeriesId = (updatePayload.series_id !== undefined) 
+                             ? updatePayload.series_id 
+                             : existingPodcast.series_id;
+
+      let conflictingPodcastBySlug;
+      if (targetSeriesId !== null) {
+        conflictingPodcastBySlug = await c.env.DB.prepare(
+          'SELECT id FROM podcasts WHERE slug = ?1 AND series_id = ?2 AND id != ?3'
+        ).bind(slugToCheck, targetSeriesId, id).first<{ id: number }>();
+      } else { // targetSeriesId is null
+        conflictingPodcastBySlug = await c.env.DB.prepare(
+          'SELECT id FROM podcasts WHERE slug = ?1 AND series_id IS NULL AND id != ?2'
+        ).bind(slugToCheck, id).first<{ id: number }>();
+      }
+
+      if (conflictingPodcastBySlug) {
+        return c.json(PodcastSlugExistsErrorSchema.parse({
+          success: false,
+          message: 'Podcast slug already exists in this series (or for podcasts not in a series).'
+        }), 400);
+      }
+    }
+
     // The DB triggers will handle series/category consistency, updated_at, and last_status_change_at.
 
     const setClauses: string[] = [];
@@ -116,6 +143,16 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     console.error('Error updating podcast:', error);
     if (error.message && error.message.includes('CHECK constraint failed: status')) {
         return c.json(PodcastUpdateFailedErrorSchema.parse({ success: false, message: `Invalid status value. Please check allowed statuses. Received: ${updatePayload.status}` }), 400);
+    }
+    if (error.message && error.message.includes('Podcast category_id must match series category_id')) {
+        return c.json(PodcastUpdateFailedErrorSchema.parse({ success: false, message: 'Category and Series mismatch: The podcast\'s category must match the series\'s category.' }), 400);
+    }
+    // Check for slug unique constraint (adjust based on actual D1 error message if different)
+    if (error.message && (error.message.includes('UNIQUE constraint failed: podcasts.slug'))) { // This might need to be more specific for slug+series_id
+        return c.json(PodcastSlugExistsErrorSchema.parse({ 
+            success: false, 
+            message: 'Podcast slug already exists.'
+        }), 400);
     }
     if (error.message && error.message.includes('Podcast category_id must match series category_id')) {
         return c.json(PodcastUpdateFailedErrorSchema.parse({ success: false, message: 'Category and Series mismatch: The podcast\'s category must match the series\'s category.' }), 400);

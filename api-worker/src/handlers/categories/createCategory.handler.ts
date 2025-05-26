@@ -3,6 +3,7 @@ import type { CloudflareEnv } from '../../env';
 import {
   CategoryCreateRequestSchema,
   CategoryNameExistsErrorSchema,
+  CategorySlugExistsErrorSchema,
   CategoryCreateFailedErrorSchema,
   CategoryCreateResponseSchema
 } from '../../schemas/categorySchemas';
@@ -33,21 +34,33 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
 
   try {
     // Check if category name already exists
-    const existingCategory = await c.env.DB.prepare(
+    const existingCategoryByName = await c.env.DB.prepare(
       'SELECT id FROM categories WHERE name = ?1'
     ).bind(categoryData.name).first<{ id: number }>();
 
-    if (existingCategory) {
+    if (existingCategoryByName) {
       return c.json(CategoryNameExistsErrorSchema.parse({
         success: false,
         message: 'Category name already exists.'
       }), 400);
     }
 
+    // Check if category slug already exists
+    const existingCategoryBySlug = await c.env.DB.prepare(
+      'SELECT id FROM categories WHERE slug = ?1'
+    ).bind(categoryData.slug).first<{ id: number }>();
+
+    if (existingCategoryBySlug) {
+      return c.json(CategorySlugExistsErrorSchema.parse({
+        success: false,
+        message: 'Category slug already exists.'
+      }), 400);
+    }
+
     // Insert new category
     const stmt = c.env.DB.prepare(
       `INSERT INTO categories (
-        name, description, 
+        name, slug, description, 
         default_source_background_bucket_key, default_source_thumbnail_bucket_key,
         prompt_template_to_gen_evergreen_titles, prompt_template_to_gen_news_titles,
         prompt_template_to_gen_series_titles, prompt_template_to_gen_article_content,
@@ -55,9 +68,10 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
         prompt_template_to_gen_tag_list, prompt_template_to_gen_audio_podcast,
         prompt_template_to_gen_video_thumbnail, prompt_template_to_gen_article_image,
         language_code
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15)`
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`
     ).bind(
       categoryData.name,
+      categoryData.slug,
       categoryData.description,
       categoryData.default_source_background_bucket_key,
       categoryData.default_source_thumbnail_bucket_key,

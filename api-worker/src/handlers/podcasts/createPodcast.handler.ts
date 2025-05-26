@@ -3,6 +3,7 @@ import type { CloudflareEnv } from '../../env';
 import {
   PodcastCreateRequestSchema,
   PodcastCreateResponseSchema,
+  PodcastSlugExistsErrorSchema,
   PodcastCreateFailedErrorSchema
 } from '../../schemas/podcastSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
@@ -25,7 +26,7 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     }), 400);
   }
 
-  const { title, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
+  const { title, slug, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
 
   // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL, but it's not in PodcastBaseSchema.
   // Prepare tags for database insertion
@@ -48,14 +49,35 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
         return c.json(PodcastCreateFailedErrorSchema.parse({ success: false, message: 'Series category_id does not match podcast category_id.' }), 400);
       }
     }
+
+    // Slug uniqueness check
+    let existingPodcastBySlug;
+    if (series_id) {
+      existingPodcastBySlug = await c.env.DB.prepare(
+        'SELECT id FROM podcasts WHERE slug = ?1 AND series_id = ?2'
+      ).bind(slug, series_id).first<{ id: number }>();
+    } else {
+      existingPodcastBySlug = await c.env.DB.prepare(
+        'SELECT id FROM podcasts WHERE slug = ?1 AND series_id IS NULL'
+      ).bind(slug).first<{ id: number }>();
+    }
+
+    if (existingPodcastBySlug) {
+      return c.json(PodcastSlugExistsErrorSchema.parse({ 
+        success: false, 
+        // Consider if message should differentiate between 'in series' vs 'global for no-series podcasts'
+        message: 'Podcast slug already exists in this series (or for podcasts not in a series).'
+      }), 400);
+    }
     
     const stmt = c.env.DB.prepare(
       `INSERT INTO podcasts (
-        title, description, markdown_content, category_id, series_id, status, 
+        title, slug, description, markdown_content, category_id, series_id, status, 
         scheduled_publish_at, last_status_change_at, type, tags
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8, ?9)`
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, CURRENT_TIMESTAMP, ?9, ?10)`
     ).bind(
       title,
+      slug,
       description,
       markdown_content,
       category_id,
@@ -89,6 +111,16 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     if (error.message && error.message.includes('CHECK constraint failed: status')) {
         // This error highlights the status schema mismatch noted earlier.
         return c.json(PodcastCreateFailedErrorSchema.parse({ success: false, message: `Invalid status value. Please check allowed statuses. Received: ${status}` }), 400);
+    }
+    if (error.message && error.message.includes('NOT NULL constraint failed: podcasts.type')) {
+        return c.json(PodcastCreateFailedErrorSchema.parse({ success: false, message: 'Podcast type is required and was not provided.' }), 400);
+    }
+    // Check for slug unique constraint (adjust based on actual D1 error message if different)
+    if (error.message && (error.message.includes('UNIQUE constraint failed: podcasts.slug, podcasts.series_id') || error.message.includes('UNIQUE constraint failed: podcasts.slug'))) { // D1 might have different messages for NULL series_id cases
+        return c.json(PodcastSlugExistsErrorSchema.parse({ 
+            success: false, 
+            message: 'Podcast slug already exists.'
+        }), 400);
     }
      if (error.message && error.message.includes('NOT NULL constraint failed: podcasts.type')) {
         return c.json(PodcastCreateFailedErrorSchema.parse({ success: false, message: 'Podcast type is required and was not provided.' }), 400);

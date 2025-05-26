@@ -21,6 +21,7 @@ export const PodcastStatusSchema = z.enum([
 
 const PodcastBaseSchema = z.object({
   title: z.string().max(255).openapi({ example: 'My First Podcast Episode' }),
+  slug: z.string().max(255).openapi({ example: 'my-first-podcast-episode', description: 'The URL-friendly slug for the podcast.' }),
   description: z.string().max(5000).optional().nullable().openapi({ example: 'An introduction to the series.' }),
   markdown_content: z.string().optional().nullable().openapi({ example: '# Welcome\n\nThis is the content.' }),
   source_audio_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/audio/source_audio.mp3' }),
@@ -62,13 +63,13 @@ const PaginationSchema = z.object({
 export const PodcastListItemSchema = PodcastSchema.pick({
   id: true,
   title: true,
+  slug: true, // Added slug
   status: true,
   category_id: true,
   series_id: true,
   scheduled_publish_at: true,
-  tags: true, // Added tags to the list item schema
+  tags: true,
 }).openapi('PodcastListItem');
-
 export const ListPodcastsResponseSchema = z.object({
   success: z.boolean().openapi({ example: true }),
   podcasts: z.array(PodcastListItemSchema),
@@ -94,6 +95,10 @@ export const PodcastCreateFailedErrorSchema = GeneralBadRequestErrorSchema.exten
     message: z.literal("Failed to create podcast."),
     // errors: z.record(z.string()).optional().openapi({ example: { category_id: 'Invalid category ID' } })
 }).openapi('PodcastCreateFailedError');
+
+export const PodcastSlugExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
+  message: z.literal("Podcast slug already exists in this series.")
+}).openapi('PodcastSlugExistsError');
 
 export const PodcastUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
     message: z.string().openapi({ example: "Failed to update podcast." })

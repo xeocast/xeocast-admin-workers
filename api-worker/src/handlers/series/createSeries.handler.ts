@@ -3,6 +3,7 @@ import type { CloudflareEnv } from '../../env';
 import {
   SeriesCreateRequestSchema,
   SeriesCreateResponseSchema,
+  SeriesSlugExistsErrorSchema,
   SeriesCreateFailedErrorSchema
 } from '../../schemas/seriesSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas'; // For category not found
@@ -24,7 +25,7 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }), 400);
   }
 
-  const { title, category_id } = validationResult.data;
+  const { title, slug, category_id } = validationResult.data;
   const description = validationResult.data.description ?? null;
 
   try {
@@ -46,10 +47,22 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category.' }), 400);
     }
 
+    // Check if series slug already exists within the same category_id
+    const existingSeriesBySlug = await c.env.DB.prepare(
+      'SELECT id FROM series WHERE slug = ?1 AND category_id = ?2'
+    ).bind(slug, category_id).first<{ id: number }>();
+
+    if (existingSeriesBySlug) {
+      return c.json(SeriesSlugExistsErrorSchema.parse({ 
+        success: false, 
+        message: 'Series slug already exists in this category.' 
+      }), 400);
+    }
+
     // 3. Store series in the database
     const stmt = c.env.DB.prepare(
-      'INSERT INTO series (title, description, category_id) VALUES (?1, ?2, ?3)'
-    ).bind(title, description, category_id);
+      'INSERT INTO series (title, slug, description, category_id) VALUES (?1, ?2, ?3, ?4)'
+    ).bind(title, slug, description, category_id);
     
     const result = await stmt.run();
 
@@ -68,8 +81,8 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   } catch (error) {
     console.error('Error creating series:', error);
     // Check for unique constraint violation error (specific to D1/SQLite syntax if possible)
-    if (error instanceof Error && error.message.includes('UNIQUE constraint failed: series.category_id, series.title')) {
-        return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category.' }), 400);
+    if (error instanceof Error && (error.message.includes('UNIQUE constraint failed: series.category_id, series.title') || error.message.includes('UNIQUE constraint failed: series.slug, series.category_id'))) {
+        return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title or slug already exists in this category.' }), 400);
     }
     return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create series due to a server error.' }), 500);
   }

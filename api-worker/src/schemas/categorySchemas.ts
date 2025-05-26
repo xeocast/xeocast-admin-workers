@@ -12,6 +12,7 @@ import {
 
 const CategoryBaseSchema = z.object({
   name: z.string().max(255).openapi({ example: 'Technology Updates' }),
+  slug: z.string().max(255).openapi({ example: 'technology-updates', description: 'The URL-friendly slug for the category.' }),
   description: z.string().max(5000).openapi({ example: 'Latest news and discussions in the tech world.' }),
   default_source_background_bucket_key: z.string().openapi({ example: 'defaults/tech_bg.mp3' }),
   default_source_thumbnail_bucket_key: z.string().openapi({ example: 'defaults/tech_thumb.png' }),
@@ -33,7 +34,6 @@ export const CategorySchema = CategoryBaseSchema.extend({
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
 }).openapi('Category');
-// Removed extra }); here
 
 export const CategoryCreateRequestSchema = CategoryBaseSchema;
 
@@ -45,6 +45,7 @@ export const CategoryCreateResponseSchema = MessageResponseSchema.extend({
 export const CategorySummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   name: z.string().openapi({ example: 'Technology Updates' }),
+  slug: z.string().openapi({ example: 'technology-updates' }),
   language_code: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('CategorySummary');
 
@@ -72,6 +73,10 @@ export const CategoryDeleteResponseSchema = MessageResponseSchema.extend({
 export const CategoryNameExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
     message: z.literal("Category name already exists.")
 }).openapi('CategoryNameExistsError');
+
+export const CategorySlugExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
+    message: z.literal("Category slug already exists.")
+}).openapi('CategorySlugExistsError');
 
 export const CategoryCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
     message: z.literal("Failed to create category.")

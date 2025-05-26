@@ -5,6 +5,7 @@ import {
   CategoryUpdateResponseSchema,
   CategoryNotFoundErrorSchema,
   CategoryNameExistsErrorSchema,
+  CategorySlugExistsErrorSchema,
   CategoryUpdateFailedErrorSchema
 } from '../../schemas/categorySchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
@@ -51,6 +52,20 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
 
       if (existingCategoryWithName) {
         return c.json(CategoryNameExistsErrorSchema.parse({ success: false, message: 'Category name already exists.' }), 400);
+      }
+    }
+
+    // If slug is being updated, check for conflicts
+    if (updateData.slug) {
+      const existingCategoryWithSlug = await c.env.DB.prepare(
+        'SELECT id FROM categories WHERE slug = ?1 AND id != ?2'
+      ).bind(updateData.slug, id).first<{ id: number }>();
+
+      if (existingCategoryWithSlug) {
+        return c.json(CategorySlugExistsErrorSchema.parse({ 
+          success: false, 
+          message: 'Category slug already exists.' 
+        }), 400);
       }
     }
 
