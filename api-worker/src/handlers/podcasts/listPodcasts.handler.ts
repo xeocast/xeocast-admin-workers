@@ -59,7 +59,7 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   try {
     const podcastsQuery = c.env.DB.prepare(
-      `SELECT id, title, status, category_id, series_id, scheduled_publish_at FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      `SELECT id, title, status, category_id, series_id, scheduled_publish_at, tags FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(
@@ -76,8 +76,24 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
         return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve podcasts from the database.'}), 500);
     }
 
+    // Process tags for each podcast before validation
+    const podcastsForValidation = podcastsResult.results.map((podcast: any) => {
+      const processedPodcast = { ...podcast };
+      if (typeof processedPodcast.tags === 'string') {
+        try {
+          processedPodcast.tags = JSON.parse(processedPodcast.tags);
+        } catch (e) {
+          console.error(`Error parsing tags for podcast ID ${processedPodcast.id} in list:`, e);
+          processedPodcast.tags = []; // Default to empty array on parsing error
+        }
+      } else if (processedPodcast.tags === null) {
+        // Schema allows null, so this is fine.
+      }
+      return processedPodcast;
+    });
+
     // Validate each podcast against the Zod schema
-    const validatedPodcasts = z.array(PodcastListItemSchema).safeParse(podcastsResult.results); // Changed to PodcastListItemSchema
+    const validatedPodcasts = z.array(PodcastListItemSchema).safeParse(podcastsForValidation); // Changed to PodcastListItemSchema
     if (!validatedPodcasts.success) {
         console.error('Podcast data validation error after fetching from DB:', validatedPodcasts.error.flatten());
         return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error validating podcast data from database.'}), 500);

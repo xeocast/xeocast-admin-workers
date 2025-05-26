@@ -33,6 +33,17 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   const updatePayload = validationResult.data;
 
+  // Process tags for database storage
+  const processedUpdatePayload: { [key: string]: any } = { ...updatePayload };
+  if (processedUpdatePayload.tags !== undefined) {
+    if (processedUpdatePayload.tags === null) {
+      processedUpdatePayload.tags = '[]'; // Store null as '[]'
+    } else {
+      // Schema ensures it's an array if not null or undefined
+      processedUpdatePayload.tags = JSON.stringify(processedUpdatePayload.tags);
+    }
+  }
+
   if (Object.keys(updatePayload).length === 0) {
     return c.json(PodcastUpdateResponseSchema.parse({ success: true, message: 'No update fields provided. Podcast not changed.' }), 200);
   }
@@ -73,7 +84,7 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const bindings: any[] = [];
     let paramIndex = 1;
 
-    Object.entries(updatePayload).forEach(([key, value]) => {
+    Object.entries(processedUpdatePayload).forEach(([key, value]) => {
       if (value !== undefined) { // Ensure only defined values are part of update
         setClauses.push(`${key} = ?${paramIndex++}`);
         bindings.push(value);

@@ -29,7 +29,7 @@ const PodcastBaseSchema = z.object({
   thumbnail_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/thumbnails/episode_thumbnail.png' }),
   category_id: z.number().int().positive().openapi({ example: 1 }),
   series_id: z.number().int().positive().optional().nullable().openapi({ example: 1 }),
-  tags: z.string().optional().nullable().openapi({ example: '["tech", "astro", "cloudflare"]' }), // Stored as JSON string in DB
+  tags: z.array(z.string()).optional().nullable().openapi({ example: ["tech", "astro", "cloudflare"] }), // Stored as JSON string in DB
   first_comment: z.string().optional().nullable().openapi({ example: 'Check out our website for more!' }),
   type: PodcastPublicationTypeSchema.openapi({ example: 'evergreen' }),
   scheduled_publish_at: z.string().datetime({ message: "Invalid datetime string. Must be UTC ISO 8601 format." }).optional().nullable().openapi({ example: '2024-12-31T23:59:59Z' }),
@@ -66,6 +66,7 @@ export const PodcastListItemSchema = PodcastSchema.pick({
   category_id: true,
   series_id: true,
   scheduled_publish_at: true,
+  tags: true, // Added tags to the list item schema
 }).openapi('PodcastListItem');
 
 export const ListPodcastsResponseSchema = z.object({

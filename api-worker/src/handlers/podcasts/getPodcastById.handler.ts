@@ -16,14 +16,30 @@ export const getPodcastByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
   const id = parseInt(paramValidation.data.id, 10);
 
   try {
-    const podcastData = await c.env.DB.prepare('SELECT * FROM podcasts WHERE id = ?1').bind(id).first<any>();
+    const podcastDataFromDB = await c.env.DB.prepare('SELECT * FROM podcasts WHERE id = ?1').bind(id).first<any>();
 
-    if (!podcastData) {
+    if (!podcastDataFromDB) {
       return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.' }), 404);
     }
 
+    // Prepare data for schema validation (parse tags)
+    const dataForValidation = { ...podcastDataFromDB };
+    if (typeof dataForValidation.tags === 'string') {
+      try {
+        dataForValidation.tags = JSON.parse(dataForValidation.tags);
+      } catch (e) {
+        console.error(`Error parsing tags for podcast ID ${id}:`, e);
+        // Default to empty array or handle as per requirements if DB guarantees valid JSON or null
+        dataForValidation.tags = []; 
+      }
+    } else if (dataForValidation.tags === null) {
+      // If tags can be null in DB and schema supports nullable, this is fine.
+      // PodcastSchema.tags is optional().nullable(), so null is acceptable.
+    }
+    // If tags is undefined or already an array, schema validation will handle it.
+
     // Validate the fetched data against the PodcastSchema
-    const validatedPodcast = PodcastSchema.safeParse(podcastData);
+    const validatedPodcast = PodcastSchema.safeParse(dataForValidation);
     if (!validatedPodcast.success) {
       console.error('Podcast data validation error after fetching from DB (getById):', validatedPodcast.error.flatten());
       // This indicates a mismatch between DB schema and Zod schema, or bad data in DB

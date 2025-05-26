@@ -25,12 +25,11 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     }), 400);
   }
 
-  const { title, description, markdown_content, category_id, series_id, status, scheduled_publish_at } = validationResult.data;
+  const { title, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
 
   // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL, but it's not in PodcastBaseSchema.
-  // Assuming 'type' needs to be handled or has a DB default. For now, it's omitted from INSERT.
-  // This will likely fail if 'type' doesn't have a DB default and is not nullable.
-  // The user should be informed about this missing 'type' field.
+  // Prepare tags for database insertion
+  const tagsForDB = tags ? JSON.stringify(tags) : '[]';
 
   try {
     // Validate category_id
@@ -50,17 +49,11 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       }
     }
     
-    // The 'podcasts' table has a NOT NULL 'type' column (checked from 0001_initial_schemas.sql)
-    // This is not part of PodcastBaseSchema or PodcastCreateRequestSchema.
-    // This INSERT will fail unless 'type' has a default value in the DB or is made nullable.
-    // For now, I will add a placeholder 'evergreen' for type. This needs to be addressed by the USER.
-    const podcastType = 'evergreen'; // Placeholder - USER MUST ADDRESS THIS
-
     const stmt = c.env.DB.prepare(
       `INSERT INTO podcasts (
         title, description, markdown_content, category_id, series_id, status, 
-        scheduled_publish_at, last_status_change_at, type
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8)`
+        scheduled_publish_at, last_status_change_at, type, tags
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, CURRENT_TIMESTAMP, ?8, ?9)`
     ).bind(
       title,
       description,
@@ -69,7 +62,8 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       series_id, // D1 handles null correctly for nullable INTEGER fields
       status,
       scheduled_publish_at, // D1 handles null correctly
-      podcastType // Placeholder for type
+      type, // Use type from validated data
+      tagsForDB
     );
     
     const result = await stmt.run();
