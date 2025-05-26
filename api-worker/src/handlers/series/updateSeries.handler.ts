@@ -8,10 +8,12 @@ import {
   SeriesUpdateFailedErrorSchema
 } from '../../schemas/seriesSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
+import { generateSlug } from '../../utils/slugify';
 
 interface ExistingSeries {
   id: number;
   title: string;
+  slug: string | null; // Added slug
   category_id: number;
 }
 
@@ -46,7 +48,7 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   try {
     // 1. Fetch existing series
-    const existingSeries = await c.env.DB.prepare('SELECT id, title, category_id FROM series WHERE id = ?1')
+    const existingSeries = await c.env.DB.prepare('SELECT id, title, slug, category_id FROM series WHERE id = ?1')
       .bind(id)
       .first<ExistingSeries>();
 
@@ -78,11 +80,26 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       }
     }
 
-    // Check for slug uniqueness if slug is being updated
+    // Slug generation and uniqueness check
+    let finalSlug = updateData.slug;
+    let slugIsBeingUpdated = false;
+
     if (updateData.slug !== undefined) {
+      slugIsBeingUpdated = true;
+      if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
+        let titleForSlug = updateData.title !== undefined ? updateData.title : existingSeries.title;
+        const newGeneratedSlug = generateSlug(titleForSlug);
+        finalSlug = newGeneratedSlug || `series-${id}-${Date.now()}`;
+      } else {
+        finalSlug = updateData.slug; // Use the provided, non-temporary slug
+      }
+    }
+
+    // Check for slug uniqueness only if the slug is actually being changed to a new value
+    if (slugIsBeingUpdated && finalSlug !== existingSeries.slug) {
       const conflictingSeriesBySlug = await c.env.DB.prepare(
         'SELECT id FROM series WHERE slug = ?1 AND category_id = ?2 AND id != ?3'
-      ).bind(updateData.slug, newCategoryId, id).first<{ id: number }>();
+      ).bind(finalSlug, newCategoryId, id).first<{ id: number }>();
 
       if (conflictingSeriesBySlug) {
         return c.json(SeriesSlugExistsErrorSchema.parse({ 
@@ -112,10 +129,19 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       bindings.push(updateData.category_id);
       bindingIndex++;
     }
-    if (updateData.slug !== undefined) {
+    if (slugIsBeingUpdated && typeof finalSlug === 'string') { // Ensure finalSlug is a string before pushing
       fieldsToUpdate.push(`slug = ?${bindingIndex}`);
-      bindings.push(updateData.slug);
+      bindings.push(finalSlug);
       bindingIndex++;
+    } else if (slugIsBeingUpdated && finalSlug === null) {
+      // If the intent is to set slug to NULL (if schema allowed and DB allowed)
+      // fieldsToUpdate.push(`slug = ?${bindingIndex}`);
+      // bindings.push(null);
+      // bindingIndex++;
+      // For now, we assume a slug should always be a string if updated.
+      // If finalSlug is not a string here but slugIsBeingUpdated is true, it's an unexpected state.
+      // However, current logic should ensure finalSlug is a string if slugIsBeingUpdated is true.
+      // This explicit check satisfies TypeScript.
     }
 
     if (fieldsToUpdate.length === 0) {

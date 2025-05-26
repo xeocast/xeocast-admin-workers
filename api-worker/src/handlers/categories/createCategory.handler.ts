@@ -7,6 +7,7 @@ import {
   CategoryCreateFailedErrorSchema,
   CategoryCreateResponseSchema
 } from '../../schemas/categorySchemas';
+import { generateSlug } from '../../utils/slugify';
 
 export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -31,6 +32,12 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
   }
 
   const categoryData = validationResult.data;
+  let slug = categoryData.slug;
+
+  if (!slug || slug.startsWith('temp-slug-')) {
+    const newSlug = generateSlug(categoryData.name);
+    slug = newSlug || `category-${Date.now()}`; // Fallback if name results in an empty slug
+  }
 
   try {
     // Check if category name already exists
@@ -48,7 +55,7 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
     // Check if category slug already exists
     const existingCategoryBySlug = await c.env.DB.prepare(
       'SELECT id FROM categories WHERE slug = ?1'
-    ).bind(categoryData.slug).first<{ id: number }>();
+    ).bind(slug).first<{ id: number }>();
 
     if (existingCategoryBySlug) {
       return c.json(CategorySlugExistsErrorSchema.parse({
@@ -71,7 +78,7 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`
     ).bind(
       categoryData.name,
-      categoryData.slug,
+      slug, // Use the potentially modified slug
       categoryData.description,
       categoryData.default_source_background_bucket_key,
       categoryData.default_source_thumbnail_bucket_key,

@@ -7,6 +7,7 @@ import {
   PodcastCreateFailedErrorSchema
 } from '../../schemas/podcastSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
+import { generateSlug } from '../../utils/slugify';
 
 export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -26,7 +27,13 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     }), 400);
   }
 
-  const { title, slug, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
+  const { title, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
+  let slug = validationResult.data.slug;
+
+  if (!slug || slug.startsWith('temp-slug-')) {
+    const newSlug = generateSlug(title);
+    slug = newSlug || `podcast-${Date.now()}`; // Fallback if title results in an empty slug
+  }
 
   // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL, but it's not in PodcastBaseSchema.
   // Prepare tags for database insertion

@@ -9,6 +9,13 @@ import {
   CategoryUpdateFailedErrorSchema
 } from '../../schemas/categorySchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
+import { generateSlug } from '../../utils/slugify';
+
+interface ExistingCategory {
+  id: number;
+  name: string;
+  slug: string | null;
+}
 
 export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
@@ -38,9 +45,9 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
   }
 
   try {
-    // Check if category exists
-    const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1').bind(id).first<{ id: number }>();
-    if (!categoryExists) {
+    // Check if category exists and get its current name and slug
+    const existingCategory = await c.env.DB.prepare('SELECT id, name, slug FROM categories WHERE id = ?1').bind(id).first<ExistingCategory>();
+    if (!existingCategory) {
       return c.json(CategoryNotFoundErrorSchema.parse({ success: false, message: 'Category not found.' }), 404);
     }
 
@@ -55,11 +62,26 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       }
     }
 
+    // Slug generation logic
+    let finalSlug = updateData.slug;
+    let slugIsBeingUpdated = false;
+
+    if (updateData.slug !== undefined) {
+      slugIsBeingUpdated = true;
+      if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
+        const nameForSlugGeneration = updateData.name ?? existingCategory.name;
+        const newGeneratedSlug = generateSlug(nameForSlugGeneration);
+        finalSlug = newGeneratedSlug || `category-${id}-${Date.now()}`;
+      } else {
+        finalSlug = updateData.slug; // Use the provided, non-temporary slug
+      }
+    }
+
     // If slug is being updated, check for conflicts
-    if (updateData.slug) {
+    if (slugIsBeingUpdated && finalSlug !== existingCategory.slug) {
       const existingCategoryWithSlug = await c.env.DB.prepare(
         'SELECT id FROM categories WHERE slug = ?1 AND id != ?2'
-      ).bind(updateData.slug, id).first<{ id: number }>();
+      ).bind(finalSlug, id).first<{ id: number }>();
 
       if (existingCategoryWithSlug) {
         return c.json(CategorySlugExistsErrorSchema.parse({ 
@@ -69,13 +91,40 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       }
     }
 
-    const fieldsToUpdate = { ...updateData, updated_at: new Date().toISOString() };
-    const setClauses = Object.keys(fieldsToUpdate).map((key, index) => `${key} = ?${index + 1}`);
-    const values = Object.values(fieldsToUpdate);
+    const setClauses: string[] = [];
+    const bindings: any[] = [];
+    let paramIndex = 1;
 
+    Object.entries(updateData).forEach(([key, value]) => {
+      if (key === 'slug') return; // Handled separately by finalSlug
+      if (value !== undefined) {
+        setClauses.push(`${key} = ?${paramIndex++}`);
+        bindings.push(value);
+      }
+    });
+
+    if (slugIsBeingUpdated && typeof finalSlug === 'string') {
+      setClauses.push(`slug = ?${paramIndex++}`);
+      bindings.push(finalSlug);
+    } else if (slugIsBeingUpdated && finalSlug === null) {
+      // If schema allows setting slug to null explicitly
+      // setClauses.push(`slug = ?${paramIndex++}`);
+      // bindings.push(null);
+    }
+
+    if (setClauses.length === 0) {
+      // No actual data fields to update (e.g., only slug was provided but it resulted in no change, or empty payload)
+      // However, the initial check for Object.keys(updateData).length === 0 should catch empty payloads.
+      // If slug was the only field and it didn't change, this path might be hit.
+      return c.json(CategoryUpdateResponseSchema.parse({ success: true, message: 'No effective changes to apply.' }), 200);
+    }
+
+    setClauses.push(`updated_at = CURRENT_TIMESTAMP`); // Always update timestamp
+
+    bindings.push(id); // For the WHERE clause
     const stmt = c.env.DB.prepare(
-      `UPDATE categories SET ${setClauses.join(', ')} WHERE id = ?${values.length + 1}`
-    ).bind(...values, id);
+      `UPDATE categories SET ${setClauses.join(', ')} WHERE id = ?${paramIndex}`
+    ).bind(...bindings);
 
     const result = await stmt.run();
 

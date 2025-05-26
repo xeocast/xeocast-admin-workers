@@ -7,6 +7,7 @@ import {
   SeriesCreateFailedErrorSchema
 } from '../../schemas/seriesSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas'; // For category not found
+import { generateSlug } from '../../utils/slugify';
 
 export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -25,8 +26,15 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }), 400);
   }
 
-  const { title, slug, category_id } = validationResult.data;
+  const { title, category_id } = validationResult.data;
+  let slug = validationResult.data.slug;
   const description = validationResult.data.description ?? null;
+
+  if (!slug || slug.startsWith('temp-slug-')) {
+    const newSlug = generateSlug(title);
+    slug = newSlug || `series-${Date.now()}`; // Fallback if title results in an empty slug
+  }
+
 
   try {
     // 1. Validate category_id
