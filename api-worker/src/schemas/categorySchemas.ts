@@ -12,7 +12,7 @@ import {
 
 const CategoryBaseSchema = z.object({
   name: z.string().max(255).openapi({ example: 'Technology Updates' }),
-  slug: z.string().max(255).openapi({ example: 'technology-updates', description: 'The URL-friendly slug for the category.' }),
+  slug: z.string().max(255).optional().openapi({ example: 'technology-updates', description: 'The URL-friendly slug for the category. Auto-generated if not provided.' }),
   description: z.string().max(5000).openapi({ example: 'Latest news and discussions in the tech world.' }),
   default_source_background_bucket_key: z.string().openapi({ example: 'defaults/tech_bg.mp3' }),
   default_source_thumbnail_bucket_key: z.string().openapi({ example: 'defaults/tech_thumb.png' }),
@@ -45,7 +45,7 @@ export const CategoryCreateResponseSchema = MessageResponseSchema.extend({
 export const CategorySummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   name: z.string().openapi({ example: 'Technology Updates' }),
-  slug: z.string().openapi({ example: 'technology-updates' }),
+  slug: z.string().optional().openapi({ example: 'technology-updates' }),
   language_code: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('CategorySummary');
 

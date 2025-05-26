@@ -21,7 +21,7 @@ export const PodcastStatusSchema = z.enum([
 
 const PodcastBaseSchema = z.object({
   title: z.string().max(255).openapi({ example: 'My First Podcast Episode' }),
-  slug: z.string().max(255).openapi({ example: 'my-first-podcast-episode', description: 'The URL-friendly slug for the podcast.' }),
+  slug: z.string().max(255).optional().openapi({ example: 'my-first-podcast-episode', description: 'The URL-friendly slug for the podcast. Auto-generated if not provided.' }),
   description: z.string().max(5000).optional().nullable().openapi({ example: 'An introduction to the series.' }),
   markdown_content: z.string().optional().nullable().openapi({ example: '# Welcome\n\nThis is the content.' }),
   source_audio_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/audio/source_audio.mp3' }),
