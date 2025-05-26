@@ -84,7 +84,7 @@ export const GetPodcastResponseSchema = z.object({
 export const PodcastUpdateRequestSchema = PodcastBaseSchema.partial().openapi('PodcastUpdateRequest');
 
 export const PodcastUpdateResponseSchema = MessageResponseSchema.extend({
-    message: z.literal("Podcast updated successfully.")
+    // The 'message' field will now be inherited from MessageResponseSchema (z.string())
 }).openapi('PodcastUpdateResponse');
 
 export const PodcastDeleteResponseSchema = MessageResponseSchema.extend({

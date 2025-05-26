@@ -7,7 +7,7 @@ import {
   PodcastCreateFailedErrorSchema
 } from '../../schemas/podcastSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -35,6 +35,15 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     slug = newSlug || `podcast-${Date.now()}`; // Fallback if title results in an empty slug
   }
 
+  // Prepare additional conditions for slug uniqueness based on series_id
+  const slugUniqueConditions: Record<string, any> = {};
+  if (series_id) {
+    slugUniqueConditions.series_id = series_id;
+  } else {
+    // For podcasts not in a series, their slugs must be unique among other non-series podcasts
+    slugUniqueConditions.series_id = null; 
+  }
+
   // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL, but it's not in PodcastBaseSchema.
   // Prepare tags for database insertion
   const tagsForDB = tags ? JSON.stringify(tags) : '[]';
@@ -56,26 +65,9 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
         return c.json(PodcastCreateFailedErrorSchema.parse({ success: false, message: 'Series category_id does not match podcast category_id.' }), 400);
       }
     }
+    // Ensure the slug is unique based on the conditions
+    slug = await ensureUniqueSlug(c.env.DB, slug, 'podcasts', 'slug', 'id', undefined, slugUniqueConditions);
 
-    // Slug uniqueness check
-    let existingPodcastBySlug;
-    if (series_id) {
-      existingPodcastBySlug = await c.env.DB.prepare(
-        'SELECT id FROM podcasts WHERE slug = ?1 AND series_id = ?2'
-      ).bind(slug, series_id).first<{ id: number }>();
-    } else {
-      existingPodcastBySlug = await c.env.DB.prepare(
-        'SELECT id FROM podcasts WHERE slug = ?1 AND series_id IS NULL'
-      ).bind(slug).first<{ id: number }>();
-    }
-
-    if (existingPodcastBySlug) {
-      return c.json(PodcastSlugExistsErrorSchema.parse({ 
-        success: false, 
-        // Consider if message should differentiate between 'in series' vs 'global for no-series podcasts'
-        message: 'Podcast slug already exists in this series (or for podcasts not in a series).'
-      }), 400);
-    }
     
     const stmt = c.env.DB.prepare(
       `INSERT INTO podcasts (

@@ -62,7 +62,7 @@ export const GetCategoryResponseSchema = z.object({
 export const CategoryUpdateRequestSchema = CategoryBaseSchema.partial().openapi('CategoryUpdateRequest');
 
 export const CategoryUpdateResponseSchema = MessageResponseSchema.extend({
-    message: z.literal("Category updated successfully.")
+    // The 'message' field will now be inherited from MessageResponseSchema (z.string())
 }).openapi('CategoryUpdateResponse');
 
 export const CategoryDeleteResponseSchema = MessageResponseSchema.extend({

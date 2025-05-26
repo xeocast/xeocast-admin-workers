@@ -8,7 +8,7 @@ import {
   PodcastUpdateFailedErrorSchema
 } from '../../schemas/podcastSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
@@ -44,10 +44,13 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       processedUpdatePayload.tags = JSON.stringify(processedUpdatePayload.tags);
     }
   }
-  // We will handle slug generation after fetching the existing podcast
-  let finalSlug = updatePayload.slug; 
+  // Slug will be handled after fetching existing podcast and determining if it needs update.
+  // Remove slug from processedUpdatePayload initially, it will be added back if it changes.
+  let slugForUpdate: string | null | undefined = undefined;
+  const originalSlugInPayload = updatePayload.slug;
+  delete processedUpdatePayload.slug; 
 
-  if (Object.keys(processedUpdatePayload).length === 0 && updatePayload.slug === undefined) { // Check original payload for emptiness
+  if (Object.keys(processedUpdatePayload).length === 0 && originalSlugInPayload === undefined) { // Check original payload for emptiness
     return c.json(PodcastUpdateResponseSchema.parse({ success: true, message: 'No update fields provided. Podcast not changed.' }), 200);
   }
 
@@ -61,35 +64,52 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.' }), 404);
     }
 
-    // Slug generation if slug is empty or temporary, or if slug is being updated
-    if (updatePayload.slug !== undefined) {
-      if (!updatePayload.slug || updatePayload.slug.startsWith('temp-slug-')) {
-        let titleForSlug = updatePayload.title;
-        if (!titleForSlug) {
-          // If title is not in the update payload, use the existing podcast's title
-          titleForSlug = existingPodcast.title; 
-        }
-        if (titleForSlug) {
-          const newSlug = generateSlug(titleForSlug);
-          finalSlug = newSlug || `podcast-${id}-${Date.now()}`;
-        } else {
-          finalSlug = `podcast-${id}-${Date.now()}`;
-        }
+    // Slug processing logic
+    let candidateSlug: string | null | undefined = undefined;
+    let slugNeedsProcessing = false;
+
+    const newTitle = updatePayload.title;
+    const newSeriesId = updatePayload.series_id;
+
+    if (originalSlugInPayload !== undefined) {
+      slugNeedsProcessing = true;
+      if (!originalSlugInPayload || originalSlugInPayload.startsWith('temp-slug-')) {
+        const titleForSlug = newTitle || existingPodcast.title;
+        candidateSlug = generateSlug(titleForSlug) || `podcast-${id}-${Date.now()}`;
       } else {
-        finalSlug = updatePayload.slug; // Use the provided, non-temporary slug
+        candidateSlug = originalSlugInPayload;
       }
-      // Update processedUpdatePayload with the potentially new slug
-      processedUpdatePayload.slug = finalSlug;
-    } else {
-      // If slug is not in updatePayload, it means we are not changing it.
-      // finalSlug will remain undefined or be the original slug from updatePayload if it was initially set.
-      // No action needed on finalSlug or processedUpdatePayload.slug here if slug is not part of the update.
-      // However, if slug was part of updatePayload but removed by schema (e.g. undefined), this branch is hit.
-      // To be safe, if processedUpdatePayload.slug is undefined (meaning it wasn't in the original valid payload),
-      // we don't want to accidentally set it to null or an old value. So, we remove it if it's not being actively set.
-      if (processedUpdatePayload.slug === undefined) {
-        delete processedUpdatePayload.slug;
+    } else if ((newTitle && newTitle !== existingPodcast.title) || 
+               (newSeriesId !== undefined && newSeriesId !== existingPodcast.series_id)) {
+      // Regenerate slug if title or series_id changed, and slug was not explicitly provided
+      slugNeedsProcessing = true;
+      const titleForSlug = newTitle || existingPodcast.title;
+      candidateSlug = generateSlug(titleForSlug) || `podcast-${id}-${Date.now()}`;
+    }
+
+    if (slugNeedsProcessing && candidateSlug !== undefined) {
+      const targetSeriesId = (newSeriesId !== undefined) ? newSeriesId : existingPodcast.series_id;
+      const additionalConditions: Record<string, any> = { series_id: targetSeriesId ?? null }; 
+
+      if (typeof candidateSlug === 'string' && candidateSlug.trim() !== '') {
+        const uniqueSlug = await ensureUniqueSlug(c.env.DB, candidateSlug, 'podcasts', 'slug', 'id', id, additionalConditions);
+        if (uniqueSlug !== existingPodcast.slug) {
+          slugForUpdate = uniqueSlug;
+        }
+      } else if (candidateSlug === null) { // Explicitly setting slug to null
+        if (existingPodcast.slug !== null) {
+          slugForUpdate = null;
+        }
+      } else { // Candidate slug is empty string
+         if (existingPodcast.slug !== null && candidateSlug.trim() === '') {
+            slugForUpdate = null; // Convert empty string to null if it's a change
+        }
       }
+    }
+
+    // If slugForUpdate has a value (string or null), it means it's intended to be updated.
+    if (slugForUpdate !== undefined) {
+      processedUpdatePayload.slug = slugForUpdate;
     }
 
     // Validate category_id if provided
@@ -111,34 +131,6 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
         return c.json(PodcastUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid series_id: Series does not exist.' }), 400);
       }
     }
-    
-    // Slug uniqueness check
-    // Slug uniqueness check - use finalSlug which might have been generated
-    if (finalSlug !== undefined && finalSlug !== existingPodcast.slug) { // Only check if slug is actually changing
-      const slugToCheck = finalSlug;
-      const targetSeriesId = (updatePayload.series_id !== undefined) 
-                             ? updatePayload.series_id 
-                             : existingPodcast.series_id;
-
-      let conflictingPodcastBySlug;
-      if (targetSeriesId !== null) {
-        conflictingPodcastBySlug = await c.env.DB.prepare(
-          'SELECT id FROM podcasts WHERE slug = ?1 AND series_id = ?2 AND id != ?3'
-        ).bind(slugToCheck, targetSeriesId, id).first<{ id: number }>();
-      } else { // targetSeriesId is null
-        conflictingPodcastBySlug = await c.env.DB.prepare(
-          'SELECT id FROM podcasts WHERE slug = ?1 AND series_id IS NULL AND id != ?2'
-        ).bind(slugToCheck, id).first<{ id: number }>();
-      }
-
-      if (conflictingPodcastBySlug) {
-        return c.json(PodcastSlugExistsErrorSchema.parse({
-          success: false,
-          message: 'Podcast slug already exists in this series (or for podcasts not in a series).'
-        }), 400);
-      }
-    }
-
     // The DB triggers will handle series/category consistency, updated_at, and last_status_change_at.
 
     const setClauses: string[] = [];

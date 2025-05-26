@@ -7,7 +7,7 @@ import {
   SeriesCreateFailedErrorSchema
 } from '../../schemas/seriesSchemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas'; // For category not found
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -55,17 +55,9 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       return c.json(SeriesCreateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category.' }), 400);
     }
 
-    // Check if series slug already exists within the same category_id
-    const existingSeriesBySlug = await c.env.DB.prepare(
-      'SELECT id FROM series WHERE slug = ?1 AND category_id = ?2'
-    ).bind(slug, category_id).first<{ id: number }>();
-
-    if (existingSeriesBySlug) {
-      return c.json(SeriesSlugExistsErrorSchema.parse({ 
-        success: false, 
-        message: 'Series slug already exists in this category.' 
-      }), 400);
-    }
+    // Ensure the slug is unique within the category
+    const uniqueSlugConditions = { category_id: category_id };
+    slug = await ensureUniqueSlug(c.env.DB, slug, 'series', 'slug', 'id', undefined, uniqueSlugConditions);
 
     // 3. Store series in the database
     const stmt = c.env.DB.prepare(

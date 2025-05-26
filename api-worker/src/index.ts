@@ -14,11 +14,13 @@ import externalTaskRoutes from './routes/externalTasks';
 import youtubeChannelRoutes from './routes/youtubeChannels';
 import youtubePlaylistRoutes from './routes/youtubePlaylists';
 import storageRoutes from './routes/storage';
+import maintenanceRoutes from './routes/maintenance'; // Added
 
 // Import middleware
 import { ensureAuth } from './middlewares/auth.middleware';
 
 const app = new OpenAPIHono<{ Bindings: CloudflareBindings }>();
+const authMiddleware = ensureAuth(); // ensure authMiddleware is defined before use
 
 // CORS Middleware
 app.use('*', (c, next) => {
@@ -45,8 +47,7 @@ app.use('*', (c, next) => {
 // Public routes first
 app.route('/auth', authRoutes);
 
-// Auth middleware instance for protected routes
-const authMiddleware = ensureAuth();
+
 
 // Apply auth middleware to protected route paths
 app.use('/categories/*', authMiddleware);
@@ -58,6 +59,7 @@ app.use('/external-tasks/*', authMiddleware);
 app.use('/youtube-channels/*', authMiddleware);
 app.use('/youtube-playlists/*', authMiddleware);
 app.use('/storage/*', authMiddleware);
+app.use('/maintenance/*', authMiddleware); // Added
 
 // Mount protected routes
 app.route('/categories', categoryRoutes);
@@ -69,6 +71,7 @@ app.route('/external-tasks', externalTaskRoutes);
 app.route('/youtube-channels', youtubeChannelRoutes);
 app.route('/youtube-playlists', youtubePlaylistRoutes);
 app.route('/storage', storageRoutes);
+app.route('/maintenance', maintenanceRoutes); // Added
 
 // OpenAPI Documentation
 app.doc('/api/doc', {

@@ -9,7 +9,7 @@ import {
   CategoryUpdateFailedErrorSchema
 } from '../../schemas/categorySchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 interface ExistingCategory {
   id: number;
@@ -62,32 +62,46 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       }
     }
 
-    // Slug generation logic
-    let finalSlug = updateData.slug;
-    let slugIsBeingUpdated = false;
+    // Slug processing logic using ensureUniqueSlug
+    let newSlugValue: string | null | undefined = undefined; // This will hold the slug to be written to DB
+    let slugNeedsDatabaseUpdate = false; // Flag to indicate if the slug field in DB needs changing
 
-    if (updateData.slug !== undefined) {
-      slugIsBeingUpdated = true;
+    if (updateData.slug !== undefined) { // User explicitly sent a slug field
       if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
-        const nameForSlugGeneration = updateData.name ?? existingCategory.name;
-        const newGeneratedSlug = generateSlug(nameForSlugGeneration);
-        finalSlug = newGeneratedSlug || `category-${id}-${Date.now()}`;
+        // Regenerate slug based on name (new name if provided, else old name)
+        const nameForSlug = updateData.name || existingCategory.name;
+        newSlugValue = generateSlug(nameForSlug) || `category-${id}-${Date.now()}`; // Fallback for empty generated slug
       } else {
-        finalSlug = updateData.slug; // Use the provided, non-temporary slug
+        // User provided a concrete slug
+        newSlugValue = updateData.slug;
       }
+    } else if (updateData.name && updateData.name !== existingCategory.name) {
+      // Name changed, slug not provided, so regenerate slug
+      newSlugValue = generateSlug(updateData.name) || `category-${id}-${Date.now()}`; // Fallback for empty generated slug
     }
 
-    // If slug is being updated, check for conflicts
-    if (slugIsBeingUpdated && finalSlug !== existingCategory.slug) {
-      const existingCategoryWithSlug = await c.env.DB.prepare(
-        'SELECT id FROM categories WHERE slug = ?1 AND id != ?2'
-      ).bind(finalSlug, id).first<{ id: number }>();
-
-      if (existingCategoryWithSlug) {
-        return c.json(CategorySlugExistsErrorSchema.parse({ 
-          success: false, 
-          message: 'Category slug already exists.' 
-        }), 400);
+    // If a new slug value was determined (either from input or generation)
+    if (newSlugValue !== undefined) {
+      if (typeof newSlugValue === 'string' && newSlugValue.trim() !== '') {
+        const uniqueSlug = await ensureUniqueSlug(c.env.DB, newSlugValue, 'categories', 'slug', 'id', id);
+        if (uniqueSlug !== existingCategory.slug) {
+          newSlugValue = uniqueSlug;
+          slugNeedsDatabaseUpdate = true;
+        }
+      } else if (newSlugValue === null) {
+        // User wants to set slug to null
+        if (existingCategory.slug !== null) {
+          slugNeedsDatabaseUpdate = true;
+          // newSlugValue is already null
+        }
+      } else {
+        // Slug became empty string, treat as no change or invalid based on schema (schema implies slug can be null but not empty string if validated properly)
+        // For safety, if it's an empty string and was not null, consider it a change to null if allowed, or ignore.
+        // Assuming empty string slug is not desired, and it should become null if it was previously non-null.
+        if (existingCategory.slug !== null && newSlugValue.trim() === '') {
+            newSlugValue = null; // Convert empty string to null
+            slugNeedsDatabaseUpdate = true;
+        }
       }
     }
 
@@ -103,13 +117,10 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       }
     });
 
-    if (slugIsBeingUpdated && typeof finalSlug === 'string') {
+    // Add slug to update if it has effectively changed
+    if (slugNeedsDatabaseUpdate) {
       setClauses.push(`slug = ?${paramIndex++}`);
-      bindings.push(finalSlug);
-    } else if (slugIsBeingUpdated && finalSlug === null) {
-      // If schema allows setting slug to null explicitly
-      // setClauses.push(`slug = ?${paramIndex++}`);
-      // bindings.push(null);
+      bindings.push(newSlugValue); // newSlugValue will be the unique string or null
     }
 
     if (setClauses.length === 0) {

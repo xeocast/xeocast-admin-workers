@@ -7,7 +7,7 @@ import {
   CategoryCreateFailedErrorSchema,
   CategoryCreateResponseSchema
 } from '../../schemas/categorySchemas';
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -40,6 +40,8 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
   }
 
   try {
+    // Ensure the slug is unique
+    slug = await ensureUniqueSlug(c.env.DB, slug, 'categories');
     // Check if category name already exists
     const existingCategoryByName = await c.env.DB.prepare(
       'SELECT id FROM categories WHERE name = ?1'
@@ -49,18 +51,6 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       return c.json(CategoryNameExistsErrorSchema.parse({
         success: false,
         message: 'Category name already exists.'
-      }), 400);
-    }
-
-    // Check if category slug already exists
-    const existingCategoryBySlug = await c.env.DB.prepare(
-      'SELECT id FROM categories WHERE slug = ?1'
-    ).bind(slug).first<{ id: number }>();
-
-    if (existingCategoryBySlug) {
-      return c.json(CategorySlugExistsErrorSchema.parse({
-        success: false,
-        message: 'Category slug already exists.'
       }), 400);
     }
 

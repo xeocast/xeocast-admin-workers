@@ -8,7 +8,7 @@ import {
   SeriesUpdateFailedErrorSchema
 } from '../../schemas/seriesSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
-import { generateSlug } from '../../utils/slugify';
+import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 interface ExistingSeries {
   id: number;
@@ -30,7 +30,6 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   } catch (error) {
     return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
-  console.log(requestBody);
 
   const validationResult = SeriesUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
@@ -81,34 +80,54 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       }
     }
 
-    // Slug generation and uniqueness check
-    let finalSlug = updateData.slug;
-    let slugIsBeingUpdated = false;
+    // Slug processing logic
+    let slugForUpdate: string | null | undefined = undefined;
+    let slugNeedsProcessing = false;
 
-    if (updateData.slug !== undefined) {
-      slugIsBeingUpdated = true;
+    const titleFromPayload = updateData.title;
+    const newCategoryIdForSlugCheck = updateData.category_id !== undefined ? updateData.category_id : existingSeries.category_id;
+
+    if (updateData.slug !== undefined) { // User explicitly sent a slug field
+      slugNeedsProcessing = true;
       if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
-        let titleForSlug = updateData.title !== undefined ? updateData.title : existingSeries.title;
-        const newGeneratedSlug = generateSlug(titleForSlug);
-        finalSlug = newGeneratedSlug || `series-${id}-${Date.now()}`;
+        const titleForSlug = titleFromPayload || existingSeries.title;
+        slugForUpdate = generateSlug(titleForSlug) || `series-${id}-${Date.now()}`;
       } else {
-        finalSlug = updateData.slug; // Use the provided, non-temporary slug
+        slugForUpdate = updateData.slug;
+      }
+    } else if ((titleFromPayload && titleFromPayload !== existingSeries.title) || 
+               (updateData.category_id !== undefined && updateData.category_id !== existingSeries.category_id)) {
+      // Regenerate slug if title or category_id changed, and slug was not explicitly provided
+      slugNeedsProcessing = true;
+      const titleForSlug = titleFromPayload || existingSeries.title;
+      slugForUpdate = generateSlug(titleForSlug) || `series-${id}-${Date.now()}`;
+    }
+
+    if (slugNeedsProcessing && slugForUpdate !== undefined) {
+      const additionalConditions = { category_id: newCategoryIdForSlugCheck };
+      if (typeof slugForUpdate === 'string' && slugForUpdate.trim() !== '') {
+        const uniqueSlug = await ensureUniqueSlug(c.env.DB, slugForUpdate, 'series', 'slug', 'id', id, additionalConditions);
+        if (uniqueSlug !== existingSeries.slug) {
+          // Keep slugForUpdate as the uniqueSlug
+          slugForUpdate = uniqueSlug; 
+        } else {
+          // No change needed if unique slug is same as existing
+          slugForUpdate = undefined; // Signal no DB update for slug
+        }
+      } else if (slugForUpdate === null) { // Explicitly setting slug to null
+        if (existingSeries.slug === null) {
+          slugForUpdate = undefined; // No change needed
+        }
+        // else slugForUpdate remains null for DB update
+      } else { // Candidate slug is empty string
+         if (existingSeries.slug === null && slugForUpdate.trim() === ''){
+            slugForUpdate = undefined; // No change needed
+         } else if (slugForUpdate.trim() === '') {
+            slugForUpdate = null; // Convert empty string to null if it's a change
+         }
       }
     }
 
-    // Check for slug uniqueness only if the slug is actually being changed to a new value
-    if (slugIsBeingUpdated && finalSlug !== existingSeries.slug) {
-      const conflictingSeriesBySlug = await c.env.DB.prepare(
-        'SELECT id FROM series WHERE slug = ?1 AND category_id = ?2 AND id != ?3'
-      ).bind(finalSlug, newCategoryId, id).first<{ id: number }>();
-
-      if (conflictingSeriesBySlug) {
-        return c.json(SeriesSlugExistsErrorSchema.parse({ 
-            success: false, 
-            message: 'Series slug already exists in this category for another series.' 
-        }), 400);
-      }
-    }
 
     // 4. Build and execute update query
     const fieldsToUpdate: string[] = [];
@@ -130,19 +149,11 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       bindings.push(updateData.category_id);
       bindingIndex++;
     }
-    if (slugIsBeingUpdated && typeof finalSlug === 'string') { // Ensure finalSlug is a string before pushing
+    // Add slug to update only if slugForUpdate has a determined new value (string or null)
+    if (slugForUpdate !== undefined) {
       fieldsToUpdate.push(`slug = ?${bindingIndex}`);
-      bindings.push(finalSlug);
+      bindings.push(slugForUpdate); // This can be a string or null
       bindingIndex++;
-    } else if (slugIsBeingUpdated && finalSlug === null) {
-      // If the intent is to set slug to NULL (if schema allowed and DB allowed)
-      // fieldsToUpdate.push(`slug = ?${bindingIndex}`);
-      // bindings.push(null);
-      // bindingIndex++;
-      // For now, we assume a slug should always be a string if updated.
-      // If finalSlug is not a string here but slugIsBeingUpdated is true, it's an unexpected state.
-      // However, current logic should ensure finalSlug is a string if slugIsBeingUpdated is true.
-      // This explicit check satisfies TypeScript.
     }
 
     if (fieldsToUpdate.length === 0) {
