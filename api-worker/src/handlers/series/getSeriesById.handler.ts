@@ -10,9 +10,10 @@ import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSche
 interface SeriesFromDB {
   id: number;
   title: string;
+  slug: string; // Added slug
   description: string | null;
   category_id: number;
-  created_at: string; 
+  created_at: string;
   updated_at: string;
 }
 
@@ -26,7 +27,7 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   try {
     const dbSeries = await c.env.DB.prepare(
-      'SELECT id, title, description, category_id, created_at, updated_at FROM series WHERE id = ?1'
+      'SELECT id, title, slug, description, category_id, created_at, updated_at FROM series WHERE id = ?1' // Added slug to query
     ).bind(id).first<SeriesFromDB>();
 
     if (!dbSeries) {

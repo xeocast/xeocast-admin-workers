@@ -30,6 +30,7 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   } catch (error) {
     return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
+  console.log(requestBody);
 
   const validationResult = SeriesUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {

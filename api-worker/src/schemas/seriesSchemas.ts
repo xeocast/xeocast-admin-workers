@@ -19,10 +19,13 @@ const SeriesBaseSchema = z.object({
 }).openapi('SeriesBase');
 
 // Full Series schema for API responses
-export const SeriesSchema = SeriesBaseSchema.extend({
+export const SeriesSchema = SeriesBaseSchema.omit({ slug: true }).extend({
+  slug: z.string().max(255).openapi({ example: 'my-awesome-podcast-series', description: 'The URL-friendly slug for the series.' }), // Made non-optional for responses
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the series.' }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
+  // Note: 'slug' was previously inherited as optional from SeriesBaseSchema.
+  // It's now explicitly non-optional here, as a retrieved series should always have a slug.
 }).openapi('Series');
 
 // Schema for creating a new series
