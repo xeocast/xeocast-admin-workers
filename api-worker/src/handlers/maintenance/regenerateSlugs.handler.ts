@@ -83,9 +83,9 @@ export const regenerateSlugsHandler = async (c: Context<{ Bindings: CloudflareEn
   try {
     const db = c.env.DB;
 
-    const categoriesQuery = db.prepare('SELECT id FROM categories').all<Item>();
-    const seriesQuery = db.prepare('SELECT id FROM series').all<Item>();
-    const podcastsQuery = db.prepare('SELECT id FROM podcasts').all<Item>();
+    const categoriesQuery = db.prepare("SELECT id FROM categories WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
+    const seriesQuery = db.prepare("SELECT id FROM series WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
+    const podcastsQuery = db.prepare("SELECT id FROM podcasts WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
 
     const [categoriesResult, seriesResult, podcastsResult] = await Promise.all([categoriesQuery, seriesQuery, podcastsQuery]);
 
