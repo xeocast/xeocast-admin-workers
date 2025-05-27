@@ -15,6 +15,7 @@ const ListSeriesQuerySchema = z.object({
 interface SeriesSummaryFromDB {
   id: number;
   title: string;
+  slug: string; // Added slug
   category_id: number;
 }
 
@@ -32,7 +33,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   const { category_id } = queryParseResult.data;
 
   try {
-    let query = 'SELECT id, title, category_id FROM series';
+    let query = 'SELECT id, title, slug, category_id FROM series'; // Added slug
     const bindings: (number | string)[] = [];
 
     if (category_id !== undefined) {

@@ -41,6 +41,9 @@ export const uploadObjectHandler: Handler<{
 }> = async (c) => {
     try {
         const formData = await c.req.formData();
+
+        console.log(formData);
+
         const file = formData.get('file');
         const bucketNameInput = formData.get('bucket');
         let keyInput = formData.get('key');
@@ -128,6 +131,8 @@ export const uploadObjectHandler: Handler<{
             httpMetadata,
             customMetadata: customR2Metadata,
         });
+
+        console.log('File uploaded successfully.', objectKey);
 
         return c.json(UploadObjectSuccessResponseSchema.parse({
             success: true,

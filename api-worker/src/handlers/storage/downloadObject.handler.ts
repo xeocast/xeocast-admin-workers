@@ -18,7 +18,8 @@ export const downloadObjectHandler: Handler<{
     // Path parameters are validated by the routing layer if zValidator is used in routes.ts
     // Or, we can parse them explicitly here if needed, but typically route validation is cleaner.
 }> = async (c) => {
-    try {
+    try {        
+        console.log(c.req.param());
         const { logicalBucketName, objectKey } = c.req.param() as z.infer<typeof ObjectPathParamsSchema>;
 
         // Validate params again if not using zValidator in route, or for extra safety

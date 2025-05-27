@@ -10,7 +10,7 @@ import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 export const listCategoriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT id, name, language_code FROM categories ORDER BY name ASC'
+      'SELECT id, name, language_code, slug FROM categories ORDER BY name ASC'
     ).all<z.infer<typeof CategorySummarySchema>>();
 
     const categories = results ? results.map(row => CategorySummarySchema.parse(row)) : [];
