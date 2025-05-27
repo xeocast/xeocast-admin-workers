@@ -74,8 +74,9 @@ export const loginHandler = async (c: Context) => {
     setCookie(c, 'session_token', sessionToken, {
       path: '/',
       httpOnly: true,
-      sameSite: 'Strict',
-      secure: environment === 'production',
+      sameSite: 'None',
+      secure: true, // Always true for SameSite=None
+      domain: environment === 'production' ? '.xeocast.com' : undefined, // Set domain for production
       maxAge: 60 * 60 * 24, // 1 day in seconds
     });
 
