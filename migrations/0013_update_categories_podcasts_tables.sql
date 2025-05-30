@@ -135,5 +135,3 @@ WHEN OLD.category_id != NEW.category_id AND EXISTS (SELECT 1 FROM podcasts WHERE
 BEGIN
     SELECT RAISE(ABORT, 'Cannot change category of a series with podcasts. Update or move podcasts first.');
 END;
-
-COMMIT;
