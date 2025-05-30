@@ -1,11 +1,6 @@
 -- Migration: 0013_update_categories_podcasts_tables.sql
 -- Apply changes to categories and podcasts tables
 
--- Disable foreign key checks during the transaction to allow table recreation
-PRAGMA foreign_keys=OFF;
-
-BEGIN TRANSACTION;
-
 -- Schema updates for 'categories' table
 ALTER TABLE categories RENAME COLUMN prompt_template_to_gen_description TO prompt_template_to_gen_article_metadata;
 ALTER TABLE categories RENAME COLUMN prompt_template_to_gen_short_description TO prompt_template_to_gen_podcast_script;
@@ -137,6 +132,3 @@ BEGIN
 END;
 
 COMMIT;
-
--- Re-enable foreign key checks
-PRAGMA foreign_keys=ON;
