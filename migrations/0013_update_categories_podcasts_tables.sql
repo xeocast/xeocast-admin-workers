@@ -24,11 +24,8 @@ ALTER TABLE podcasts ADD COLUMN status_on_website TEXT CHECK (status_on_website 
 ALTER TABLE podcasts ADD COLUMN status_on_x TEXT CHECK (status_on_x IN ('none', 'scheduled', 'public', 'private', 'deleted'));
 ALTER TABLE podcasts ADD COLUMN freezeStatus BOOLEAN DEFAULT TRUE;
 
--- Update existing 'status' values in 'podcasts' table before changing the CHECK constraint
-UPDATE podcasts SET status = 'videoGenerated' WHERE status = 'generated';
-UPDATE podcasts SET status = 'videoGenerated' WHERE status = 'uploaded';
-UPDATE podcasts SET status = 'generatingVideo' WHERE status = 'generating';
-UPDATE podcasts SET status = 'videoGenerated' WHERE status = 'uploading';
+-- Status values will be transformed during the data copy to podcasts_new.
+-- The original CHECK constraint on 'podcasts' prevents direct UPDATEs to new status values.
 
 -- Recreate 'podcasts' table to modify the 'status' CHECK constraint
 -- SQLite does not support altering CHECK constraints directly.
@@ -88,7 +85,15 @@ SELECT
     id, title, description, markdown_content, source_audio_bucket_key, 
     source_background_bucket_key, -- existing general background key
     video_bucket_key, thumbnail_bucket_key, category_id, series_id, tags, 
-    first_comment, type, scheduled_publish_at, status, last_status_change_at, 
+    first_comment, type, scheduled_publish_at, 
+    CASE status
+        WHEN 'generated' THEN 'videoGenerated'
+        WHEN 'uploaded' THEN 'videoGenerated' -- As per original attempted update logic
+        WHEN 'generating' THEN 'generatingVideo'
+        WHEN 'uploading' THEN 'videoGenerated' -- As per original attempted update logic
+        ELSE status
+    END AS status, -- Apply transformation here
+    last_status_change_at, 
     created_at, updated_at,
     -- new columns
     script, source_background_music_bucket_key, source_intro_music_bucket_key, 
