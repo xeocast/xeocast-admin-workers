@@ -5,7 +5,7 @@ export interface Env {
 
 	// Variables for YouTube Uploads
 	YOUTUBE_UPLOAD_CALLBACK_URL: string;
-	VIDEO_OUTPUT_BUCKET: string;
+	PODCAST_PROJECTS_BUCKET: string;
 	THUMBNAIL_BUCKET: string;
 
 	// For Video Service API Key

@@ -10,9 +10,7 @@ interface CloudflareEnv {
 	// D1 Database
 	DB: D1Database;
 	// R2 Buckets
-	VIDEO_SOURCE_BUCKET: R2Bucket; // For video source files
-	VIDEO_OUTPUT_BUCKET: R2Bucket; // For video output files
-	WEBSITE_BUCKET: R2Bucket; // For website files
+	PODCAST_PROJECTS_BUCKET: R2Bucket; // For podcast projects
 	// Add other bindings like KV namespaces, etc.
 	// MY_KV_NAMESPACE: KVNamespace;
 }

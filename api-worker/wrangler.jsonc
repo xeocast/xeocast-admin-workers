@@ -45,19 +45,9 @@
 	 ],
 	 "r2_buckets": [
 		{
-			"binding": "VIDEO_SOURCE_BUCKET",
-			"bucket_name": "video-source-files",
-			"preview_bucket_name": "video-source-files-preview"			
-		},
-		{
-			"binding": "VIDEO_OUTPUT_BUCKET",
-			"bucket_name": "video-output-files",
-			"preview_bucket_name": "video-output-files-preview"
-		},
-		{
-			"binding": "WEBSITE_BUCKET",
-			"bucket_name": "website-files",
-			"preview_bucket_name": "website-files-preview"
+			"binding": "PODCAST_PROJECTS_BUCKET",
+			"bucket_name": "podcast-projects",
+			"preview_bucket_name": "podcast-projects-preview"			
 		}
 	],
 
