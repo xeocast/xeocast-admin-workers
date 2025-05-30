@@ -47,8 +47,6 @@ app.use('*', (c, next) => {
 // Public routes first
 app.route('/auth', authRoutes);
 
-
-
 // Apply auth middleware to protected route paths
 app.use('/categories/*', authMiddleware);
 app.use('/podcasts/*', authMiddleware);
