@@ -14,18 +14,30 @@ const CategoryBaseSchema = z.object({
   name: z.string().max(255).openapi({ example: 'Technology Updates' }),
   slug: z.string().max(255).optional().openapi({ example: 'technology-updates', description: 'The URL-friendly slug for the category. Auto-generated if not provided.' }),
   description: z.string().max(5000).openapi({ example: 'Latest news and discussions in the tech world.' }),
-  default_source_background_bucket_key: z.string().openapi({ example: 'defaults/tech_bg.mp3' }),
-  default_source_thumbnail_bucket_key: z.string().openapi({ example: 'defaults/tech_thumb.png' }),
+  default_source_background_bucket_key: z.string().openapi({ example: 'defaults/tech_video_bg.mp4' }), // For general/video background
+  default_source_thumbnail_bucket_key: z.string().openapi({ example: 'defaults/tech_video_thumb.png' }), // For general/video thumbnail
+
+  // New fields from migration (TEXT NOT NULL DEFAULT '')
+  first_comment_template: z.string().openapi({ example: 'Check out our latest episode on {topic}!' }),
+  show_title: z.string().openapi({ example: 'Tech Unfiltered' }),
+  custom_url: z.string().openapi({ example: 'tech-unfiltered-podcast' }),
+  default_source_background_music_bucket_key: z.string().openapi({ example: 'defaults/music_bg.mp3' }),
+  default_source_intro_music_bucket_key: z.string().openapi({ example: 'defaults/music_intro.mp3' }),
+
+  // Prompt templates (existing, unchanged by this migration)
   prompt_template_to_gen_evergreen_titles: z.string().openapi({ example: 'Generate an evergreen title about {topic} in technology.' }),
   prompt_template_to_gen_news_titles: z.string().openapi({ example: 'Create a news title for a recent event: {event_summary}.' }),
   prompt_template_to_gen_series_titles: z.string().openapi({ example: 'Suggest a series title for a podcast about {series_theme} in tech.' }),
   prompt_template_to_gen_article_content: z.string().openapi({ example: 'Write an article about {topic} focusing on {aspect}.' }),
-  prompt_template_to_gen_description: z.string().openapi({ example: 'Generate a detailed podcast description for an episode about {episode_topic}.' }),
-  prompt_template_to_gen_short_description: z.string().openapi({ example: 'Create a short, catchy description for a podcast on {episode_topic}.' }),
-  prompt_template_to_gen_tag_list: z.string().openapi({ example: 'List relevant tags for a podcast about {episode_topic}.' }),
-  prompt_template_to_gen_audio_podcast: z.string().openapi({ example: 'Draft a script segment for an audio podcast discussing {segment_topic}.' }),
-  prompt_template_to_gen_video_thumbnail: z.string().openapi({ example: 'Describe a compelling thumbnail for a video about {video_topic}.' }),
-  prompt_template_to_gen_article_image: z.string().openapi({ example: 'Suggest an image concept for an article on {article_topic}.' }),
+  prompt_template_to_gen_audio_podcast: z.string().openapi({ example: 'Draft a script segment for an audio podcast discussing {segment_topic}.' }), // Assuming this column still exists in DB
+
+  // Renamed prompt templates
+  prompt_template_to_gen_article_metadata: z.string().openapi({ example: 'Generate detailed article metadata for an episode about {episode_topic}.' }), // was prompt_template_to_gen_description
+  prompt_template_to_gen_podcast_script: z.string().openapi({ example: 'Create a podcast script for an episode on {episode_topic}.' }),      // was prompt_template_to_gen_short_description
+  prompt_template_to_gen_video_bg: z.string().openapi({ example: 'Describe a video background for a podcast about {episode_topic}.' }),        // was prompt_template_to_gen_tag_list
+  prompt_template_to_gen_bg_music: z.string().openapi({ example: 'Suggest background music for a video about {video_topic}.' }),           // was prompt_template_to_gen_video_thumbnail
+  prompt_template_to_gen_intro_music: z.string().openapi({ example: 'Suggest intro music for an article on {article_topic}.' }),         // was prompt_template_to_gen_article_image
+
   language_code: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('CategoryBase');
 

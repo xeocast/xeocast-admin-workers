@@ -27,7 +27,13 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     }), 400);
   }
 
-  const { title, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type } = validationResult.data;
+  const { 
+    title, description, markdown_content, category_id, series_id, status, scheduled_publish_at, tags, type, 
+    // New fields from schema
+    script, source_background_music_bucket_key, source_intro_music_bucket_key, 
+    thumbnail_gen_prompt, article_image_gen_prompt, 
+    status_on_youtube, status_on_website, status_on_x, freezeStatus 
+  } = validationResult.data;
   let slug = validationResult.data.slug;
 
   if (!slug || slug.startsWith('temp-slug-')) {
@@ -44,9 +50,22 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     slugUniqueConditions.series_id = null; 
   }
 
-  // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL, but it's not in PodcastBaseSchema.
+  // Default status from schema is 'draft'. The DB schema has 'type' as NOT NULL.
   // Prepare tags for database insertion
   const tagsForDB = tags ? JSON.stringify(tags) : '[]';
+  
+  // Prepare script for database insertion (DB default is '[]', NOT NULL, json_valid)
+  // Use the raw 'script' from validationResult.data to check its type accurately
+  const rawScript = validationResult.data.script;
+  const scriptForDB = (typeof rawScript === 'string' && rawScript.trim() !== '') 
+                        ? rawScript 
+                        : '[]';
+
+  // freezeStatus default in DB is TRUE. If not a boolean in request, use true.
+  const rawFreezeStatus = validationResult.data.freezeStatus;
+  const freezeStatusForDB = typeof rawFreezeStatus === 'boolean' 
+                              ? rawFreezeStatus 
+                              : true;
 
   try {
     // Validate category_id
@@ -72,19 +91,33 @@ export const createPodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const stmt = c.env.DB.prepare(
       `INSERT INTO podcasts (
         title, slug, description, markdown_content, category_id, series_id, status, 
-        scheduled_publish_at, last_status_change_at, type, tags
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, CURRENT_TIMESTAMP, ?9, ?10)`
+        scheduled_publish_at, last_status_change_at, type, tags,
+        -- New fields from migration 0013
+        script, source_background_music_bucket_key, source_intro_music_bucket_key,
+        thumbnail_gen_prompt, article_image_gen_prompt,
+        status_on_youtube, status_on_website, status_on_x, freezeStatus
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, CURRENT_TIMESTAMP, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19)`
     ).bind(
-      title,
-      slug,
-      description,
-      markdown_content,
-      category_id,
-      series_id, // D1 handles null correctly for nullable INTEGER fields
-      status,
-      scheduled_publish_at, // D1 handles null correctly
-      type, // Use type from validated data
-      tagsForDB
+      title,                            //1
+      slug,                             //2
+      description,                      //3
+      markdown_content,                 //4
+      category_id,                      //5
+      series_id,                        //6 D1 handles null correctly for nullable INTEGER fields
+      status,                           //7
+      scheduled_publish_at,             //8 D1 handles null correctly
+      type,                             //9 Use type from validated data
+      tagsForDB,                        //10
+      // New fields
+      scriptForDB,                      //11
+      source_background_music_bucket_key, //12
+      source_intro_music_bucket_key,    //13
+      thumbnail_gen_prompt,             //14
+      article_image_gen_prompt,         //15
+      status_on_youtube,                //16
+      status_on_website,                //17
+      status_on_x,                      //18
+      freezeStatusForDB                 //19
     );
     
     const result = await stmt.run();

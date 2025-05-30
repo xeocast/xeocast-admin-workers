@@ -44,6 +44,14 @@ export const updatePodcastHandler = async (c: Context<{ Bindings: CloudflareEnv 
       processedUpdatePayload.tags = JSON.stringify(processedUpdatePayload.tags);
     }
   }
+
+  // Process script for database storage (must be valid JSON string or '[]')
+  if (processedUpdatePayload.script !== undefined) {
+    if (processedUpdatePayload.script === null || processedUpdatePayload.script.trim() === '') {
+      processedUpdatePayload.script = '[]'; // Store null or empty string as '[]'
+    }
+    // If it's a non-empty string, it's assumed to be valid JSON and used as is.
+  }
   // Slug will be handled after fetching existing podcast and determining if it needs update.
   // Remove slug from processedUpdatePayload initially, it will be added back if it changes.
   let slugForUpdate: string | null | undefined = undefined;

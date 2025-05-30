@@ -22,7 +22,19 @@ export const getCategoryByIdHandler = async (c: Context<{ Bindings: CloudflareEn
 
   try {
     const categoryRaw = await c.env.DB.prepare(
-      'SELECT * FROM categories WHERE id = ?1'
+      `SELECT 
+        id, name, slug, description, 
+        default_source_background_bucket_key, default_source_thumbnail_bucket_key,
+        first_comment_template, show_title, custom_url,
+        default_source_background_music_bucket_key, default_source_intro_music_bucket_key,
+        prompt_template_to_gen_evergreen_titles, prompt_template_to_gen_news_titles,
+        prompt_template_to_gen_series_titles, prompt_template_to_gen_article_content,
+        prompt_template_to_gen_audio_podcast, 
+        prompt_template_to_gen_article_metadata, prompt_template_to_gen_podcast_script,
+        prompt_template_to_gen_video_bg, prompt_template_to_gen_bg_music,
+        prompt_template_to_gen_intro_music, language_code,
+        created_at, updated_at
+      FROM categories WHERE id = ?1`
     ).bind(id).first<z.infer<typeof CategorySchema>>();
 
     if (!categoryRaw) {

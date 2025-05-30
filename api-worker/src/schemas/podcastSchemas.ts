@@ -16,7 +16,13 @@ export const PodcastMediaFormatSchema = z.enum(['audio', 'video', 'audiovisual']
 export const PodcastPublicationTypeSchema = z.enum(['evergreen', 'news']).openapi({ description: 'The publication type of the podcast (e.g., evergreen content or timely news).', example: 'evergreen' });
 
 export const PodcastStatusSchema = z.enum([
-  'draft', 'draftApproved', 'researching', 'researched', 'generatingThumbnail', 'thumbnailGenerated', 'generatingAudio', 'audioGenerated', 'generating', 'generated', 'generatedApproved', 'uploading', 'uploaded', 'published', 'unpublished'
+  'draft', 'draftApproved', 'researching', 'researched', 
+  'generatingThumbnail', 'thumbnailGenerated', 
+  'generatingAudio', 'audioGenerated', 
+  'generatingSources', 'sourcesGenerated', // New statuses
+  'generatingVideo', 'videoGenerated',   // New statuses
+  'generatedApproved', 
+  'published', 'unpublished'
 ]).openapi({description: 'The current status of the podcast.', example: 'draft'});
 
 const PodcastBaseSchema = z.object({
@@ -35,6 +41,17 @@ const PodcastBaseSchema = z.object({
   type: PodcastPublicationTypeSchema.openapi({ example: 'evergreen' }),
   scheduled_publish_at: z.string().datetime({ message: "Invalid datetime string. Must be UTC ISO 8601 format." }).optional().nullable().openapi({ example: '2024-12-31T23:59:59Z' }),
   status: PodcastStatusSchema.default('draft').optional().openapi({ example: 'draft' }),
+
+  // New fields from migration 0013
+  script: z.string().optional().nullable().openapi({ example: '[]', description: 'Podcast script, stored as a JSON string. Should be a valid JSON array.' }),
+  source_background_music_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/music/bg_music.mp3' }),
+  source_intro_music_bucket_key: z.string().optional().nullable().openapi({ example: 'podcasts/music/intro_music.mp3' }),
+  thumbnail_gen_prompt: z.string().optional().nullable().openapi({ example: 'A vibrant image of a microphone with sound waves.' }),
+  article_image_gen_prompt: z.string().optional().nullable().openapi({ example: 'A futuristic cityscape representing technology.' }),
+  status_on_youtube: z.enum(['none', 'scheduled', 'public', 'private', 'deleted']).optional().nullable().openapi({ example: 'none' }),
+  status_on_website: z.enum(['none', 'scheduled', 'public', 'private', 'deleted']).optional().nullable().openapi({ example: 'none' }),
+  status_on_x: z.enum(['none', 'scheduled', 'public', 'private', 'deleted']).optional().nullable().openapi({ example: 'none' }),
+  freezeStatus: z.boolean().optional().nullable().openapi({ example: true })
 }).openapi('PodcastBase');
 
 export const PodcastSchema = PodcastBaseSchema.extend({

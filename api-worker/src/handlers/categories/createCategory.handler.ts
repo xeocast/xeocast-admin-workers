@@ -58,31 +58,41 @@ export const createCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
     const stmt = c.env.DB.prepare(
       `INSERT INTO categories (
         name, slug, description, 
-        default_source_background_bucket_key, default_source_thumbnail_bucket_key,
+        default_source_background_bucket_key, default_source_thumbnail_bucket_key, -- existing general/video ones
+        first_comment_template, show_title, custom_url, -- new text fields
+        default_source_background_music_bucket_key, default_source_intro_music_bucket_key, -- new music bucket keys
         prompt_template_to_gen_evergreen_titles, prompt_template_to_gen_news_titles,
         prompt_template_to_gen_series_titles, prompt_template_to_gen_article_content,
-        prompt_template_to_gen_description, prompt_template_to_gen_short_description,
-        prompt_template_to_gen_tag_list, prompt_template_to_gen_audio_podcast,
-        prompt_template_to_gen_video_thumbnail, prompt_template_to_gen_article_image,
+        prompt_template_to_gen_audio_podcast, -- existing
+        prompt_template_to_gen_article_metadata, -- renamed from prompt_template_to_gen_description
+        prompt_template_to_gen_podcast_script, -- renamed from prompt_template_to_gen_short_description
+        prompt_template_to_gen_video_bg, -- renamed from prompt_template_to_gen_tag_list
+        prompt_template_to_gen_bg_music, -- renamed from prompt_template_to_gen_video_thumbnail
+        prompt_template_to_gen_intro_music, -- renamed from prompt_template_to_gen_article_image
         language_code
-      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16)`
+      ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21)`
     ).bind(
-      categoryData.name,
-      slug, // Use the potentially modified slug
-      categoryData.description,
-      categoryData.default_source_background_bucket_key,
-      categoryData.default_source_thumbnail_bucket_key,
-      categoryData.prompt_template_to_gen_evergreen_titles,
-      categoryData.prompt_template_to_gen_news_titles,
-      categoryData.prompt_template_to_gen_series_titles,
-      categoryData.prompt_template_to_gen_article_content,
-      categoryData.prompt_template_to_gen_description,
-      categoryData.prompt_template_to_gen_short_description,
-      categoryData.prompt_template_to_gen_tag_list,
-      categoryData.prompt_template_to_gen_audio_podcast,
-      categoryData.prompt_template_to_gen_video_thumbnail,
-      categoryData.prompt_template_to_gen_article_image,
-      categoryData.language_code
+      categoryData.name, //1
+      slug, // Use the potentially modified slug //2
+      categoryData.description, //3
+      categoryData.default_source_background_bucket_key, //4 (general/video)
+      categoryData.default_source_thumbnail_bucket_key, //5 (general/video)
+      categoryData.first_comment_template, //6 (new)
+      categoryData.show_title, //7 (new)
+      categoryData.custom_url, //8 (new)
+      categoryData.default_source_background_music_bucket_key, //9 (new music)
+      categoryData.default_source_intro_music_bucket_key, //10 (new music)
+      categoryData.prompt_template_to_gen_evergreen_titles, //11
+      categoryData.prompt_template_to_gen_news_titles, //12
+      categoryData.prompt_template_to_gen_series_titles, //13
+      categoryData.prompt_template_to_gen_article_content, //14
+      categoryData.prompt_template_to_gen_audio_podcast, //15
+      categoryData.prompt_template_to_gen_article_metadata, //16 (renamed)
+      categoryData.prompt_template_to_gen_podcast_script, //17 (renamed)
+      categoryData.prompt_template_to_gen_video_bg, //18 (renamed)
+      categoryData.prompt_template_to_gen_bg_music, //19 (renamed)
+      categoryData.prompt_template_to_gen_intro_music, //20 (renamed)
+      categoryData.language_code //21
     );
     
     const result = await stmt.run();

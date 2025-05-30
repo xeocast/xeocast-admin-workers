@@ -16,7 +16,16 @@ export const getPodcastByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
   const id = parseInt(paramValidation.data.id, 10);
 
   try {
-    const podcastDataFromDB = await c.env.DB.prepare('SELECT * FROM podcasts WHERE id = ?1').bind(id).first<any>();
+    const podcastDataFromDB = await c.env.DB.prepare(`
+      SELECT 
+        id, title, slug, description, markdown_content, category_id, series_id, status, 
+        scheduled_publish_at, last_status_change_at, type, tags, created_at, updated_at, user_id, 
+        duration_seconds, audio_bucket_key, video_bucket_key, thumbnail_bucket_key, article_image_bucket_key,
+        script, source_background_music_bucket_key, source_intro_music_bucket_key,
+        thumbnail_gen_prompt, article_image_gen_prompt,
+        status_on_youtube, status_on_website, status_on_x, freezeStatus
+      FROM podcasts WHERE id = ?1
+    `).bind(id).first<any>();
 
     if (!podcastDataFromDB) {
       return c.json(PodcastNotFoundErrorSchema.parse({ success: false, message: 'Podcast not found.' }), 404);

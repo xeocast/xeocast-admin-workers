@@ -59,7 +59,7 @@ export const listPodcastsHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   try {
     const podcastsQuery = c.env.DB.prepare(
-      `SELECT id, title, status, category_id, series_id, scheduled_publish_at, tags FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      `SELECT id, title, slug, status, category_id, series_id, scheduled_publish_at, tags FROM podcasts ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(
