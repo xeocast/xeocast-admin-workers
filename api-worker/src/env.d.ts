@@ -10,7 +10,8 @@ interface CloudflareEnv {
 	// D1 Database
 	DB: D1Database;
 	// R2 Buckets
-	PODCAST_PROJECTS_BUCKET: R2Bucket; // For episode projects
+	EPISODE_PROJECTS_BUCKET: R2Bucket; // For episode projects
+	DEFAULT_FILES_BUCKET: R2Bucket; // For default files
 	// Add other bindings like KV namespaces, etc.
 	// MY_KV_NAMESPACE: KVNamespace;
 }
