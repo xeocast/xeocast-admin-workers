@@ -2,9 +2,9 @@
 import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
 import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
-import { updateCategoryHandler } from '../categories/updateCategory.handler';
+import { updateShowHandler } from '../shows/updateShow.handler';
 import { updateSeriesHandler } from '../series/updateSeries.handler';
-import { updatePodcastHandler } from '../podcasts/updatePodcast.handler';
+import { updateEpisodeHandler } from '../episodes/updateEpisode.handler';
 
 interface UpdateResponse { 
   success: boolean; 
@@ -17,7 +17,7 @@ interface Item {
 
 async function processBatch(
   c: Context<{ Bindings: CloudflareEnv }>,
-  entityType: 'categories' | 'series' | 'podcasts',
+  entityType: 'shows' | 'series' | 'episodes',
   items: Item[]
 ): Promise<{ successCount: number; errorCount: number; errors: string[] }> {
   let successCount = 0;
@@ -44,12 +44,12 @@ async function processBatch(
 
       let actualResponse: Response;
 
-      if (entityType === 'categories') {
-        actualResponse = await updateCategoryHandler(handlerContext);
+      if (entityType === 'shows') {
+        actualResponse = await updateShowHandler(handlerContext);
       } else if (entityType === 'series') {
         actualResponse = await updateSeriesHandler(handlerContext);
-      } else { // podcasts
-        actualResponse = await updatePodcastHandler(handlerContext);
+      } else { // episodes
+        actualResponse = await updateEpisodeHandler(handlerContext);
       }
 
       if (actualResponse.ok) {
@@ -83,35 +83,35 @@ export const regenerateSlugsHandler = async (c: Context<{ Bindings: CloudflareEn
   try {
     const db = c.env.DB;
 
-    const categoriesQuery = db.prepare("SELECT id FROM categories WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
+    const showsQuery = db.prepare("SELECT id FROM shows WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
     const seriesQuery = db.prepare("SELECT id FROM series WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
-    const podcastsQuery = db.prepare("SELECT id FROM podcasts WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
+    const episodesQuery = db.prepare("SELECT id FROM episodes WHERE slug = '' OR slug LIKE 'temp-slug-%'").all<Item>();
 
-    const [categoriesResult, seriesResult, podcastsResult] = await Promise.all([categoriesQuery, seriesQuery, podcastsQuery]);
+    const [showsResult, seriesResult, episodesResult] = await Promise.all([showsQuery, seriesQuery, episodesQuery]);
 
-    if (!categoriesResult?.results || !seriesResult?.results || !podcastsResult?.results) {
+    if (!showsResult?.results || !seriesResult?.results || !episodesResult?.results) {
         return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to fetch items from database or results are null.'}), 500);
     }
     
-    const categories = categoriesResult.results;
+    const shows = showsResult.results;
     const series = seriesResult.results;
-    const podcasts = podcastsResult.results;
+    const episodes = episodesResult.results;
     
-    const categoryProcessingResults = await processBatch(c, 'categories', categories);
+    const showProcessingResults = await processBatch(c, 'shows', shows);
     const seriesProcessingResults = await processBatch(c, 'series', series);
-    const podcastProcessingResults = await processBatch(c, 'podcasts', podcasts);
+    const episodeProcessingResults = await processBatch(c, 'episodes', episodes);
 
-    const totalSuccess = categoryProcessingResults.successCount + seriesProcessingResults.successCount + podcastProcessingResults.successCount;
-    const totalErrors = categoryProcessingResults.errorCount + seriesProcessingResults.errorCount + podcastProcessingResults.errorCount;
+    const totalSuccess = showProcessingResults.successCount + seriesProcessingResults.successCount + episodeProcessingResults.successCount;
+    const totalErrors = showProcessingResults.errorCount + seriesProcessingResults.errorCount + episodeProcessingResults.errorCount;
 
-    const allErrors = [...categoryProcessingResults.errors, ...seriesProcessingResults.errors, ...podcastProcessingResults.errors];
+    const allErrors = [...showProcessingResults.errors, ...seriesProcessingResults.errors, ...episodeProcessingResults.errors];
 
     const responseBody = {
       message: '',
       details: {
-        categories: categoryProcessingResults,
+        shows: showProcessingResults,
         series: seriesProcessingResults,
-        podcasts: podcastProcessingResults,
+        episodes: episodeProcessingResults,
       },
       errors: allErrors.length > 0 ? allErrors : undefined,
     };

@@ -25,13 +25,13 @@ export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
     }
 
-    // 2. Check for associated podcasts
-    const associatedPodcast = await c.env.DB.prepare('SELECT id FROM podcasts WHERE series_id = ?1 LIMIT 1')
+    // 2. Check for associated episodes
+    const associatedEpisode = await c.env.DB.prepare('SELECT id FROM episodes WHERE series_id = ?1 LIMIT 1')
       .bind(id)
       .first<{ id: number }>();
 
-    if (associatedPodcast) {
-      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Cannot delete series: It has associated podcasts.' }), 400);
+    if (associatedEpisode) {
+      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Cannot delete series: It has associated episodes.' }), 400);
     }
 
     // 3. Delete series

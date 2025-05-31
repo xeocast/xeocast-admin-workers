@@ -26,56 +26,50 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   }
 
   const {
-    category_id,
+    show_id,
     youtube_platform_id,
-    name, // maps to DB 'title'
-    description, // maps to DB 'description'
-    default_language, // maps to DB 'language_code'
-    default_category_id_on_youtube, // maps to DB 'youtube_platform_category_id'
-    prompt_template_for_description, // maps to DB 'video_description_template'
-    prompt_template_for_first_comment, // maps to DB 'first_comment_template'
-    // Fields like custom_url, thumbnail_url, prompt_template_for_title, prompt_template_for_tags are ignored as they are not in DB table
+    title, // formerly name
+    description,
+    language_code, // formerly default_language
+    youtube_platform_category_id, // formerly default_show_id_on_youtube
+    video_description_template, // formerly prompt_template_for_description
+    first_comment_template, // formerly prompt_template_for_first_comment
+    custom_url,
+    thumbnail_url,
+    country,
+    youtube_playlist_id_for_uploads,
+    video_title_template,
+    video_tags_template,
+    
   } = validationResult.data;
 
-  // Explicit validation for fields that are NOT NULL in DB but optional in Zod schema
-  if (description === undefined || description === null) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'description' is required." }), 400);
-  }
-  if (!default_language) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'default_language' is required." }), 400);
-  }
-  if (default_language.length !== 2 && default_language.length !== 5) { // Basic check for 'en' or 'en-US' like format
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'default_language' must be a valid language code (e.g., 'en' or 'en-US')." }), 400);
-  }
-  if (!default_category_id_on_youtube) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'default_category_id_on_youtube' is required." }), 400);
-  }
-  if (!prompt_template_for_description) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'prompt_template_for_description' is required." }), 400);
-  }
-  if (!prompt_template_for_first_comment) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: "Field 'prompt_template_for_first_comment' is required." }), 400);
-  }
+  // Validations for fields now handled by Zod schema (required, specific formats like language_code length)
 
   try {
-    // Check if category_id exists in 'categories' table
-    const categoryCheckStmt = c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1').bind(category_id);
-    const categoryExists = await categoryCheckStmt.first();
-    if (!categoryExists) {
-        return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: `Category with id ${category_id} not found.` }), 400);
+    // Check if show_id exists in 'shows' table
+    const showCheckStmt = c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1').bind(show_id);
+    const showExists = await showCheckStmt.first();
+    if (!showExists) {
+        return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: `Show with id ${show_id} not found.` }), 400);
     }
 
     const stmt = c.env.DB.prepare(
-      'INSERT INTO youtube_channels (category_id, youtube_platform_id, title, description, language_code, youtube_platform_category_id, video_description_template, first_comment_template) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)'
+      'INSERT INTO youtube_channels (show_id, youtube_platform_id, title, description, custom_url, thumbnail_url, country, language_code, youtube_playlist_id_for_uploads, youtube_platform_category_id, video_title_template, video_description_template, video_tags_template, first_comment_template) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)'
     ).bind(
-        category_id, 
+        show_id, 
         youtube_platform_id, 
-        name, // Zod 'name' -> DB 'title'
+        title, 
         description, 
-        default_language, // Zod 'default_language' -> DB 'language_code'
-        default_category_id_on_youtube, // Zod 'default_category_id_on_youtube' -> DB 'youtube_platform_category_id'
-        prompt_template_for_description, // Zod 'prompt_template_for_description' -> DB 'video_description_template'
-        prompt_template_for_first_comment // Zod 'prompt_template_for_first_comment' -> DB 'first_comment_template'
+        custom_url, 
+        thumbnail_url, 
+        country, 
+        language_code, 
+        youtube_playlist_id_for_uploads, 
+        youtube_platform_category_id, 
+        video_title_template, 
+        video_description_template, 
+        video_tags_template, 
+        first_comment_template
     );
     
     const result = await stmt.run();

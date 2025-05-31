@@ -2,12 +2,12 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
-  ExternalTaskCreateRequestSchema,
+  CreateExternalTaskSchema as ExternalTaskCreateRequestSchema,
   ExternalTaskCreateResponseSchema,
   ListExternalTasksQuerySchema,
   ListExternalTasksResponseSchema,
   GetExternalTaskResponseSchema,
-  ExternalTaskUpdateRequestSchema,
+  UpdateExternalTaskSchema as ExternalTaskUpdateRequestSchema,
   ExternalTaskUpdateResponseSchema,
   ExternalTaskDeleteResponseSchema,
   ExternalTaskSchema,

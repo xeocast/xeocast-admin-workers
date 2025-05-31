@@ -1,23 +1,23 @@
 import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
 import {
-  CategoryUpdateRequestSchema,
-  CategoryUpdateResponseSchema,
-  CategoryNotFoundErrorSchema,
-  CategoryNameExistsErrorSchema,
-  CategorySlugExistsErrorSchema,
-  CategoryUpdateFailedErrorSchema
-} from '../../schemas/categorySchemas';
+  ShowUpdateRequestSchema,
+  ShowUpdateResponseSchema,
+  ShowNotFoundErrorSchema,
+  ShowNameExistsErrorSchema,
+  ShowSlugExistsErrorSchema,
+  ShowUpdateFailedErrorSchema
+} from '../../schemas/showSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
-interface ExistingCategory {
+interface ExistingShow {
   id: number;
   name: string;
   slug: string | null;
 }
 
-export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
@@ -29,13 +29,13 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(CategoryUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = CategoryUpdateRequestSchema.safeParse(requestBody);
+  const validationResult = ShowUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    console.error('Update category validation error:', validationResult.error.flatten());
-    return c.json(CategoryUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid input for updating category.' }), 400);
+    console.error('Update show validation error:', validationResult.error.flatten());
+    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid input for updating show.' }), 400);
   }
 
   const updateData = validationResult.data;
@@ -45,20 +45,20 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
   }
 
   try {
-    // Check if category exists and get its current name and slug
-    const existingCategory = await c.env.DB.prepare('SELECT id, name, slug FROM categories WHERE id = ?1').bind(id).first<ExistingCategory>();
-    if (!existingCategory) {
-      return c.json(CategoryNotFoundErrorSchema.parse({ success: false, message: 'Category not found.' }), 404);
+    // Check if show exists and get its current name and slug
+    const existingShow = await c.env.DB.prepare('SELECT id, name, slug FROM shows WHERE id = ?1').bind(id).first<ExistingShow>();
+    if (!existingShow) {
+      return c.json(ShowNotFoundErrorSchema.parse({ success: false, message: 'Show not found.' }), 404);
     }
 
     // If name is being updated, check for conflicts
     if (updateData.name) {
-      const existingCategoryWithName = await c.env.DB.prepare(
-        'SELECT id FROM categories WHERE name = ?1 AND id != ?2'
+      const existingShowWithName = await c.env.DB.prepare(
+        'SELECT id FROM shows WHERE name = ?1 AND id != ?2'
       ).bind(updateData.name, id).first<{ id: number }>();
 
-      if (existingCategoryWithName) {
-        return c.json(CategoryNameExistsErrorSchema.parse({ success: false, message: 'Category name already exists.' }), 400);
+      if (existingShowWithName) {
+        return c.json(ShowNameExistsErrorSchema.parse({ success: false, message: 'Show name already exists.' }), 400);
       }
     }
 
@@ -69,28 +69,28 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
     if (updateData.slug !== undefined) { // User explicitly sent a slug field
       if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
         // Regenerate slug based on name (new name if provided, else old name)
-        const nameForSlug = updateData.name || existingCategory.name;
-        newSlugValue = generateSlug(nameForSlug) || `category-${id}-${Date.now()}`; // Fallback for empty generated slug
+        const nameForSlug = updateData.name || existingShow.name;
+        newSlugValue = generateSlug(nameForSlug) || `show-${id}-${Date.now()}`; // Fallback for empty generated slug
       } else {
         // User provided a concrete slug
         newSlugValue = updateData.slug;
       }
-    } else if (updateData.name && updateData.name !== existingCategory.name) {
+    } else if (updateData.name && updateData.name !== existingShow.name) {
       // Name changed, slug not provided, so regenerate slug
-      newSlugValue = generateSlug(updateData.name) || `category-${id}-${Date.now()}`; // Fallback for empty generated slug
+      newSlugValue = generateSlug(updateData.name) || `show-${id}-${Date.now()}`; // Fallback for empty generated slug
     }
 
     // If a new slug value was determined (either from input or generation)
     if (newSlugValue !== undefined) {
       if (typeof newSlugValue === 'string' && newSlugValue.trim() !== '') {
-        const uniqueSlug = await ensureUniqueSlug(c.env.DB, newSlugValue, 'categories', 'slug', 'id', id);
-        if (uniqueSlug !== existingCategory.slug) {
+        const uniqueSlug = await ensureUniqueSlug(c.env.DB, newSlugValue, 'shows', 'slug', 'id', id);
+        if (uniqueSlug !== existingShow.slug) {
           newSlugValue = uniqueSlug;
           slugNeedsDatabaseUpdate = true;
         }
       } else if (newSlugValue === null) {
         // User wants to set slug to null
-        if (existingCategory.slug !== null) {
+        if (existingShow.slug !== null) {
           slugNeedsDatabaseUpdate = true;
           // newSlugValue is already null
         }
@@ -98,7 +98,7 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
         // Slug became empty string, treat as no change or invalid based on schema (schema implies slug can be null but not empty string if validated properly)
         // For safety, if it's an empty string and was not null, consider it a change to null if allowed, or ignore.
         // Assuming empty string slug is not desired, and it should become null if it was previously non-null.
-        if (existingCategory.slug !== null && newSlugValue.trim() === '') {
+        if (existingShow.slug !== null && newSlugValue.trim() === '') {
             newSlugValue = null; // Convert empty string to null
             slugNeedsDatabaseUpdate = true;
         }
@@ -127,14 +127,14 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
       // No actual data fields to update (e.g., only slug was provided but it resulted in no change, or empty payload)
       // However, the initial check for Object.keys(updateData).length === 0 should catch empty payloads.
       // If slug was the only field and it didn't change, this path might be hit.
-      return c.json(CategoryUpdateResponseSchema.parse({ success: true, message: 'No effective changes to apply.' }), 200);
+      return c.json(ShowUpdateResponseSchema.parse({ success: true, message: 'No effective changes to apply.' }), 200);
     }
 
     setClauses.push(`updated_at = CURRENT_TIMESTAMP`); // Always update timestamp
 
     bindings.push(id); // For the WHERE clause
     const stmt = c.env.DB.prepare(
-      `UPDATE categories SET ${setClauses.join(', ')} WHERE id = ?${paramIndex}`
+      `UPDATE shows SET ${setClauses.join(', ')} WHERE id = ?${paramIndex}`
     ).bind(...bindings);
 
     const result = await stmt.run();
@@ -142,14 +142,14 @@ export const updateCategoryHandler = async (c: Context<{ Bindings: CloudflareEnv
     if (result.success) {
         // D1's run() result for UPDATE doesn't directly confirm a row was changed if values were same.
         // It indicates the query executed. We assume success if no error.
-        return c.json(CategoryUpdateResponseSchema.parse({ success: true, message: 'Category updated successfully.' }), 200);
+        return c.json(ShowUpdateResponseSchema.parse({ success: true, message: 'Show updated successfully.' }), 200);
     } else {
-      console.error('Failed to update category, D1 result:', result);
-      return c.json(CategoryUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update category.' }), 500);
+      console.error('Failed to update show, D1 result:', result);
+      return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update show.' }), 500);
     }
 
   } catch (error) {
-    console.error('Error updating category:', error);
-    return c.json(CategoryUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update category.' }), 500);
+    console.error('Error updating show:', error);
+    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update show.' }), 500);
   }
 };

@@ -10,17 +10,17 @@ import {
 // Base schema for series properties
 const SeriesBaseSchema = z.object({
   title: z.string().min(1).max(255)
-    .openapi({ example: 'My Awesome Podcast Series', description: 'The title of the series.' }),
-  slug: z.string().max(255).optional().openapi({ example: 'my-awesome-podcast-series', description: 'The URL-friendly slug for the series. Auto-generated if not provided.' }),
+    .openapi({ example: 'My Awesome Episode Series', description: 'The title of the series.' }),
+  slug: z.string().max(255).optional().openapi({ example: 'my-awesome-episode-series', description: 'The URL-friendly slug for the series. Auto-generated if not provided.' }),
   description: z.string().max(5000).optional()
     .openapi({ example: 'A series about interesting topics.', description: 'A detailed description of the series.' }),
-  category_id: z.number().int().positive()
-    .openapi({ example: 1, description: 'The ID of the category this series belongs to.' })
+  show_id: z.number().int().positive()
+    .openapi({ example: 1, description: 'The ID of the show this series belongs to.' })
 }).openapi('SeriesBase');
 
 // Full Series schema for API responses
 export const SeriesSchema = SeriesBaseSchema.omit({ slug: true }).extend({
-  slug: z.string().max(255).openapi({ example: 'my-awesome-podcast-series', description: 'The URL-friendly slug for the series.' }), // Made non-optional for responses
+  slug: z.string().max(255).openapi({ example: 'my-awesome-episode-series', description: 'The URL-friendly slug for the series.' }), // Made non-optional for responses
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the series.' }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
@@ -39,9 +39,9 @@ export const SeriesCreateResponseSchema = MessageResponseSchema.extend({
 // Schema for the summary of a series, used in lists
 export const SeriesSummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
-  title: z.string().openapi({ example: 'My Awesome Podcast Series' }),
-  slug: z.string().optional().openapi({ example: 'my-awesome-podcast-series' }),
-  category_id: z.number().int().positive().openapi({ example: 1 })
+  title: z.string().openapi({ example: 'My Awesome Episode Series' }),
+  slug: z.string().max(255).openapi({ example: 'my-awesome-episode-series' }),
+  show_id: z.number().int().positive().openapi({ example: 1 })
 }).openapi('SeriesSummary');
 
 // Schema for listing series
@@ -73,11 +73,11 @@ export const SeriesDeleteResponseSchema = MessageResponseSchema.extend({
 // --- Specific Error Schemas for Series ---
 export const SeriesCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
   message: z.string().openapi({ example: 'Failed to create series.' })
-  // Add specific field errors if needed, e.g., title_exists_in_category
+  // Add specific field errors if needed, e.g., title_exists_in_show
 }).openapi('SeriesCreateFailedError');
 
 export const SeriesSlugExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.literal("Series slug already exists in this category.")
+  message: z.literal("Series slug already exists in this show.")
 }).openapi('SeriesSlugExistsError');
 
 export const SeriesUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
@@ -85,7 +85,7 @@ export const SeriesUpdateFailedErrorSchema = GeneralBadRequestErrorSchema.extend
 }).openapi('SeriesUpdateFailedError');
 
 export const SeriesDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-  message: z.string().openapi({ example: 'Cannot delete series: It has associated podcasts.' })
+  message: z.string().openapi({ example: 'Cannot delete series: It has associated episodes.' })
 }).openapi('SeriesDeleteFailedError');
 
 export const SeriesNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({

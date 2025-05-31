@@ -18,7 +18,6 @@ export const deleteObjectHandler: Handler<{
     Variables: {};
 }> = async (c) => {
     try {
-        console.log(c.req.param());
         const { logicalBucketName, objectKey } = c.req.param() as z.infer<typeof ObjectPathParamsSchema>;
 
         const parsedParams = ObjectPathParamsSchema.safeParse({ logicalBucketName, objectKey });

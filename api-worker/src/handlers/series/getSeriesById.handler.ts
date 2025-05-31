@@ -12,7 +12,7 @@ interface SeriesFromDB {
   title: string;
   slug: string; // Added slug
   description: string | null;
-  category_id: number;
+  show_id: number;
   created_at: string;
   updated_at: string;
 }
@@ -27,7 +27,7 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   try {
     const dbSeries = await c.env.DB.prepare(
-      'SELECT id, title, slug, description, category_id, created_at, updated_at FROM series WHERE id = ?1' // Added slug to query
+      'SELECT id, title, slug, description, show_id, created_at, updated_at FROM series WHERE id = ?1' // Added slug to query
     ).bind(id).first<SeriesFromDB>();
 
     if (!dbSeries) {

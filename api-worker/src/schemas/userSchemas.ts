@@ -10,13 +10,23 @@ import {
 
 // Base schema for user properties, used for creation and updates
 const UserBaseSchema = z.object({
+  username: z.string().min(3).max(50).openapi({ example: 'john.doe' }),
   email: z.string().email().max(255).openapi({ example: 'user@example.com' }),
-  name: z.string().max(255).optional().openapi({ example: 'John Doe' }),
+  first_name: z.string().max(100).optional().nullable().openapi({ example: 'John' }),
+  last_name: z.string().max(100).optional().nullable().openapi({ example: 'Doe' }),
+  bio: z.string().max(1000).optional().nullable().openapi({ example: 'Loves coding and hiking.' }),
+  profile_picture_url: z.string().url().max(2048).optional().nullable().openapi({ example: 'https://example.com/profile.jpg' }),
 }).openapi('UserBase');
 
 // Full User schema for API responses (excluding sensitive data like password_hash)
 export const UserSchema = UserBaseSchema.extend({
-  id: z.number().int().positive().openapi({ example: 1 }),
+  user_id: z.number().int().positive().openapi({ example: 1 }),
+  is_active: z.boolean().openapi({ example: true }),
+  is_verified: z.boolean().openapi({ example: false }),
+  last_login_at: z.coerce.date().nullable().openapi({ example: '2023-01-15T10:30:00Z' }),
+  failed_login_attempts: z.number().int().min(0).openapi({ example: 0 }),
+  lockout_until: z.coerce.date().nullable().openapi({ example: null }),
+  is_two_factor_enabled: z.boolean().openapi({ example: false }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
 }).openapi('User');
@@ -44,9 +54,11 @@ export const GetUserResponseSchema = z.object({
 }).openapi('GetUserResponse');
 
 // Schema for updating an existing user (all fields optional)
+// Schema for updating an existing user (all fields optional)
 export const UserUpdateRequestSchema = UserBaseSchema.extend({
-    email: UserBaseSchema.shape.email.optional(),
-    password: z.string().min(8).max(255).optional().openapi({ example: 'NewSecurePassword123', description: 'Only provide if changing the password.' }),
+  // All fields from UserBaseSchema are already optional due to .partial() below
+  // We only need to explicitly add password here if it's not in UserBaseSchema
+  password: z.string().min(8).max(255).optional().openapi({ example: 'NewSecurePassword123', description: 'Only provide if changing the password.' }),
 }).partial().openapi('UserUpdateRequest');
 
 export const UserUpdateResponseSchema = MessageResponseSchema.extend({

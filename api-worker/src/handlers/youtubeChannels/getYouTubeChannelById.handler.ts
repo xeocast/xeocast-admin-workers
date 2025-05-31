@@ -12,18 +12,20 @@ import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSche
 const mapDbRowToYouTubeChannel = (row: any): z.infer<typeof YouTubeChannelSchema> => {
   return YouTubeChannelSchema.parse({
     id: row.id,
-    category_id: row.category_id,
+    show_id: row.show_id,
     youtube_platform_id: row.youtube_platform_id,
-    name: row.title, // DB 'title' -> Zod 'name'
+    title: row.title,
     description: row.description,
     custom_url: row.custom_url || null, 
     thumbnail_url: row.thumbnail_url || null, 
-    default_language: row.language_code, // DB 'language_code' -> Zod 'default_language'
-    default_category_id_on_youtube: row.youtube_platform_category_id, // DB 'youtube_platform_category_id' -> Zod 'default_category_id_on_youtube'
-    prompt_template_for_title: row.prompt_template_for_title || null, 
-    prompt_template_for_description: row.video_description_template, // DB 'video_description_template' -> Zod 'prompt_template_for_description'
-    prompt_template_for_tags: row.prompt_template_for_tags || null, 
-    prompt_template_for_first_comment: row.first_comment_template, // DB 'first_comment_template' -> Zod 'prompt_template_for_first_comment'
+    country: row.country || null, // Added field
+    language_code: row.language_code, // Renamed from default_language
+    youtube_playlist_id_for_uploads: row.youtube_playlist_id_for_uploads || null, // Added field
+    youtube_platform_category_id: row.youtube_platform_category_id, // Renamed from default_show_id_on_youtube
+    video_title_template: row.video_title_template || null, // Renamed from prompt_template_for_title
+    video_description_template: row.video_description_template, // Renamed from prompt_template_for_description
+    video_tags_template: row.video_tags_template || null, // Renamed from prompt_template_for_tags
+    first_comment_template: row.first_comment_template, // Renamed from prompt_template_for_first_comment
     created_at: row.created_at,
     updated_at: row.updated_at,
   });
@@ -44,7 +46,7 @@ export const getYouTubeChannelByIdHandler = async (c: Context<{ Bindings: Cloudf
 
   try {
     const stmt = c.env.DB.prepare(
-      'SELECT id, category_id, youtube_platform_id, title, description, language_code, youtube_platform_category_id, video_description_template, first_comment_template, created_at, updated_at FROM youtube_channels WHERE id = ?1'
+      'SELECT id, show_id, youtube_platform_id, title, description, custom_url, thumbnail_url, country, language_code, youtube_playlist_id_for_uploads, youtube_platform_category_id, video_title_template, video_description_template, video_tags_template, first_comment_template, created_at, updated_at FROM youtube_channels WHERE id = ?1'
     ).bind(id);
     
     const row = await stmt.first();

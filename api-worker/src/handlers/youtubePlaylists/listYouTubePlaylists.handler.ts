@@ -15,9 +15,9 @@ const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSc
     youtube_platform_id: dbRow.youtube_platform_id,
     title: dbRow.title,
     description: dbRow.description,
-    youtube_channel_id: dbRow.channel_id, // DB stores as channel_id
+    channel_id: dbRow.channel_id, // DB stores as channel_id, schema now expects channel_id
     series_id: dbRow.series_id,
-    // thumbnail_url is not in the DB table for playlists
+    // thumbnail_url was removed from schema
     created_at: typeof dbRow.created_at === 'number' ? new Date(dbRow.created_at * 1000).toISOString() : dbRow.created_at,
     updated_at: typeof dbRow.updated_at === 'number' ? new Date(dbRow.updated_at * 1000).toISOString() : dbRow.updated_at,
   });
@@ -30,7 +30,7 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid query parameters.'}), 400);
   }
 
-  const { series_id, youtube_channel_id } = queryParseResult.data;
+  const { series_id, channel_id } = queryParseResult.data; // Renamed from youtube_channel_id
 
   try {
     let query = 'SELECT id, youtube_platform_id, title, description, channel_id, series_id, created_at, updated_at FROM youtube_playlists';
@@ -44,9 +44,9 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
       bindingIdx++;
     }
 
-    if (youtube_channel_id !== undefined) {
+    if (channel_id !== undefined) {
       conditions.push(`channel_id = ?${bindingIdx}`); // DB uses channel_id
-      bindings.push(youtube_channel_id);
+      bindings.push(channel_id);
       bindingIdx++;
     }
 

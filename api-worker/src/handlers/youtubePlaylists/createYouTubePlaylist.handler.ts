@@ -28,18 +28,18 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
   const { 
     series_id,
-    youtube_channel_id, // maps to channel_id in DB
+    channel_id, // Renamed from youtube_channel_id
     youtube_platform_id,
     title,
-    description,
-    // thumbnail_url is in schema but not DB, so it's ignored here
+    description, // Now non-nullable as per updated schema
+    // thumbnail_url was removed from schema
   } = validationResult.data;
 
   try {
     // Validate foreign keys
-    const channelExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(youtube_channel_id).first();
+    const channelExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(channel_id).first();
     if (!channelExists) {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: `YouTube channel with id ${youtube_channel_id} not found.` }), 400);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: `YouTube channel with id ${channel_id} not found.` }), 400);
     }
 
     const seriesExists = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(series_id).first();
@@ -61,7 +61,7 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
     const stmt = c.env.DB.prepare(
       'INSERT INTO youtube_playlists (youtube_platform_id, title, description, channel_id, series_id) VALUES (?1, ?2, ?3, ?4, ?5)'
-    ).bind(youtube_platform_id, title, description ?? null, youtube_channel_id, series_id);
+    ).bind(youtube_platform_id, title, description, channel_id, series_id);
     
     const result = await stmt.run();
 

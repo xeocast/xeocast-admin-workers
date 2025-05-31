@@ -10,29 +10,33 @@ import {
 
 // Base schema for YouTube channel properties
 const YouTubeChannelBaseSchema = z.object({
-  category_id: z.number().int().positive()
-    .openapi({ example: 1, description: 'The ID of the category this YouTube channel is associated with.' }),
+  show_id: z.number().int().positive()
+    .openapi({ example: 1, description: 'The ID of the show this YouTube channel is associated with.' }),
   youtube_platform_id: z.string().min(1).max(100)
     .openapi({ example: 'UCxxxxxxxxxxxxxxxxx', description: 'The unique YouTube Channel ID (platform ID).' }),
-  name: z.string().min(1).max(255)
-    .openapi({ example: 'My Awesome Channel', description: 'The name of the YouTube channel.' }),
-  description: z.string().max(5000).nullable().optional()
+  title: z.string().min(1).max(255) // Renamed from name
+    .openapi({ example: 'My Awesome Channel', description: 'The title (name) of the YouTube channel.' }),
+  description: z.string().max(5000) // Now required, was nullable().optional()
     .openapi({ example: 'Channel discussing interesting topics.', description: 'A description for the YouTube channel.' }),
   custom_url: z.string().max(255).nullable().optional()
     .openapi({ example: '@MyAwesomeChannel', description: 'The custom URL handle of the YouTube channel.' }),
   thumbnail_url: z.string().url().max(2048).nullable().optional()
     .openapi({ example: 'https://yt3.ggpht.com/...', description: 'URL of the channel\'s default thumbnail.' }),
-  default_language: z.string().max(10).nullable().optional() // e.g., en, en-US
-    .openapi({ example: 'en-US', description: 'Default language for videos uploaded to this channel.' }),
-  default_category_id_on_youtube: z.string().max(50).nullable().optional() // YouTube's category ID (e.g., '22' for People & Blogs)
-    .openapi({ example: '22', description: 'Default YouTube category ID for videos.' }),
-  prompt_template_for_title: z.string().max(2000).nullable().optional()
+  country: z.string().length(2).nullable().optional() // Added field, ISO 3166-1 alpha-2 code
+    .openapi({ example: 'US', description: 'Country affiliation of the channel (ISO 3166-1 alpha-2 code).' }),
+  language_code: z.string().min(2).max(10) // Renamed from default_language, now required
+    .openapi({ example: 'en-US', description: 'Default language for videos (e.g., en, en-US).' }),
+  youtube_playlist_id_for_uploads: z.string().min(1).max(100).nullable().optional() // Added field
+    .openapi({ example: 'UUxxxxxxxxxxxxxxxxx', description: 'Playlist ID for all uploads from this channel.' }),
+  youtube_platform_category_id: z.string().max(50) // Renamed from default_show_id_on_youtube, now required
+    .openapi({ example: '22', description: 'Default YouTube category ID for videos (e.g., People & Blogs is 22).' }),
+  video_title_template: z.string().max(2000).nullable().optional() // Renamed from prompt_template_for_title
     .openapi({ example: 'New Video: {topic} - Episode {ep_number}', description: 'Template for generating video titles.' }),
-  prompt_template_for_description: z.string().max(10000).nullable().optional()
+  video_description_template: z.string().max(10000) // Renamed from prompt_template_for_description, now required
     .openapi({ example: 'In this episode, we discuss {topic_details}.\n\nKeywords: {keywords}', description: 'Template for generating video descriptions.' }),
-  prompt_template_for_tags: z.string().max(1000).nullable().optional()
-    .openapi({ example: '{topic}, {guest_name}, podcast, new episode', description: 'Template for generating video tags.' }),
-  prompt_template_for_first_comment: z.string().max(2000).nullable().optional()
+  video_tags_template: z.string().max(1000).nullable().optional() // Renamed from prompt_template_for_tags
+    .openapi({ example: '{topic}, {guest_name}, episode, new episode', description: 'Template for generating video tags.' }),
+  first_comment_template: z.string().max(2000) // Renamed from prompt_template_for_first_comment, now required
     .openapi({ example: 'Join the discussion! What are your thoughts on {topic}?', description: 'Template for the first comment on videos.' }),
 }).openapi('YouTubeChannelBase');
 
@@ -53,10 +57,10 @@ export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
 
 // Schema for query parameters when listing YouTube channels
 export const ListYouTubeChannelsQuerySchema = z.object({
-  category_id: z.string().optional() // Keep as string for query param
+  show_id: z.string().optional() // Keep as string for query param
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
-    .openapi({ description: 'Filter by category ID.', example: '1' }),
+    .openapi({ description: 'Filter by show ID.', example: '1' }),
 }).openapi('ListYouTubeChannelsQuery');
 
 // Schema for listing YouTube channels

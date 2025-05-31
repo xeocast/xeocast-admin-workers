@@ -75,7 +75,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }
     if (updateData.description !== undefined) {
       fieldsToUpdate.push(`description = ?${bindIndex}`);
-      valuesToBind.push(updateData.description === null ? null : updateData.description);
+      valuesToBind.push(updateData.description); // updateData.description will be a string if present
       bindIndex++;
     }
     if (updateData.permissions !== undefined) {

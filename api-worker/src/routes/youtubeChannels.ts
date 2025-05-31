@@ -55,7 +55,7 @@ const listChannelsRouteDef = createRoute({
     400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid query parameters)' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
-  summary: 'Lists all YouTube channels, optionally filtered by category ID.',
+  summary: 'Lists all YouTube channels, optionally filtered by show ID.',
   tags: ['YouTubeChannels'],
 });
 youtubeChannelRoutes.openapi(listChannelsRouteDef, listYouTubeChannelsHandler);

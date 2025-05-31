@@ -10,7 +10,7 @@ import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSche
 interface RoleFromDB {
   id: number;
   name: string;
-  description: string | null;
+  description: string; // Changed from string | null
   permissions: string; // JSON string
   created_at: string;
   updated_at: string;
@@ -47,7 +47,7 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
 
     const roleForValidation = {
       ...dbRole,
-      description: dbRole.description === null ? undefined : dbRole.description,
+      description: dbRole.description, // Directly use dbRole.description as it's now string
       permissions: parsedPermissions,
     };
 

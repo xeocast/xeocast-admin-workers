@@ -12,12 +12,10 @@ import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema, PaginationInfoS
 
 interface ExternalTaskFromDB {
   id: number;
-  external_task_id: string | null; // Mapped to external_service_id in schema
-  type: z.infer<typeof ExternalTaskTypeSchema>; // Mapped to task_type in schema
-  data: string; // JSON string, mapped to payload in schema
-  status: z.infer<typeof ExternalTaskStatusSchema>;
-  // DB schema for external_service_tasks does not have podcast_id, attempts, last_attempted_at, result
-  // These will be undefined or null when mapping to ExternalTaskSchema if not present
+  external_task_id: string; // Corresponds to external_task_id in schema
+  type: z.infer<typeof ExternalTaskTypeSchema>; // Corresponds to type in schema
+  data: string; // JSON string, corresponds to data in schema (which is z.any())
+  status: z.infer<typeof ExternalTaskStatusSchema>; // Corresponds to status in schema
   created_at: string;
   updated_at: string;
 }
@@ -33,8 +31,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
     }), 400);
   }
 
-  const { page = 1, limit = 10, task_type, status /*, podcast_id */ } = queryParseResult.data;
-  // Note: podcast_id filter is ignored as 'external_service_tasks' table doesn't have podcast_id.
+  const { page = 1, limit = 10, type, status } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   try {
@@ -43,9 +40,9 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
     const bindings: (string | number)[] = [];
     let bindingIndex = 1;
 
-    if (task_type) {
+    if (type) {
       conditions.push(`type = ?${bindingIndex}`);
-      bindings.push(task_type);
+      bindings.push(type);
       bindingIndex++;
     }
     if (status) {
@@ -53,7 +50,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
       bindings.push(status);
       bindingIndex++;
     }
-    // podcast_id filter cannot be applied here.
+    // episode_id filter cannot be applied here.
 
     let whereClause = '';
     if (conditions.length > 0) {
@@ -81,35 +78,35 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
     }
 
     const tasks = dbTasks.map(dbTask => {
-      let payload = null;
+      let parsedData = null;
       try {
-        payload = JSON.parse(dbTask.data);
+        parsedData = JSON.parse(dbTask.data);
       } catch (e) {
         console.warn(`Failed to parse 'data' for task ID ${dbTask.id}:`, e);
+        // Keep parsedData as null if parsing fails, schema expects z.any()
       }
       
       const taskForValidation = {
         id: dbTask.id,
-        external_service_id: dbTask.external_task_id,
-        task_type: dbTask.type,
-        payload: payload,
+        external_task_id: dbTask.external_task_id,
+        type: dbTask.type,
+        data: parsedData, // Assign the parsed JSON data
         status: dbTask.status,
         created_at: dbTask.created_at,
         updated_at: dbTask.updated_at,
-        // Fields not in external_service_tasks table, will be undefined/defaulted by Zod if optional:
-        podcast_id: undefined, // Or null, depending on schema definition
-        result: undefined,
-        attempts: undefined, // Or 0 if schema defaults
-        last_attempted_at: undefined,
       };
 
+      // Validate each task against the schema before sending
       const validation = ExternalTaskSchema.safeParse(taskForValidation);
-      if (!validation.success) {
-        console.warn(`Data for task ID ${dbTask.id} failed ExternalTaskSchema validation:`, validation.error.flatten());
+      if (validation.success) {
+        return validation.data;
+      } else {
+        console.error(`Data validation failed for task ID ${dbTask.id}:`, validation.error.flatten());
+        // Return null or a specific error structure for problematic tasks
+        // For simplicity, returning null and filtering out later or handling as error
         return null; 
       }
-      return validation.data;
-    }).filter(t => t !== null) as z.infer<typeof ExternalTaskSchema>[];
+    }).filter(task => task !== null) as z.infer<typeof ExternalTaskSchema>[]; // Type assertion after filter
 
     const pagination = PaginationInfoSchema.parse({
         page,

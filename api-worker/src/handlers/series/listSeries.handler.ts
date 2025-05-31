@@ -9,14 +9,14 @@ import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../sc
 
 // Schema for query parameters
 const ListSeriesQuerySchema = z.object({
-  category_id: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive()).optional(),
+  show_id: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive()).optional(),
 });
 
 interface SeriesSummaryFromDB {
   id: number;
   title: string;
   slug: string; // Added slug
-  category_id: number;
+  show_id: number;
 }
 
 export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -30,15 +30,15 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { category_id } = queryParseResult.data;
+  const { show_id } = queryParseResult.data;
 
   try {
-    let query = 'SELECT id, title, slug, category_id FROM series'; // Added slug
+    let query = 'SELECT id, title, slug, show_id FROM series'; // Added slug
     const bindings: (number | string)[] = [];
 
-    if (category_id !== undefined) {
-      query += ' WHERE category_id = ?1';
-      bindings.push(category_id);
+    if (show_id !== undefined) {
+      query += ' WHERE show_id = ?1';
+      bindings.push(show_id);
     }
     query += ' ORDER BY title ASC';
 

@@ -12,19 +12,21 @@ import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../sc
 const mapDbRowToYouTubeChannel = (row: any): z.infer<typeof YouTubeChannelSchema> => {
   return YouTubeChannelSchema.parse({
     id: row.id,
-    category_id: row.category_id,
+    show_id: row.show_id,
     youtube_platform_id: row.youtube_platform_id,
-    name: row.title, // DB 'title' -> Zod 'name'
+    title: row.title,
     description: row.description,
     // Optional fields from Zod schema not in DB will be undefined/null based on schema
-    custom_url: row.custom_url || null, // Assuming custom_url might be added to DB later
-    thumbnail_url: row.thumbnail_url || null, // Assuming thumbnail_url might be added to DB later
-    default_language: row.language_code, // DB 'language_code' -> Zod 'default_language'
-    default_category_id_on_youtube: row.youtube_platform_category_id, // DB 'youtube_platform_category_id' -> Zod 'default_category_id_on_youtube'
-    prompt_template_for_title: row.prompt_template_for_title || null, // Assuming this might be added
-    prompt_template_for_description: row.video_description_template, // DB 'video_description_template' -> Zod 'prompt_template_for_description'
-    prompt_template_for_tags: row.prompt_template_for_tags || null, // Assuming this might be added
-    prompt_template_for_first_comment: row.first_comment_template, // DB 'first_comment_template' -> Zod 'prompt_template_for_first_comment'
+    custom_url: row.custom_url || null, 
+    thumbnail_url: row.thumbnail_url || null, 
+    country: row.country || null, // Added field
+    language_code: row.language_code, // Renamed from default_language
+    youtube_playlist_id_for_uploads: row.youtube_playlist_id_for_uploads || null, // Added field
+    youtube_platform_category_id: row.youtube_platform_category_id, // Renamed from default_show_id_on_youtube
+    video_title_template: row.video_title_template || null, // Renamed from prompt_template_for_title
+    video_description_template: row.video_description_template, // Renamed from prompt_template_for_description
+    video_tags_template: row.video_tags_template || null, // Renamed from prompt_template_for_tags
+    first_comment_template: row.first_comment_template, // Renamed from prompt_template_for_first_comment
     created_at: row.created_at, // Assuming DATETIME strings are directly parsable by Zod
     updated_at: row.updated_at,
   });
@@ -42,15 +44,15 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     }), 400);
   }
 
-  const { category_id } = validationResult.data;
+  const { show_id } = validationResult.data;
 
   try {
-    let query = 'SELECT id, category_id, youtube_platform_id, title, description, language_code, youtube_platform_category_id, video_description_template, first_comment_template, created_at, updated_at FROM youtube_channels';
+    let query = 'SELECT id, show_id, youtube_platform_id, title, description, custom_url, thumbnail_url, country, language_code, youtube_playlist_id_for_uploads, youtube_platform_category_id, video_title_template, video_description_template, video_tags_template, first_comment_template, created_at, updated_at FROM youtube_channels';
     const bindings: any[] = [];
 
-    if (category_id !== undefined) {
-      query += ' WHERE category_id = ?1';
-      bindings.push(category_id);
+    if (show_id !== undefined) {
+      query += ' WHERE show_id = ?1';
+      bindings.push(show_id);
     }
 
     query += ' ORDER BY created_at DESC'; // Default ordering

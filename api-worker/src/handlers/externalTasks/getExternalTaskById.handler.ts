@@ -16,13 +16,12 @@ import {
 
 interface ExternalTaskFromDB {
   id: number;
-  external_task_id: string | null;
+  external_task_id: string;
   type: z.infer<typeof ExternalTaskTypeSchema>;
   data: string; // JSON string
   status: z.infer<typeof ExternalTaskStatusSchema>;
   created_at: string;
   updated_at: string;
-  // Fields not in external_service_tasks table: podcast_id, result, attempts, last_attempted_at
 }
 
 export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -47,27 +46,22 @@ export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: Cloudfla
       return c.json(GeneralNotFoundErrorSchema.parse({ success: false, message: 'External task not found.' }), 404);
     }
 
-    let payload = null;
+    let parsedData = null;
     try {
-      payload = JSON.parse(dbTask.data);
+      parsedData = JSON.parse(dbTask.data);
     } catch (e) {
       console.warn(`Failed to parse 'data' for task ID ${dbTask.id}:`, e);
-      // Potentially return an error or a task with null payload if parsing is critical
+      // Keep parsedData as null if parsing fails, schema expects z.any()
     }
 
     const taskForValidation = {
       id: dbTask.id,
-      external_service_id: dbTask.external_task_id,
-      task_type: dbTask.type,
-      payload: payload,
+      external_task_id: dbTask.external_task_id,
+      type: dbTask.type,
+      data: parsedData,
       status: dbTask.status,
       created_at: dbTask.created_at,
       updated_at: dbTask.updated_at,
-      // Fields not in external_service_tasks table, will be undefined/defaulted by Zod if optional:
-      podcast_id: undefined,
-      result: undefined,
-      attempts: undefined,
-      last_attempted_at: undefined,
     };
 
     const validation = ExternalTaskSchema.safeParse(taskForValidation);

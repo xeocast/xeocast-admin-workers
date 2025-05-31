@@ -15,11 +15,10 @@ export const RolePermissionSchema = z.string().min(1).max(100)
 const RoleBaseSchema = z.object({
   name: z.string().min(1).max(100)
     .openapi({ example: 'Administrator', description: 'The name of the role.' }),
-  description: z.string().max(500).optional()
+  description: z.string().max(500) // Made non-optional
     .openapi({ example: 'Full access to all system features.', description: 'A description of the role.' }),
-  permissions: z.array(RolePermissionSchema)
-    .min(1, { message: 'Role must have at least one permission.' })
-    .openapi({ example: ['manage_users', 'manage_podcasts'], description: 'List of permissions associated with the role.' }),
+  permissions: z.array(RolePermissionSchema) // Removed .min(1) constraint
+    .openapi({ example: ['manage_users', 'manage_episodes'], description: 'List of permissions associated with the role.' }),
 }).openapi('RoleBase');
 
 // Full Role schema for API responses

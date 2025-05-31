@@ -60,13 +60,12 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       }
     }
 
-    // 4. Validate youtube_channel_id existence if changed
-    // DB stores as channel_id, schema uses youtube_channel_id
-    if (updateData.youtube_channel_id && updateData.youtube_channel_id !== existingPlaylist.channel_id) {
-      const channelCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(updateData.youtube_channel_id);
+    // 4. Validate channel_id existence if changed
+    if (updateData.channel_id && updateData.channel_id !== existingPlaylist.channel_id) {
+      const channelCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(updateData.channel_id);
       const channelExists = await channelCheckStmt.first();
       if (!channelExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: `YouTube channel with ID ${updateData.youtube_channel_id} not found.` }), 400);
+        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: `YouTube channel with ID ${updateData.channel_id} not found.` }), 400);
       }
     }
 
@@ -79,7 +78,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     if (updateData.description !== undefined) { fieldsToUpdate.push('description = ?' + bindingIdx++); bindings.push(updateData.description); }
     if (updateData.youtube_platform_id !== undefined) { fieldsToUpdate.push('youtube_platform_id = ?' + bindingIdx++); bindings.push(updateData.youtube_platform_id); }
     if (updateData.series_id !== undefined) { fieldsToUpdate.push('series_id = ?' + bindingIdx++); bindings.push(updateData.series_id); }
-    if (updateData.youtube_channel_id !== undefined) { fieldsToUpdate.push('channel_id = ?' + bindingIdx++); bindings.push(updateData.youtube_channel_id); }
+    if (updateData.channel_id !== undefined) { fieldsToUpdate.push('channel_id = ?' + bindingIdx++); bindings.push(updateData.channel_id); }
     // Note: thumbnail_url is not in the DB table for playlists, so it's ignored.
 
     if (fieldsToUpdate.length === 0) {

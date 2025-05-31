@@ -14,8 +14,8 @@ app.openapi(
   {
     method: 'post',
     path: '/regenerate-slugs',
-    summary: 'Regenerate slugs for all categories, series, and podcasts.',
-    description: 'This endpoint iterates through all categories, series, and podcasts, and triggers their respective update handlers with an empty slug to force slug regeneration. This is a potentially long-running operation and requires admin privileges. The request Authorization header will be passed to internal update calls.',
+    summary: 'Regenerate slugs for all shows, series, and episodes.',
+    description: 'This endpoint iterates through all shows, series, and episodes, and triggers their respective update handlers with an empty slug to force slug regeneration. This is a potentially long-running operation and requires admin privileges. The request Authorization header will be passed to internal update calls.',
     request: {}, // No request body needed for this operation
     responses: {
       200: {

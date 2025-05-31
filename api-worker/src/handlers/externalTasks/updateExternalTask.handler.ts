@@ -1,7 +1,7 @@
 import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
 import {
-  ExternalTaskUpdateRequestSchema,
+  UpdateExternalTaskSchema,
   ExternalTaskUpdateResponseSchema,
 } from '../../schemas/externalTaskSchemas';
 import {
@@ -26,7 +26,7 @@ export const updateExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
     return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
   }
 
-  const validationResult = ExternalTaskUpdateRequestSchema.safeParse(requestBody);
+  const validationResult = UpdateExternalTaskSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
         success: false, 
@@ -35,27 +35,30 @@ export const updateExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
     }), 400);
   }
 
-  const { status, external_service_id, payload } = validationResult.data;
-  // Note: 'result', 'attempts', 'last_attempted_at' from schema are not in DB table 'external_service_tasks'
-  // and thus will not be updated here.
+  const { external_task_id, type, data, status } = validationResult.data;
 
   const updateFields: string[] = [];
-  const bindings: (string | number | null)[] = [];
+  const bindings: (string | number | null | undefined)[] = [];
   let bindingIndex = 1;
 
+  if (external_task_id !== undefined) {
+    updateFields.push(`external_task_id = ?${bindingIndex}`);
+    bindings.push(external_task_id);
+    bindingIndex++;
+  }
+  if (type !== undefined) {
+    updateFields.push(`type = ?${bindingIndex}`);
+    bindings.push(type);
+    bindingIndex++;
+  }
+  if (data !== undefined) { // data can be null, but if undefined, it's not part of the update
+    updateFields.push(`data = ?${bindingIndex}`);
+    bindings.push(JSON.stringify(data)); // data is z.any(), so it's already parsed from JSON if it was an object
+    bindingIndex++;
+  }
   if (status !== undefined) {
     updateFields.push(`status = ?${bindingIndex}`);
     bindings.push(status);
-    bindingIndex++;
-  }
-  if (external_service_id !== undefined) {
-    updateFields.push(`external_task_id = ?${bindingIndex}`);
-    bindings.push(external_service_id);
-    bindingIndex++;
-  }
-  if (payload !== undefined) {
-    updateFields.push(`data = ?${bindingIndex}`);
-    bindings.push(JSON.stringify(payload));
     bindingIndex++;
   }
 

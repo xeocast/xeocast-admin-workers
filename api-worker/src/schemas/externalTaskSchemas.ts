@@ -26,31 +26,33 @@ export const ExternalTaskTypeSchema = z.enum([
 
 // Base schema for external task properties
 const ExternalTaskBaseSchema = z.object({
-  podcast_id: z.number().int().positive().nullable().optional()
-    .openapi({ example: 1, description: 'ID of the podcast this task is related to, if any.' }),
-  task_type: ExternalTaskTypeSchema,
-  status: ExternalTaskStatusSchema.default('pending'),
-  payload: z.any().nullable().optional() // Using z.any() for JSON object, consider a more specific schema if possible
-    .openapi({ description: 'Payload/data required to execute the task.', example: { videoUrl: 's3://bucket/video.mp4' } }),
-  result: z.any().nullable().optional() // Using z.any() for JSON object
-    .openapi({ description: 'Result of the task execution.', example: { youtubeVideoId: 'xyz123' } }),
-  external_service_id: z.string().max(255).nullable().optional()
-    .openapi({ example: 'yt-upload-job-123', description: 'ID from the external service, if applicable.' }),
-  attempts: z.number().int().nonnegative().default(0).optional()
-    .openapi({ example: 0, description: 'Number of times this task has been attempted.' }),
-  last_attempted_at: z.string().datetime().nullable().optional()
-    .openapi({ example: '2023-01-01T13:00:00Z', description: 'Timestamp of the last attempt.' }),
+  external_task_id: z.string()
+    .openapi({ example: 'ext-task-abc-123', description: 'The unique identifier for the task in an external system or context. This corresponds to external_task_id in the database.' }),
+  type: ExternalTaskTypeSchema
+    .openapi({ description: 'The type of the external task. This corresponds to type in the database.' }),
+  data: z.any()
+    .openapi({ description: 'Payload/data associated with the task, stored as a JSON string in the database. This corresponds to data in the database.', example: { videoUrl: 's3://bucket/video.mp4', title: 'My Video' } }),
+  status: ExternalTaskStatusSchema
+    .openapi({ description: 'The current status of the external task. This corresponds to status in the database.' }),
 }).openapi('ExternalTaskBase');
 
 // Full ExternalTask schema for API responses
 export const ExternalTaskSchema = ExternalTaskBaseSchema.extend({
-  id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the external task.' }),
+  id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the external task record in our system.' }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
 }).openapi('ExternalTask');
 
-// Schema for creating a new external task
-export const ExternalTaskCreateRequestSchema = ExternalTaskBaseSchema.omit({ attempts: true, last_attempted_at: true, status: true }); // status defaults to pending
+// Schema for creating a new external task (input)
+export const CreateExternalTaskSchema = z.object({
+  external_task_id: z.string()
+    .openapi({ example: 'ext-task-abc-123', description: 'The unique identifier for the task in an external system or context.' }),
+  type: ExternalTaskTypeSchema,
+  data: z.any()
+    .openapi({ description: 'Payload/data associated with the task.', example: { videoUrl: 's3://bucket/video.mp4', title: 'My Video' } }),
+  status: ExternalTaskStatusSchema.default('pending').optional()
+    .openapi({ description: 'Optional status for the task on creation, defaults to pending.' }),
+}).openapi('CreateExternalTask');
 
 export const ExternalTaskCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('External task created successfully.'),
@@ -59,14 +61,10 @@ export const ExternalTaskCreateResponseSchema = MessageResponseSchema.extend({
 
 // Schema for query parameters when listing external tasks
 export const ListExternalTasksQuerySchema = PaginationQuerySchema.extend({
-  task_type: ExternalTaskTypeSchema.optional()
+  type: ExternalTaskTypeSchema.optional()
     .openapi({ description: 'Filter by task type.' }),
   status: ExternalTaskStatusSchema.optional()
     .openapi({ description: 'Filter by task status.' }),
-  podcast_id: z.string().optional() // Keep as string for query param, transform in handler if needed
-    .transform(val => val ? parseInt(val, 10) : undefined)
-    .pipe(z.number().int().positive().optional())
-    .openapi({ description: 'Filter by podcast ID.', example: '1' }),
 }).openapi('ListExternalTasksQuery');
 
 // Schema for listing external tasks (paginated)
@@ -78,15 +76,9 @@ export const GetExternalTaskResponseSchema = z.object({
   task: ExternalTaskSchema
 }).openapi('GetExternalTaskResponse');
 
-// Schema for updating an external task (e.g., status, result, attempts)
-export const ExternalTaskUpdateRequestSchema = z.object({
-  status: ExternalTaskStatusSchema.optional(),
-  result: z.any().nullable().optional(),
-  external_service_id: z.string().max(255).nullable().optional(),
-  attempts: z.number().int().nonnegative().optional(),
-  last_attempted_at: z.string().datetime().nullable().optional(),
-  payload: z.any().nullable().optional(), // Sometimes payload might need an update too
-}).partial().openapi('ExternalTaskUpdateRequest');
+// Schema for updating an existing external task (input)
+// All fields from CreateExternalTaskSchema are made optional for updates.
+export const UpdateExternalTaskSchema = CreateExternalTaskSchema.partial().openapi('UpdateExternalTask');
 
 export const ExternalTaskUpdateResponseSchema = MessageResponseSchema.extend({
   message: z.string().openapi({ example: 'External task updated successfully.' })

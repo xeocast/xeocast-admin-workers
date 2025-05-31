@@ -24,7 +24,7 @@ export function generateSlug(text: string): string {
  * and checks again, repeating until a unique slug is found or max attempts are reached.
  * @param db The D1 database instance.
  * @param initialSlug The initial slug to check and make unique.
- * @param tableName The name of the table to check for slug uniqueness (e.g., 'categories', 'podcasts', 'series').
+ * @param tableName The name of the table to check for slug uniqueness (e.g., 'shows', 'episodes', 'series').
  * @param slugColumn The name of the slug column in the table (defaults to 'slug').
  * @param idColumn The name of the ID column in the table (defaults to 'id').
  * @param excludeId Optional. An ID to exclude from the uniqueness check (useful for update operations).
@@ -54,7 +54,7 @@ export async function ensureUniqueSlug(
     }
 
     // For tables with global unique slug constraints, ignore additionalConditions.
-    const globallyUniqueSlugTables = ['categories', 'series', 'podcasts'];
+    const globallyUniqueSlugTables = ['shows', 'series', 'episodes'];
     if (additionalConditions && !globallyUniqueSlugTables.includes(tableName)) {
       for (const [key, value] of Object.entries(additionalConditions)) {
         if (value === null) {

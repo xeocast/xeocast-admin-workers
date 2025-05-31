@@ -1,3 +1,4 @@
+// src/handlers/series/updateSeries.handler.ts
 import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
 import {
@@ -5,7 +6,7 @@ import {
   SeriesUpdateResponseSchema,
   SeriesNotFoundErrorSchema,
   SeriesSlugExistsErrorSchema,
-  SeriesUpdateFailedErrorSchema
+  SeriesUpdateFailedErrorSchema,
 } from '../../schemas/seriesSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
@@ -13,8 +14,9 @@ import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 interface ExistingSeries {
   id: number;
   title: string;
-  slug: string | null; // Added slug
-  category_id: number;
+  slug: string; // slug is NOT NULL in DB
+  description: string | null;
+  show_id: number;
 }
 
 export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -36,19 +38,19 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     return c.json(SeriesUpdateFailedErrorSchema.parse({ 
         success: false, 
         message: 'Invalid input for updating series.',
-        // errors: validationResult.error.flatten().fieldErrors 
+        // errors: validationResult.error.flatten().fieldErrors // Consider adding detailed errors
     }), 400);
   }
 
   const updateData = validationResult.data;
 
   if (Object.keys(updateData).length === 0) {
-    return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200); // Or a 304 Not Modified like response
+    return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully. No changes detected.' }), 200);
   }
 
   try {
     // 1. Fetch existing series
-    const existingSeries = await c.env.DB.prepare('SELECT id, title, slug, category_id FROM series WHERE id = ?1')
+    const existingSeries = await c.env.DB.prepare('SELECT id, title, slug, description, show_id FROM series WHERE id = ?1')
       .bind(id)
       .first<ExistingSeries>();
 
@@ -56,112 +58,94 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
     }
 
-    // 2. Validate category_id if changed
-    if (updateData.category_id !== undefined && updateData.category_id !== existingSeries.category_id) {
-      const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1')
-        .bind(updateData.category_id)
+    // 2. Validate show_id if changed
+    if (updateData.show_id !== undefined && updateData.show_id !== existingSeries.show_id) {
+      const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1')
+        .bind(updateData.show_id)
         .first<{ id: number }>();
-      if (!categoryExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'New category not found.' }), 400);
+      if (!showExists) {
+        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'New show not found.' }), 400);
       }
     }
-
-    // 3. Check for title uniqueness if title or category_id is changing
-    const newTitle = updateData.title !== undefined ? updateData.title : existingSeries.title;
-    const newCategoryId = updateData.category_id !== undefined ? updateData.category_id : existingSeries.category_id;
-
-    if (updateData.title !== undefined || updateData.category_id !== undefined) {
-      const conflictingSeries = await c.env.DB.prepare(
-        'SELECT id FROM series WHERE title = ?1 AND category_id = ?2 AND id != ?3'
-      ).bind(newTitle, newCategoryId, id).first<{ id: number }>();
-
-      if (conflictingSeries) {
-        return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this category for another series.' }), 400);
-      }
-    }
-
-    // Slug processing logic
-    let slugForUpdate: string | null | undefined = undefined;
-    let slugNeedsProcessing = false;
-
-    const titleFromPayload = updateData.title;
-    const newCategoryIdForSlugCheck = updateData.category_id !== undefined ? updateData.category_id : existingSeries.category_id;
-
-    if (updateData.slug !== undefined) { // User explicitly sent a slug field
-      slugNeedsProcessing = true;
-      if (!updateData.slug || updateData.slug.startsWith('temp-slug-')) {
-        const titleForSlug = titleFromPayload || existingSeries.title;
-        slugForUpdate = generateSlug(titleForSlug) || `series-${id}-${Date.now()}`;
-      } else {
-        slugForUpdate = updateData.slug;
-      }
-    } else if ((titleFromPayload && titleFromPayload !== existingSeries.title) || 
-               (updateData.category_id !== undefined && updateData.category_id !== existingSeries.category_id)) {
-      // Regenerate slug if title or category_id changed, and slug was not explicitly provided
-      slugNeedsProcessing = true;
-      const titleForSlug = titleFromPayload || existingSeries.title;
-      slugForUpdate = generateSlug(titleForSlug) || `series-${id}-${Date.now()}`;
-    }
-
-    if (slugNeedsProcessing && slugForUpdate !== undefined) {
-      const additionalConditions = { category_id: newCategoryIdForSlugCheck };
-      if (typeof slugForUpdate === 'string' && slugForUpdate.trim() !== '') {
-        const uniqueSlug = await ensureUniqueSlug(c.env.DB, slugForUpdate, 'series', 'slug', 'id', id, additionalConditions);
-        if (uniqueSlug !== existingSeries.slug) {
-          // Keep slugForUpdate as the uniqueSlug
-          slugForUpdate = uniqueSlug; 
-        } else {
-          // No change needed if unique slug is same as existing
-          slugForUpdate = undefined; // Signal no DB update for slug
+    
+    // 3. Check for title uniqueness if title or show_id is changing
+    // This specific check for (title, show_id) might be a business rule not enforced by a DB constraint.
+    // The DB schema only has UNIQUE(slug) for the series table.
+    if (updateData.title !== undefined || updateData.show_id !== undefined) {
+        const checkTitle = updateData.title !== undefined ? updateData.title : existingSeries.title;
+        const checkShowId = updateData.show_id !== undefined ? updateData.show_id : existingSeries.show_id;
+        
+        if (checkTitle !== existingSeries.title || checkShowId !== existingSeries.show_id) {
+            const conflictingSeriesByTitle = await c.env.DB.prepare(
+              'SELECT id FROM series WHERE title = ?1 AND show_id = ?2 AND id != ?3'
+            ).bind(checkTitle, checkShowId, id).first<{ id: number }>();
+      
+            if (conflictingSeriesByTitle) {
+              return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this show for another series.' }), 400);
+            }
         }
-      } else if (slugForUpdate === null) { // Explicitly setting slug to null
-        if (existingSeries.slug === null) {
-          slugForUpdate = undefined; // No change needed
-        }
-        // else slugForUpdate remains null for DB update
-      } else { // Candidate slug is empty string
-         if (existingSeries.slug === null && slugForUpdate.trim() === ''){
-            slugForUpdate = undefined; // No change needed
-         } else if (slugForUpdate.trim() === '') {
-            slugForUpdate = null; // Convert empty string to null if it's a change
-         }
+    }
+
+    // 4. Slug processing
+    let newSlug: string | undefined = undefined; // Undefined means slug won't be updated
+
+    if (updateData.slug && updateData.slug.trim() !== '') { // Slug is explicitly provided and not empty
+      if (updateData.slug !== existingSeries.slug) {
+        newSlug = updateData.slug;
       }
+    } else if (updateData.title && updateData.title !== existingSeries.title) { // Title changed, slug not provided or was empty
+      newSlug = generateSlug(updateData.title) || `series-${id}-${Date.now()}`;
+    } else if (updateData.slug && updateData.slug.trim() === '') { // Slug explicitly set to empty string
+        // Generate slug from title if slug is cleared
+        const titleForSlug = updateData.title || existingSeries.title;
+        newSlug = generateSlug(titleForSlug) || `series-${id}-${Date.now()}`;
     }
 
 
-    // 4. Build and execute update query
+    if (newSlug && newSlug !== existingSeries.slug) {
+      // Ensure the new slug is unique, excluding the current series ID
+      newSlug = await ensureUniqueSlug(c.env.DB, newSlug, 'series', 'slug', 'id', id);
+    }
+
+    // 5. Build and execute update query
     const fieldsToUpdate: string[] = [];
     const bindings: (string | number | null)[] = [];
     let bindingIndex = 1;
 
-    if (updateData.title !== undefined) {
-      fieldsToUpdate.push(`title = ?${bindingIndex}`);
-      bindings.push(updateData.title);
-      bindingIndex++;
+    const addField = (fieldName: keyof ExistingSeries, valueFromUpdate: any) => {
+      if (valueFromUpdate !== undefined && valueFromUpdate !== existingSeries[fieldName]) {
+        fieldsToUpdate.push(`${fieldName} = ?${bindingIndex}`);
+        bindings.push(valueFromUpdate);
+        bindingIndex++;
+      }
+    };
+
+    addField('title', updateData.title);
+    if (updateData.description !== undefined) { // Handle description separately for nullability
+        if (updateData.description === null && existingSeries.description !== null) {
+            fieldsToUpdate.push(`description = ?${bindingIndex}`);
+            bindings.push(null);
+            bindingIndex++;
+        } else if (updateData.description !== null && updateData.description !== existingSeries.description) {
+            fieldsToUpdate.push(`description = ?${bindingIndex}`);
+            bindings.push(updateData.description);
+            bindingIndex++;
+        }
     }
-    if (updateData.description !== undefined) {
-      fieldsToUpdate.push(`description = ?${bindingIndex}`);
-      bindings.push(updateData.description);
-      bindingIndex++;
-    }
-    if (updateData.category_id !== undefined) {
-      fieldsToUpdate.push(`category_id = ?${bindingIndex}`);
-      bindings.push(updateData.category_id);
-      bindingIndex++;
-    }
-    // Add slug to update only if slugForUpdate has a determined new value (string or null)
-    if (slugForUpdate !== undefined) {
+    addField('show_id', updateData.show_id);
+
+    if (newSlug && newSlug !== existingSeries.slug) { 
       fieldsToUpdate.push(`slug = ?${bindingIndex}`);
-      bindings.push(slugForUpdate); // This can be a string or null
+      bindings.push(newSlug);
       bindingIndex++;
     }
 
     if (fieldsToUpdate.length === 0) {
-      return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully.' }), 200);
+      return c.json(SeriesUpdateResponseSchema.parse({ success: true, message: 'Series updated successfully. No changes detected.' }), 200);
     }
 
     fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
-    bindings.push(id);
+    bindings.push(id); // Add ID for the WHERE clause
 
     const query = `UPDATE series SET ${fieldsToUpdate.join(', ')} WHERE id = ?${bindingIndex}`;
     const stmt = c.env.DB.prepare(query).bind(...bindings);
@@ -176,13 +160,14 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   } catch (error) {
     console.error('Error updating series:', error);
-    if (error instanceof Error && 
-        (error.message.includes('UNIQUE constraint failed: series.category_id, series.title') || 
-         error.message.includes('UNIQUE constraint failed: series.slug, series.category_id'))) {
-        return c.json(SeriesUpdateFailedErrorSchema.parse({ 
-            success: false, 
-            message: 'Series title or slug already exists in this category for another series.' 
-        }), 400);
+    if (error instanceof Error) {
+        if (error.message.includes('UNIQUE constraint failed: series.slug')) {
+            return c.json(SeriesSlugExistsErrorSchema.parse({ success: false, message: 'Series slug already exists.' }), 400);
+        }
+        // Example: if you had a UNIQUE constraint on (title, show_id) in the DB
+        // if (error.message.includes('UNIQUE constraint failed: series.title') && error.message.includes('series.show_id')) {
+        //     return c.json(SeriesUpdateFailedErrorSchema.parse({ success: false, message: 'Series title already exists in this show.' }), 400);
+        // }
     }
     return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update series due to a server error.' }), 500);
   }

@@ -34,7 +34,7 @@ const createSeriesRouteDef = createRoute({
   },
   responses: {
     201: { content: { 'application/json': { schema: SeriesCreateResponseSchema } }, description: 'Series created' },
-    400: { content: { 'application/json': { schema: SeriesCreateFailedErrorSchema } }, description: 'Invalid input' }, // Can be more specific, e.g. title exists in category
+    400: { content: { 'application/json': { schema: SeriesCreateFailedErrorSchema } }, description: 'Invalid input' }, // Can be more specific, e.g. title exists in show
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Creates a new series.',
@@ -46,7 +46,7 @@ seriesRoutes.openapi(createSeriesRouteDef, createSeriesHandler);
 const listSeriesRouteDef = createRoute({
   method: 'get',
   path: '/',
-  // Add query params for filtering by category_id if needed in future
+  // Add query params for filtering by show_id if needed in future
   responses: {
     200: { content: { 'application/json': { schema: ListSeriesResponseSchema } }, description: 'List of series' },
     400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
@@ -99,7 +99,7 @@ const deleteSeriesRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: SeriesDeleteResponseSchema } }, description: 'Series deleted' },
-    400: { content: { 'application/json': { schema: SeriesDeleteFailedErrorSchema } }, description: 'Deletion failed (e.g., series has podcasts)' },
+    400: { content: { 'application/json': { schema: SeriesDeleteFailedErrorSchema } }, description: 'Deletion failed (e.g., series has episodes)' },
     404: { content: { 'application/json': { schema: SeriesNotFoundErrorSchema } }, description: 'Series not found' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },

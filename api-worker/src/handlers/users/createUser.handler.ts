@@ -26,16 +26,25 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { email, name, password } = validationResult.data;
+  const { email, username, password, first_name, last_name, bio, profile_picture_url } = validationResult.data;
 
   try {
     // 1. Check if email already exists
-    const existingUser = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?1')
+    const existingUserByEmail = await c.env.DB.prepare('SELECT user_id FROM users WHERE email = ?1')
       .bind(email)
-      .first<{ id: number }>();
+      .first<{ user_id: number }>();
 
-    if (existingUser) {
+    if (existingUserByEmail) {
       return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+    }
+
+    // 2. Check if username already exists
+    const existingUserByUsername = await c.env.DB.prepare('SELECT user_id FROM users WHERE username = ?1')
+      .bind(username)
+      .first<{ user_id: number }>();
+
+    if (existingUserByUsername) {
+      return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'A user with this username already exists.' }), 400); // Consider a specific UsernameExistsErrorSchema
     }
 
     // 3. Hash password securely.
@@ -44,8 +53,8 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     // 4. Store user in the database
     const stmt = c.env.DB.prepare(
-      'INSERT INTO users (email, password_hash, name) VALUES (?1, ?2, ?3)'
-    ).bind(email, password_hash, name);
+      'INSERT INTO users (username, email, password_hash, first_name, last_name, bio, profile_picture_url) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)'
+    ).bind(username, email, password_hash, first_name, last_name, bio, profile_picture_url);
     
     const result = await stmt.run();
 
@@ -82,8 +91,14 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   } catch (error) {
     console.error('Error creating user:', error);
-    if (error instanceof Error && error.message.includes('UNIQUE constraint failed: users.email')) {
-        return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+    if (error instanceof Error) {
+        if (error.message.includes('UNIQUE constraint failed: users.email')) {
+            return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+        }
+        if (error.message.includes('UNIQUE constraint failed: users.username')) {
+            // A specific UsernameExistsErrorSchema could be created and used here
+            return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'A user with this username already exists.'}), 400);
+        }
     }
     return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create user due to a server error.' }), 500);
   }

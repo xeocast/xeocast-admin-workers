@@ -45,11 +45,11 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
       return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, message: 'YouTube channel not found.' }), 404);
     }
 
-    // Validate category_id if provided
-    if (updateData.category_id !== undefined) {
-      const categoryExists = await c.env.DB.prepare('SELECT id FROM categories WHERE id = ?1').bind(updateData.category_id).first();
-      if (!categoryExists) {
-        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Category with id ${updateData.category_id} not found.` }), 400);
+    // Validate show_id if provided
+    if (updateData.show_id !== undefined) {
+      const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1').bind(updateData.show_id).first();
+      if (!showExists) {
+        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Show with id ${updateData.show_id} not found.` }), 400);
       }
     }
 
@@ -63,11 +63,8 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     }
     
     // Validate language_code format if provided
-    if (updateData.default_language !== undefined && updateData.default_language !== null) {
-        if (updateData.default_language.length !== 2 && updateData.default_language.length !== 5) { 
-            return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: "Field 'default_language' must be a valid language code (e.g., 'en' or 'en-US')." }), 400);
-        }
-    }
+    // Language code format validation (e.g. min/max length) is now handled by the Zod schema.
+    // if (updateData.language_code !== undefined && updateData.language_code !== null) { ... }
 
     const fieldsToUpdate: string[] = [];
     const bindings: any[] = [];
@@ -75,14 +72,20 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
 
     // Map Zod schema fields to DB columns
     const fieldMapping: { [key: string]: string } = {
-      category_id: 'category_id',
+      show_id: 'show_id',
       youtube_platform_id: 'youtube_platform_id',
-      name: 'title',
+      title: 'title', // Renamed from name
       description: 'description',
-      default_language: 'language_code',
-      default_category_id_on_youtube: 'youtube_platform_category_id',
-      prompt_template_for_description: 'video_description_template',
-      prompt_template_for_first_comment: 'first_comment_template',
+      custom_url: 'custom_url',
+      thumbnail_url: 'thumbnail_url',
+      country: 'country',
+      language_code: 'language_code', // Renamed from default_language
+      youtube_playlist_id_for_uploads: 'youtube_playlist_id_for_uploads',
+      youtube_platform_category_id: 'youtube_platform_category_id', // Renamed from default_show_id_on_youtube
+      video_title_template: 'video_title_template', // Renamed from prompt_template_for_title
+      video_description_template: 'video_description_template', // Renamed from prompt_template_for_description
+      video_tags_template: 'video_tags_template', // Renamed from prompt_template_for_tags
+      first_comment_template: 'first_comment_template', // Renamed from prompt_template_for_first_comment
     };
 
     for (const key in updateData) {

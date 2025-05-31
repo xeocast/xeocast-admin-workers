@@ -6,7 +6,7 @@ import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 interface RoleFromDB {
   id: number;
   name: string;
-  description: string | null;
+  description: string; // Changed from string | null
   permissions: string; // JSON string
   created_at: string;
   updated_at: string;
@@ -38,7 +38,7 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       // This ensures the structure is correct before sending it in the response.
       const roleForValidation = {
         ...dbRole,
-        description: dbRole.description === null ? undefined : dbRole.description, // Handle null description for optional field
+        description: dbRole.description, // Directly use dbRole.description as it's now string
         permissions: parsedPermissions,
       };
 

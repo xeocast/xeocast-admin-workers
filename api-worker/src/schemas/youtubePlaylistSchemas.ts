@@ -12,16 +12,15 @@ import {
 const YouTubePlaylistBaseSchema = z.object({
   series_id: z.number().int().positive()
     .openapi({ example: 1, description: 'The ID of the series this YouTube playlist is associated with.' }),
-  youtube_channel_id: z.number().int().positive()
+  channel_id: z.number().int().positive() // Renamed from youtube_channel_id
     .openapi({ example: 1, description: 'The ID of the YouTube channel this playlist belongs to.' }),
   youtube_platform_id: z.string().min(1).max(100)
     .openapi({ example: 'PLxxxxxxxxxxxxxxxxx', description: 'The unique YouTube Playlist ID (platform ID).' }),
   title: z.string().min(1).max(255)
     .openapi({ example: 'My Awesome Series Playlist', description: 'The title of the YouTube playlist.' }),
-  description: z.string().max(5000).nullable().optional()
+  description: z.string().max(5000) // Made non-nullable and required, removed .nullable().optional()
     .openapi({ example: 'All episodes of My Awesome Series.', description: 'A description for the YouTube playlist.' }),
-  thumbnail_url: z.string().url().max(2048).nullable().optional()
-    .openapi({ example: 'https://i.ytimg.com/vi/xxxx/hqdefault.jpg', description: 'URL of the playlist\'s thumbnail.' }),
+  // thumbnail_url removed as it's not in the DB schema
 }).openapi('YouTubePlaylistBase');
 
 // Full YouTubePlaylist schema for API responses
@@ -45,7 +44,7 @@ export const ListYouTubePlaylistsQuerySchema = z.object({
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by series ID.', example: '1' }),
-  youtube_channel_id: z.string().optional()
+  channel_id: z.string().optional() // Renamed from youtube_channel_id
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),

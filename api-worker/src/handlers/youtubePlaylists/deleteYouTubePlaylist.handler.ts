@@ -24,8 +24,8 @@ export const deleteYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     }
 
     // 2. Delete the playlist
-    // No direct podcast dependencies to check in youtube_playlists table itself based on current schema.
-    // If there were indirect dependencies (e.g. a join table or podcasts having youtube_playlist_id),
+    // No direct episode dependencies to check in youtube_playlists table itself based on current schema.
+    // If there were indirect dependencies (e.g. a join table or episodes having youtube_playlist_id),
     // those would need checking here.
     const deleteStmt = c.env.DB.prepare('DELETE FROM youtube_playlists WHERE id = ?1').bind(id);
     const dbResult = await deleteStmt.run();

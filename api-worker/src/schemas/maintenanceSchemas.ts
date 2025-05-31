@@ -8,9 +8,9 @@ const BatchProcessDetailSchema = z.object({
 });
 
 const RegenerateDetailsSchema = z.object({
-  categories: BatchProcessDetailSchema,
+  shows: BatchProcessDetailSchema,
   series: BatchProcessDetailSchema,
-  podcasts: BatchProcessDetailSchema,
+  episodes: BatchProcessDetailSchema,
 });
 
 export const RegenerateSlugsSuccessResponseSchema = z.object({
@@ -24,5 +24,5 @@ export const RegenerateSlugsMultiStatusResponseSchema = z.object({
   success: z.literal(false), 
   message: z.string().openapi({example: "Slug regeneration completed with 5 errors and 145 successes."}),
   details: RegenerateDetailsSchema,
-  errors: z.array(z.string()).optional().openapi({example: ["Failed to update series 123: Slug already exists.", "Error processing podcast 45: Network timeout"]}),
+  errors: z.array(z.string()).optional().openapi({example: ["Failed to update series 123: Slug already exists.", "Error processing episode 45: Network timeout"]}),
 });

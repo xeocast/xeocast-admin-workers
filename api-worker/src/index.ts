@@ -5,8 +5,8 @@ import { swaggerUI } from '@hono/swagger-ui';
 
 // Import routes
 import authRoutes from './routes/auth';
-import categoryRoutes from './routes/categories';
-import podcastRoutes from './routes/podcasts';
+import showRoutes from './routes/shows';
+import episodeRoutes from './routes/episodes';
 import userRoutes from './routes/users';
 import roleRoutes from './routes/roles';
 import seriesRoutes from './routes/series';
@@ -48,8 +48,8 @@ app.use('*', (c, next) => {
 app.route('/auth', authRoutes);
 
 // Apply auth middleware to protected route paths
-app.use('/categories/*', authMiddleware);
-app.use('/podcasts/*', authMiddleware);
+app.use('/shows/*', authMiddleware);
+app.use('/episodes/*', authMiddleware);
 app.use('/users/*', authMiddleware);
 app.use('/roles/*', authMiddleware);
 app.use('/series/*', authMiddleware);
@@ -60,8 +60,8 @@ app.use('/storage/*', authMiddleware);
 app.use('/maintenance/*', authMiddleware); // Added
 
 // Mount protected routes
-app.route('/categories', categoryRoutes);
-app.route('/podcasts', podcastRoutes);
+app.route('/shows', showRoutes);
+app.route('/episodes', episodeRoutes);
 app.route('/users', userRoutes);
 app.route('/roles', roleRoutes);
 app.route('/series', seriesRoutes);
@@ -72,12 +72,12 @@ app.route('/storage', storageRoutes);
 app.route('/maintenance', maintenanceRoutes); // Added
 
 // OpenAPI Documentation
-app.doc('/api/doc', {
+app.doc('/doc', {
   openapi: '3.1.0',
   info: {
     version: '1.0.0',
     title: 'Xeocast Admin API',
-    description: 'API for managing Xeocast podcast content and users.',
+    description: 'API for managing Xeocast episode content and users.',
   },
   servers: [
     {
@@ -92,7 +92,7 @@ app.doc('/api/doc', {
 app.get('/', (c) => c.text('Xeocast Admin API Worker is running. Visit /api/ui for documentation.'));
 
 // Swagger UI
-app.get('/api/ui', swaggerUI({ url: '/api/doc' }));
+app.get('/doc/ui', swaggerUI({ url: '/doc' }));
 
 export default app;
 
