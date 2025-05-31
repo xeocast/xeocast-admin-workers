@@ -40,6 +40,7 @@ export const uploadObjectHandler: Handler<{
     // We will parse formData manually in the handler.
 }> = async (c) => {
     try {
+        console.log(c.req.formData());
         const formData = await c.req.formData();
 
         const file = formData.get('file');

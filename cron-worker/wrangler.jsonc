@@ -38,9 +38,14 @@
 	 ],
 	 "r2_buckets": [
 		{
-			"binding": "PODCAST_PROJECTS_BUCKET",
-			"bucket_name": "podcast-projects",
-			"preview_bucket_name": "podcast-projects-preview"			
+			"binding": "EPISODE_PROJECTS_BUCKET",
+			"bucket_name": "episode-projects",
+			"preview_bucket_name": "episode-projects-preview"			
+		},
+		{
+			"binding": "DEFAULT_FILES_BUCKET",
+			"bucket_name": "default-files",
+			"preview_bucket_name": "default-files-preview"			
 		}
 	],
 

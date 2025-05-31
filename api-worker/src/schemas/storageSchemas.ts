@@ -11,7 +11,8 @@ import {
 // Define the R2 bucket names based on wrangler.jsonc and env.d.ts
 // These should match the bindings configured in your wrangler.jsonc and CloudflareEnv interface
 export const R2BucketNameSchema = z.enum([
-    'PODCAST_PROJECTS_BUCKET'
+    'EPISODE_PROJECTS_BUCKET',
+    'DEFAULT_FILES_BUCKET'
 ]).openapi('R2BucketName');
 
 // Schema for the multipart/form-data upload request
@@ -58,8 +59,8 @@ export const ObjectPathParamsSchema = z.object({
             in: 'path',
             required: true,
         },
-        description: 'Logical name of the R2 bucket (e.g., PODCAST_PROJECTS_BUCKET).',
-        example: 'PODCAST_PROJECTS_BUCKET'
+        description: 'Logical name of the R2 bucket (e.g., EPISODE_PROJECTS_BUCKET or DEFAULT_FILES_BUCKET).',
+        example: 'EPISODE_PROJECTS_BUCKET'
     }),
     objectKey: z.string().openapi({
         param: {
