@@ -75,7 +75,7 @@ app.route('/maintenance', maintenanceRoutes); // Added
 app.doc('/doc', {
   openapi: '3.1.0',
   info: {
-    version: '1.0.0',
+    version: '1.0.1',
     title: 'Xeocast Admin API',
     description: 'API for managing Xeocast episode content and users.',
   },
