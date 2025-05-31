@@ -56,9 +56,10 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       FROM users u
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
-      ORDER BY u.id ASC, r.id ASC; -- Order by user ID for grouping, then role ID for consistent role order
+      ORDER BY u.id ASC, r.id ASC
     `;
 
+    console.log('Executing D1 Query in listUsers:', query); // DEBUG: Log the query
     const dbResponse: D1Result<UserWithRoleFromDB> = await c.env.DB.prepare(query).all<UserWithRoleFromDB>();
 
     if (!dbResponse.success || !dbResponse.results) {
