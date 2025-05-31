@@ -8,6 +8,12 @@ import {
   SimpleListResponseSchema
 } from './commonSchemas';
 
+// Base schema for role properties
+export const RoleSchema = z.object({
+  id: z.number().int().positive().openapi({ example: 1 }),
+  name: z.string().openapi({ example: 'editor' }),
+}).openapi('Role');
+
 // Base schema for user properties, used for creation and updates
 const UserBaseSchema = z.object({
   email: z.string().email().max(255).openapi({ example: 'user@example.com' }),
@@ -19,10 +25,12 @@ export const UserSchema = UserBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
   created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  roles: z.array(RoleSchema).optional().openapi({ description: 'Roles assigned to the user' }),
 }).openapi('User');
 
 // Schema for creating a new user
 export const UserCreateRequestSchema = UserBaseSchema.extend({
+  role_ids: z.array(z.number().int().positive()).optional().openapi({ example: [1, 2], description: 'Array of role IDs to assign to the user. Defaults to [2] (editor) if not provided.' }),
   password: z.string().min(8).max(255).openapi({ example: 'SecurePassword123' }),
 }).openapi('UserCreateRequest');
 
@@ -46,6 +54,7 @@ export const GetUserResponseSchema = z.object({
 // Schema for updating an existing user (all fields optional)
 // Schema for updating an existing user (all fields optional)
 export const UserUpdateRequestSchema = UserBaseSchema.extend({
+  role_ids: z.array(z.number().int().positive()).optional().openapi({ example: [1], description: 'Array of role IDs to assign. This will replace all existing roles.' }),
   password: z.string().min(8).max(255).optional().openapi({ example: 'NewSecurePassword123', description: 'Only provide if changing the password.' }),
 }).partial({
   email: true,

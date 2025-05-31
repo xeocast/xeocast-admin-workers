@@ -57,7 +57,6 @@ app.use('/external-tasks/*', authMiddleware);
 app.use('/youtube-channels/*', authMiddleware);
 app.use('/youtube-playlists/*', authMiddleware);
 app.use('/storage/*', authMiddleware);
-app.use('/maintenance/*', authMiddleware); // Added
 
 // Mount protected routes
 app.route('/shows', showRoutes);
@@ -69,7 +68,6 @@ app.route('/external-tasks', externalTaskRoutes);
 app.route('/youtube-channels', youtubeChannelRoutes);
 app.route('/youtube-playlists', youtubePlaylistRoutes);
 app.route('/storage', storageRoutes);
-app.route('/maintenance', maintenanceRoutes); // Added
 
 // OpenAPI Documentation
 app.doc('/doc', {
