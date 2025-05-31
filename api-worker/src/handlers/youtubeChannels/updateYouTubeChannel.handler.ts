@@ -74,18 +74,12 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     const fieldMapping: { [key: string]: string } = {
       show_id: 'show_id',
       youtube_platform_id: 'youtube_platform_id',
-      title: 'title', // Renamed from name
+      youtube_platform_category_id: 'youtube_platform_category_id',
+      title: 'title',
       description: 'description',
-      custom_url: 'custom_url',
-      thumbnail_url: 'thumbnail_url',
-      country: 'country',
-      language_code: 'language_code', // Renamed from default_language
-      youtube_playlist_id_for_uploads: 'youtube_playlist_id_for_uploads',
-      youtube_platform_category_id: 'youtube_platform_category_id', // Renamed from default_show_id_on_youtube
-      video_title_template: 'video_title_template', // Renamed from prompt_template_for_title
-      video_description_template: 'video_description_template', // Renamed from prompt_template_for_description
-      video_tags_template: 'video_tags_template', // Renamed from prompt_template_for_tags
-      first_comment_template: 'first_comment_template', // Renamed from prompt_template_for_first_comment
+      video_description_template: 'video_description_template',
+      first_comment_template: 'first_comment_template',
+      language_code: 'language_code',
     };
 
     for (const key in updateData) {

@@ -14,30 +14,18 @@ const YouTubeChannelBaseSchema = z.object({
     .openapi({ example: 1, description: 'The ID of the show this YouTube channel is associated with.' }),
   youtube_platform_id: z.string().min(1).max(100)
     .openapi({ example: 'UCxxxxxxxxxxxxxxxxx', description: 'The unique YouTube Channel ID (platform ID).' }),
-  title: z.string().min(1).max(255) // Renamed from name
-    .openapi({ example: 'My Awesome Channel', description: 'The title (name) of the YouTube channel.' }),
-  description: z.string().max(5000) // Now required, was nullable().optional()
-    .openapi({ example: 'Channel discussing interesting topics.', description: 'A description for the YouTube channel.' }),
-  custom_url: z.string().max(255).nullable().optional()
-    .openapi({ example: '@MyAwesomeChannel', description: 'The custom URL handle of the YouTube channel.' }),
-  thumbnail_url: z.string().url().max(2048).nullable().optional()
-    .openapi({ example: 'https://yt3.ggpht.com/...', description: 'URL of the channel\'s default thumbnail.' }),
-  country: z.string().length(2).nullable().optional() // Added field, ISO 3166-1 alpha-2 code
-    .openapi({ example: 'US', description: 'Country affiliation of the channel (ISO 3166-1 alpha-2 code).' }),
-  language_code: z.string().min(2).max(10) // Renamed from default_language, now required
-    .openapi({ example: 'en-US', description: 'Default language for videos (e.g., en, en-US).' }),
-  youtube_playlist_id_for_uploads: z.string().min(1).max(100).nullable().optional() // Added field
-    .openapi({ example: 'UUxxxxxxxxxxxxxxxxx', description: 'Playlist ID for all uploads from this channel.' }),
-  youtube_platform_category_id: z.string().max(50) // Renamed from default_show_id_on_youtube, now required
+  youtube_platform_category_id: z.string().max(50)
     .openapi({ example: '22', description: 'Default YouTube category ID for videos (e.g., People & Blogs is 22).' }),
-  video_title_template: z.string().max(2000).nullable().optional() // Renamed from prompt_template_for_title
-    .openapi({ example: 'New Video: {topic} - Episode {ep_number}', description: 'Template for generating video titles.' }),
-  video_description_template: z.string().max(10000) // Renamed from prompt_template_for_description, now required
+  title: z.string().min(1).max(255)
+    .openapi({ example: 'My Awesome Channel', description: 'The title (name) of the YouTube channel.' }),
+  description: z.string().max(5000)
+    .openapi({ example: 'Channel discussing interesting topics.', description: 'A description for the YouTube channel.' }),
+  video_description_template: z.string().max(10000)
     .openapi({ example: 'In this episode, we discuss {topic_details}.\n\nKeywords: {keywords}', description: 'Template for generating video descriptions.' }),
-  video_tags_template: z.string().max(1000).nullable().optional() // Renamed from prompt_template_for_tags
-    .openapi({ example: '{topic}, {guest_name}, episode, new episode', description: 'Template for generating video tags.' }),
-  first_comment_template: z.string().max(2000) // Renamed from prompt_template_for_first_comment, now required
+  first_comment_template: z.string().max(2000)
     .openapi({ example: 'Join the discussion! What are your thoughts on {topic}?', description: 'Template for the first comment on videos.' }),
+  language_code: z.string().length(2)
+    .openapi({ example: 'en', description: 'Language code for the channel (ISO 639-1 alpha-2 code).' }),
 }).openapi('YouTubeChannelBase');
 
 // Full YouTubeChannel schema for API responses

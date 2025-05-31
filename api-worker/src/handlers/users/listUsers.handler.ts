@@ -14,19 +14,9 @@ const ListUsersQuerySchema = z.object({
 });
 
 interface UserFromDB {
-  user_id: number;
-  username: string;
+  id: number;
   email: string;
-  first_name: string | null;
-  last_name: string | null;
-  bio: string | null;
-  profile_picture_url: string | null;
-  is_active: boolean | number; // D1 might return 0/1 for boolean
-  is_verified: boolean | number;
-  last_login_at: string | null;
-  failed_login_attempts: number;
-  lockout_until: string | null;
-  is_two_factor_enabled: boolean | number;
+  name: string;
   created_at: string;
   updated_at: string;
 }
@@ -47,7 +37,7 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
   try {
     // SELECT clause: Select user fields.
-    let selectClause = 'SELECT u.user_id, u.username, u.email, u.first_name, u.last_name, u.bio, u.profile_picture_url, u.is_active, u.is_verified, u.last_login_at, u.failed_login_attempts, u.lockout_until, u.is_two_factor_enabled, u.created_at, u.updated_at';
+    let selectClause = 'SELECT u.id, u.email, u.name, u.created_at, u.updated_at';
     // FROM and JOIN clause: Join users with user_roles to access role information.
     let fromClause = 'FROM users u';
     
@@ -77,21 +67,15 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
     const users = results.map(dbUser => {
       const userForValidation = {
-        ...dbUser,
-        is_active: !!dbUser.is_active,
-        is_verified: !!dbUser.is_verified,
-        is_two_factor_enabled: !!dbUser.is_two_factor_enabled,
-        // Nullable fields are handled by Zod schema (nullable() or optional())
-        first_name: dbUser.first_name,
-        last_name: dbUser.last_name,
-        bio: dbUser.bio,
-        profile_picture_url: dbUser.profile_picture_url,
-        last_login_at: dbUser.last_login_at,
-        lockout_until: dbUser.lockout_until,
+        id: dbUser.id,
+        email: dbUser.email,
+        name: dbUser.name,
+        created_at: dbUser.created_at,
+        updated_at: dbUser.updated_at,
       };
       const validation = UserSchema.safeParse(userForValidation);
       if (!validation.success) {
-        console.warn(`Data for user ID ${dbUser.user_id} failed UserSchema validation:`, validation.error.flatten());
+        console.warn(`Data for user ID ${dbUser.id} failed UserSchema validation:`, validation.error.flatten());
         return null; 
       }
       return validation.data;

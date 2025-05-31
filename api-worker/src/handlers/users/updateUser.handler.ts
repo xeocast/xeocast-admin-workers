@@ -33,7 +33,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { username, email, password, first_name, last_name, bio, profile_picture_url } = validationResult.data;
+  const { email, name, password } = validationResult.data;
 
   if (Object.keys(validationResult.data).length === 0) {
     return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
@@ -41,9 +41,9 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   try {
     // 1. Check if user exists
-    const userToUpdate = await c.env.DB.prepare('SELECT user_id, email, username FROM users WHERE user_id = ?1')
+    const userToUpdate = await c.env.DB.prepare('SELECT id, email, name FROM users WHERE id = ?1')
       .bind(id)
-      .first<{ user_id: number; email: string; username: string }>();
+      .first<{ id: number; email: string; name: string }>();
 
     if (!userToUpdate) {
       return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
@@ -51,36 +51,21 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     // 2. If email is being changed, check if the new email already exists for another user
     if (email && email !== userToUpdate.email) {
-      const existingUserWithNewEmail = await c.env.DB.prepare('SELECT user_id FROM users WHERE email = ?1 AND user_id != ?2')
+      const existingUserWithNewEmail = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?1 AND id != ?2')
         .bind(email, id)
-        .first<{ user_id: number }>();
+        .first<{ id: number }>();
       if (existingUserWithNewEmail) {
         return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
       }
     }
 
-    // 3. If username is being changed, check if the new username already exists for another user
-    if (username && username !== userToUpdate.username) {
-      const existingUserWithNewUsername = await c.env.DB.prepare('SELECT user_id FROM users WHERE username = ?1 AND user_id != ?2')
-        .bind(username, id)
-        .first<{ user_id: number }>();
-      if (existingUserWithNewUsername) {
-        // Consider creating a specific UserUsernameExistsErrorSchema
-        return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'This username is already in use by another user.' }), 400);
-      }
-    }
-
-    // 4. Construct dynamic UPDATE statement
+    // 3. Construct dynamic UPDATE statement
     const updateFields: string[] = [];
     const bindings: (string | number | null)[] = [];
     let bindingIndex = 1;
 
-    if (username !== undefined) { updateFields.push(`username = ?${bindingIndex++}`); bindings.push(username); }
+    if (name !== undefined) { updateFields.push(`name = ?${bindingIndex++}`); bindings.push(name); }
     if (email !== undefined) { updateFields.push(`email = ?${bindingIndex++}`); bindings.push(email); }
-    if (first_name !== undefined) { updateFields.push(`first_name = ?${bindingIndex++}`); bindings.push(first_name); }
-    if (last_name !== undefined) { updateFields.push(`last_name = ?${bindingIndex++}`); bindings.push(last_name); }
-    if (bio !== undefined) { updateFields.push(`bio = ?${bindingIndex++}`); bindings.push(bio); }
-    if (profile_picture_url !== undefined) { updateFields.push(`profile_picture_url = ?${bindingIndex++}`); bindings.push(profile_picture_url); }
     if (password !== undefined) {
       // Hash password securely.
       const saltRounds = 12;
@@ -97,7 +82,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }
 
     updateFields.push(`updated_at = CURRENT_TIMESTAMP`);
-    const query = `UPDATE users SET ${updateFields.join(', ')} WHERE user_id = ?${bindingIndex}`;
+    const query = `UPDATE users SET ${updateFields.join(', ')} WHERE id = ?${bindingIndex}`;
     bindings.push(id);
 
     const stmt = c.env.DB.prepare(query).bind(...bindings);
@@ -119,10 +104,6 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     if (error instanceof Error) {
         if (error.message.includes('UNIQUE constraint failed: users.email')) {
             return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
-        }
-        if (error.message.includes('UNIQUE constraint failed: users.username')) {
-            // Consider creating a specific UserUsernameExistsErrorSchema
-            return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'This username is already in use by another user.' }), 400);
         }
     }
     return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update user due to a server error.' }), 500);

@@ -28,19 +28,12 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   const {
     show_id,
     youtube_platform_id,
-    title, // formerly name
+    title,
     description,
-    language_code, // formerly default_language
-    youtube_platform_category_id, // formerly default_show_id_on_youtube
-    video_description_template, // formerly prompt_template_for_description
-    first_comment_template, // formerly prompt_template_for_first_comment
-    custom_url,
-    thumbnail_url,
-    country,
-    youtube_playlist_id_for_uploads,
-    video_title_template,
-    video_tags_template,
-    
+    language_code,
+    youtube_platform_category_id,
+    video_description_template,
+    first_comment_template,
   } = validationResult.data;
 
   // Validations for fields now handled by Zod schema (required, specific formats like language_code length)
@@ -54,22 +47,16 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     }
 
     const stmt = c.env.DB.prepare(
-      'INSERT INTO youtube_channels (show_id, youtube_platform_id, title, description, custom_url, thumbnail_url, country, language_code, youtube_playlist_id_for_uploads, youtube_platform_category_id, video_title_template, video_description_template, video_tags_template, first_comment_template) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14)'
+      'INSERT INTO youtube_channels (show_id, youtube_platform_id, youtube_platform_category_id, title, description, video_description_template, first_comment_template, language_code) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)'
     ).bind(
         show_id, 
         youtube_platform_id, 
+        youtube_platform_category_id,
         title, 
         description, 
-        custom_url, 
-        thumbnail_url, 
-        country, 
-        language_code, 
-        youtube_playlist_id_for_uploads, 
-        youtube_platform_category_id, 
-        video_title_template, 
         video_description_template, 
-        video_tags_template, 
-        first_comment_template
+        first_comment_template,
+        language_code
     );
     
     const result = await stmt.run();
