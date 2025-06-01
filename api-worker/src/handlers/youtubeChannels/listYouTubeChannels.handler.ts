@@ -48,7 +48,7 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
       bindings.push(show_id);
     }
 
-    query += ' ORDER BY created_at DESC'; // Default ordering
+    query += ' ORDER BY id ASC'; // Default ordering
 
     const stmt = c.env.DB.prepare(query).bind(...bindings);
     const { results } = await stmt.all();

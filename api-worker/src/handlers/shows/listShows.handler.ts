@@ -10,7 +10,7 @@ import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   try {
     const { results } = await c.env.DB.prepare(
-      'SELECT id, name, language_code, slug FROM shows ORDER BY name ASC'
+      'SELECT id, name, language_code, slug FROM shows ORDER BY id ASC'
     ).all<z.infer<typeof ShowSummarySchema>>();
 
     const shows = results ? results.map(row => ShowSummarySchema.parse(row)) : [];

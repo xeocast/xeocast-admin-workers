@@ -14,7 +14,7 @@ interface RoleFromDB {
 
 export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   try {
-    const { results } = await c.env.DB.prepare('SELECT id, name, description, permissions, created_at, updated_at FROM roles ORDER BY name ASC').all<RoleFromDB>();
+    const { results } = await c.env.DB.prepare('SELECT id, name, description, permissions, created_at, updated_at FROM roles ORDER BY id ASC').all<RoleFromDB>();
 
     if (!results) {
       // This case might occur if the query itself fails in a way D1 doesn't throw, or if results is undefined/null

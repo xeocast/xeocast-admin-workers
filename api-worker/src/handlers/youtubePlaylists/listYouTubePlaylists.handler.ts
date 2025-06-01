@@ -53,7 +53,7 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     if (conditions.length > 0) {
       query += ' WHERE ' + conditions.join(' AND ');
     }
-    query += ' ORDER BY created_at DESC';
+    query += ' ORDER BY id ASC';
 
     const stmt = c.env.DB.prepare(query).bind(...bindings);
     const dbResult = await stmt.all();

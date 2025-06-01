@@ -40,7 +40,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       query += ' WHERE show_id = ?1';
       bindings.push(show_id);
     }
-    query += ' ORDER BY title ASC';
+    query += ' ORDER BY id ASC';
 
     const stmt = bindings.length > 0 ? c.env.DB.prepare(query).bind(...bindings) : c.env.DB.prepare(query);
     const { results } = await stmt.all<SeriesSummaryFromDB>();

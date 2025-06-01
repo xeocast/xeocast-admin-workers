@@ -60,7 +60,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
         video_bucket_key, thumbnail_bucket_key, article_image_bucket_key,
         script, thumbnail_gen_prompt, article_image_gen_prompt,
         status_on_youtube, status_on_website, status_on_x, freezeStatus, first_comment
-      FROM episodes ${whereString} ORDER BY created_at DESC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      FROM episodes ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(
