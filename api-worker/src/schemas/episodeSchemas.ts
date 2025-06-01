@@ -2,8 +2,7 @@
 import { z } from '@hono/zod-openapi';
 import {
   MessageResponseSchema,
-  PathIdParamSchema, // Keep for PathIdParamSchema usage if any handler uses it
-  // SimpleListResponseSchema, // Not directly used by exported schemas here
+  PathIdParamSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
   GeneralServerErrorSchema

@@ -5,43 +5,80 @@ import {
   EpisodeNotFoundErrorSchema,
   EpisodeDeleteFailedErrorSchema
 } from '../../schemas/episodeSchemas';
-import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
+import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
 export const deleteEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
-  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
+  const { id } = c.req.param();
+  const episodeId = parseInt(id, 10);
 
-  if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+  if (isNaN(episodeId) || episodeId <= 0) {
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      success: false,
+      message: 'Invalid episode ID. Must be a positive integer.'
+    }), 400);
   }
-  const id = parseInt(paramValidation.data.id, 10);
 
   try {
-    // First, check if the episode exists, as D1 `DELETE` might not error if the row doesn't exist but `changes` will be 0.
-    const episodeExists = await c.env.DB.prepare('SELECT id FROM episodes WHERE id = ?1').bind(id).first<{ id: number }>();
-    if (!episodeExists) {
-      return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Episode not found.' }), 404);
+    // 1. Check if the episode exists
+    const existingEpisode = await c.env.DB.prepare('SELECT id FROM episodes WHERE id = ?1')
+      .bind(episodeId)
+      .first<{ id: number }>();
+
+    if (!existingEpisode) {
+      return c.json(EpisodeNotFoundErrorSchema.parse({
+        success: false,
+        message: 'Episode not found.'
+      }), 404);
     }
 
-    // Note: This is a hard delete. Associated files in R2 and records in related tables
-    // (e.g., episode_segments, episode_hosts, external_service_tasks) are not handled here.
-    // A more robust solution would involve soft deletes or cascading cleanup.
-    const stmt = c.env.DB.prepare('DELETE FROM episodes WHERE id = ?1').bind(id);
+    // 2. Check for any dependencies before deletion
+    // For example, if there are any references to this episode in other tables
+    // This would depend on your database schema and relationships
+    // For now, we'll assume there are no dependencies to check
+
+    // 3. Delete the episode
+    const stmt = c.env.DB.prepare('DELETE FROM episodes WHERE id = ?1')
+      .bind(episodeId);
+
     const result = await stmt.run();
 
-    if (result.success && result.meta.changes > 0) {
-      return c.json(EpisodeDeleteResponseSchema.parse({ success: true, message: 'Episode deleted successfully.' }), 200);
-    } else if (result.success && result.meta.changes === 0) {
-      // This case should ideally be caught by the existence check above, but as a safeguard:
-      return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Episode not found or already deleted.' }), 404);
-    } else {
+    if (!result.success) {
       console.error('Failed to delete episode, D1 result:', result);
-      // This could be due to a constraint if D1 enforced them on DELETE, or other D1 errors.
-      return c.json(EpisodeDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete episode.' }), 500);
+      return c.json(EpisodeDeleteFailedErrorSchema.parse({
+        success: false,
+        message: 'Failed to delete episode.'
+      }), 500);
     }
+
+    // Check if any rows were affected (should be 1 if the episode was deleted)
+    if (result.meta?.changes === 0) {
+      // This should not happen since we already checked if the episode exists,
+      // but it's good to handle this case anyway (e.g., if the episode was deleted concurrently)
+      return c.json(EpisodeNotFoundErrorSchema.parse({
+        success: false,
+        message: 'Episode not found.'
+      }), 404);
+    }
+
+    return c.json(EpisodeDeleteResponseSchema.parse({
+      success: true,
+      message: 'Episode deleted successfully.'
+    }), 200);
 
   } catch (error) {
     console.error('Error deleting episode:', error);
-    // Catching potential errors from DB operations, though D1 errors might be generic.
-    return c.json(EpisodeDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete episode due to a server error.' }), 500);
+    
+    // Check for foreign key constraint violation error
+    if (error instanceof Error && error.message.includes('FOREIGN KEY constraint failed')) {
+      return c.json(EpisodeDeleteFailedErrorSchema.parse({
+        success: false,
+        message: 'Cannot delete episode because it is referenced by other records.'
+      }), 400);
+    }
+    
+    return c.json(GeneralServerErrorSchema.parse({
+      success: false,
+      message: 'Failed to delete episode due to a server error.'
+    }), 500);
   }
 };

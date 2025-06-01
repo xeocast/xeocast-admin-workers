@@ -4,186 +4,219 @@ import {
   EpisodeUpdateRequestSchema,
   EpisodeUpdateResponseSchema,
   EpisodeNotFoundErrorSchema,
-  EpisodeSlugExistsErrorSchema,
-  EpisodeUpdateFailedErrorSchema
+  EpisodeUpdateFailedErrorSchema,
+  EpisodeSlugExistsErrorSchema
 } from '../../schemas/episodeSchemas';
-import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
+import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 import { generateSlug, ensureUniqueSlug } from '../../utils/slugify';
 
 export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
-  const paramValidation = PathIdParamSchema.safeParse(c.req.param());
-  if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+  const { id } = c.req.param();
+  const episodeId = parseInt(id, 10);
+
+  if (isNaN(episodeId) || episodeId <= 0) {
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      success: false,
+      message: 'Invalid episode ID. Must be a positive integer.'
+    }), 400);
   }
-  const id = parseInt(paramValidation.data.id, 10);
 
   let requestBody;
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(EpisodeUpdateFailedErrorSchema.parse({
+      success: false,
+      message: 'Failed to update episode.'
+    }), 400);
   }
 
   const validationResult = EpisodeUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    return c.json(EpisodeUpdateFailedErrorSchema.parse({ 
-        success: false, 
-        message: 'Invalid input for updating episode.', 
-        // errors: validationResult.error.flatten().fieldErrors // Optional
+    return c.json(EpisodeUpdateFailedErrorSchema.parse({
+      success: false,
+      message: 'Failed to update episode.'
     }), 400);
   }
 
-  const updatePayload = validationResult.data;
-  // EpisodeUpdateRequestSchema (EpisodeBaseSchema.partial) ensures that if 'tags' or 'script' are provided,
-  // they are already valid JSON strings (or undefined if not provided).
-  // So, no manual stringification or defaulting to '[]' is needed here for these fields.
-  // The database schema itself has defaults like '[]' for tags and script if they are not part of the UPDATE.
-
-  const processedUpdatePayload: { [key: string]: any } = { ...updatePayload };
-
-  // Slug will be handled after fetching existing episode and determining if it needs update.
-  // Remove slug from processedUpdatePayload initially, it will be added back if it changes.
-  let slugForUpdate: string | null | undefined = undefined;
-  const originalSlugInPayload = updatePayload.slug; // Keep track of slug from payload
-  delete processedUpdatePayload.slug; // Remove from direct iteration for SET clauses initially
-
-  // Create a temporary payload for checking emptiness, excluding the original slug from this check
-  // as its presence alone (even if unchanged) might not mean an update if other fields are empty.
-  const tempPayloadForEmptinessCheck = { ...processedUpdatePayload };
+  const updateData = validationResult.data;
   
-  if (Object.keys(tempPayloadForEmptinessCheck).length === 0 && originalSlugInPayload === undefined) {
-    return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'No update fields provided. Episode not changed.' }), 200);
-  }
-
   try {
-    // Check if episode exists
-    const existingEpisode = await c.env.DB.prepare('SELECT id, title, slug, show_id, series_id FROM episodes WHERE id = ?1')
-      .bind(id)
-      .first<{ id: number; title: string; slug: string | null; show_id: number; series_id: number | null }>();
+    // 1. Check if the episode exists
+    const existingEpisode = await c.env.DB.prepare('SELECT * FROM episodes WHERE id = ?1')
+      .bind(episodeId)
+      .first<any>();
 
     if (!existingEpisode) {
-      return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Episode not found.' }), 404);
+      return c.json(EpisodeNotFoundErrorSchema.parse({
+        success: false,
+        message: 'Episode not found.'
+      }), 404);
     }
 
-    // Slug processing logic
-    let candidateSlug: string | null | undefined = undefined;
-    let slugNeedsProcessing = false;
-
-    const newTitle = updatePayload.title;
-    const newSeriesId = updatePayload.series_id;
-
-    if (originalSlugInPayload !== undefined) {
-      slugNeedsProcessing = true;
-      if (!originalSlugInPayload || originalSlugInPayload.startsWith('temp-slug-')) {
-        const titleForSlug = newTitle || existingEpisode.title;
-        candidateSlug = generateSlug(titleForSlug) || `episode-${id}-${Date.now()}`;
-      } else {
-        candidateSlug = originalSlugInPayload;
+    // 2. Process slug if it's being updated
+    let slug = updateData.slug;
+    if (slug) {
+      if (slug.startsWith('temp-slug-')) {
+        // Generate a new slug from the title (either the updated title or the existing one)
+        const titleForSlug = updateData.title || existingEpisode.title;
+        const newSlug = generateSlug(titleForSlug);
+        slug = newSlug || `episode-${Date.now()}`;
       }
-    } else if ((newTitle && newTitle !== existingEpisode.title) || 
-               (newSeriesId !== undefined && newSeriesId !== existingEpisode.series_id)) {
-      // Regenerate slug if title or series_id changed, and slug was not explicitly provided
-      slugNeedsProcessing = true;
-      const titleForSlug = newTitle || existingEpisode.title;
-      candidateSlug = generateSlug(titleForSlug) || `episode-${id}-${Date.now()}`;
-    }
 
-    if (slugNeedsProcessing && candidateSlug !== undefined) {
-      const targetSeriesId = (newSeriesId !== undefined) ? newSeriesId : existingEpisode.series_id;
-      const additionalConditions: Record<string, any> = { series_id: targetSeriesId ?? null }; 
+      // Check if the new slug already exists for a different episode
+      if (slug !== existingEpisode.slug) {
+        const slugExists = await c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND id != ?2')
+          .bind(slug, episodeId)
+          .first<{ id: number }>();
 
-      if (typeof candidateSlug === 'string' && candidateSlug.trim() !== '') {
-        const uniqueSlug = await ensureUniqueSlug(c.env.DB, candidateSlug, 'episodes', 'slug', 'id', id, additionalConditions);
-        if (uniqueSlug !== existingEpisode.slug) {
-          slugForUpdate = uniqueSlug;
+        if (slugExists) {
+          return c.json(EpisodeSlugExistsErrorSchema.parse({
+            success: false,
+            message: 'Episode slug already exists in this series.'
+          }), 400);
         }
-      } else if (candidateSlug === null) { // Explicitly setting slug to null
-        if (existingEpisode.slug !== null) {
-          slugForUpdate = null;
-        }
-      } else { // Candidate slug is empty string
-         if (existingEpisode.slug !== null && candidateSlug.trim() === '') {
-            slugForUpdate = null; // Convert empty string to null if it's a change
-        }
+
+        // Ensure the slug is unique
+        slug = await ensureUniqueSlug(c.env.DB, slug, 'episodes', 'slug', 'id', episodeId);
+        updateData.slug = slug;
       }
     }
 
-    // If slugForUpdate has a value (string or null), it means it's intended to be updated.
-    if (slugForUpdate !== undefined) {
-      processedUpdatePayload.slug = slugForUpdate;
-    }
-
-    // Validate show_id if provided
-    if (updatePayload.show_id !== undefined) {
-      const show = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1')
-        .bind(updatePayload.show_id)
+    // 3. Validate show_id and series_id if they're being updated
+    if (updateData.show_id) {
+      const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1')
+        .bind(updateData.show_id)
         .first<{ id: number }>();
-      if (!show) {
-        return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid show_id: Show does not exist.' }), 400);
-      }
-    }
 
-    // Validate series_id if provided and not null
-    if (updatePayload.series_id !== undefined && updatePayload.series_id !== null) {
-      const series = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1')
-        .bind(updatePayload.series_id)
-        .first<{ id: number }>();
-      if (!series) {
-        return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid series_id: Series does not exist.' }), 400);
-      }
-    }
-    // The DB triggers will handle series/show consistency, updated_at, and last_status_change_at.
-
-    const setClauses: string[] = [];
-    const bindings: any[] = [];
-    let paramIndex = 1;
-
-    Object.entries(processedUpdatePayload).forEach(([key, value]) => {
-      if (value !== undefined) { // Ensure only defined values are part of update
-        setClauses.push(`${key} = ?${paramIndex++}`);
-        bindings.push(value);
-      }
-    });
-
-    if (setClauses.length === 0) {
-         // This case should be caught by the initial Object.keys check, but as a safeguard.
-        return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'No effective update fields provided.' }), 200);
-    }
-
-    bindings.push(id); // For the WHERE clause
-    const stmt = c.env.DB.prepare(`UPDATE episodes SET ${setClauses.join(', ')} WHERE id = ?${paramIndex}`);
-    const result = await stmt.bind(...bindings).run();
-
-    if (result.success) {
-      if (result.meta.changes > 0) {
-        return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'Episode updated successfully.' }), 200);
-      } else {
-        // Episode found, but data submitted was same as existing, or trigger prevented update without erroring explicitly here.
-        return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'Episode found, but no effective changes were made.' }), 200);
-      }
-    } else {
-      console.error('Failed to update episode, D1 result:', result);
-      return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update episode.' }), 500);
-    }
-
-  } catch (error: any) {
-    console.error('Error updating episode:', error);
-    if (error.message && error.message.includes('CHECK constraint failed: status')) {
-        return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: `Invalid status value. Please check allowed statuses. Received: ${updatePayload.status}` }), 400);
-    }
-    if (error.message && error.message.includes('Episode show_id must match series show_id')) {
-        return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Show and Series mismatch: The episode\'s show must match the series\'s show.' }), 400);
-    }
-    // Check for slug unique constraint (adjust based on actual D1 error message if different)
-    if (error.message && (error.message.includes('UNIQUE constraint failed: episodes.slug'))) { // This might need to be more specific for slug+series_id
-        return c.json(EpisodeSlugExistsErrorSchema.parse({ 
-            success: false, 
-            message: 'Episode slug already exists.'
+      if (!showExists) {
+        return c.json(GeneralBadRequestErrorSchema.parse({
+          success: false,
+          message: 'Show not found.'
         }), 400);
+      }
+
+      // If series_id is provided or already exists, ensure it belongs to the new show_id
+      const seriesId = updateData.series_id !== undefined ? updateData.series_id : existingEpisode.series_id;
+      if (seriesId !== null) {
+        const seriesExists = await c.env.DB.prepare('SELECT id, show_id FROM series WHERE id = ?1')
+          .bind(seriesId)
+          .first<{ id: number, show_id: number }>();
+
+        if (!seriesExists) {
+          return c.json(GeneralBadRequestErrorSchema.parse({
+            success: false,
+            message: 'Series not found.'
+          }), 400);
+        }
+
+        if (seriesExists.show_id !== updateData.show_id) {
+          return c.json(GeneralBadRequestErrorSchema.parse({
+            success: false,
+            message: 'The specified series does not belong to the specified show.'
+          }), 400);
+        }
+      }
+    } else if (updateData.series_id !== undefined && updateData.series_id !== null) {
+      // If only series_id is being updated (show_id remains the same)
+      const seriesExists = await c.env.DB.prepare('SELECT id, show_id FROM series WHERE id = ?1')
+        .bind(updateData.series_id)
+        .first<{ id: number, show_id: number }>();
+
+      if (!seriesExists) {
+        return c.json(GeneralBadRequestErrorSchema.parse({
+          success: false,
+          message: 'Series not found.'
+        }), 400);
+      }
+
+      if (seriesExists.show_id !== existingEpisode.show_id) {
+        return c.json(GeneralBadRequestErrorSchema.parse({
+          success: false,
+          message: 'The specified series does not belong to the show of this episode.'
+        }), 400);
+      }
     }
-    if (error.message && error.message.includes('Episode show_id must match series show_id')) {
-        return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Show and Series mismatch: The episode\'s show must match the series\'s show.' }), 400);
+
+    // 4. Process JSON fields if they're being updated
+    if (updateData.tags !== undefined && typeof updateData.tags !== 'string') {
+      // If tags is provided but not as a string, it might be an array that needs to be stringified
+      try {
+        updateData.tags = JSON.stringify(updateData.tags);
+      } catch (e) {
+        return c.json(EpisodeUpdateFailedErrorSchema.parse({
+          success: false,
+          message: 'Invalid tags format. Must be a valid JSON string or array.'
+        }), 400);
+      }
     }
-    return c.json(EpisodeUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update episode due to a server error.' }), 500);
+
+    if (updateData.script !== undefined && typeof updateData.script !== 'string') {
+      // If script is provided but not as a string, it might be an object that needs to be stringified
+      try {
+        updateData.script = JSON.stringify(updateData.script);
+      } catch (e) {
+        return c.json(EpisodeUpdateFailedErrorSchema.parse({
+          success: false,
+          message: 'Invalid script format. Must be a valid JSON string or object.'
+        }), 400);
+      }
+    }
+
+    // 5. Update the status change timestamp if status is being updated
+    if (updateData.status && updateData.status !== existingEpisode.status) {
+      // Use type assertion to add the last_status_change_at property
+      (updateData as any).last_status_change_at = new Date().toISOString();
+    }
+
+    // 6. Build the SQL update statement dynamically based on the fields to update
+    const updateFields = Object.keys(updateData).filter(key => updateData[key as keyof typeof updateData] !== undefined);
+    
+    if (updateFields.length === 0) {
+      return c.json(EpisodeUpdateResponseSchema.parse({
+        success: true,
+        message: 'No changes to update.'
+      }), 200);
+    }
+
+    const setClause = updateFields.map((field, index) => `${field} = ?${index + 1}`).join(', ');
+    const updateValues = updateFields.map(field => updateData[field as keyof typeof updateData]);
+    
+    const stmt = c.env.DB.prepare(`
+      UPDATE episodes
+      SET ${setClause}, updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?${updateFields.length + 1}
+    `).bind(...updateValues, episodeId);
+
+    const result = await stmt.run();
+
+    if (!result.success) {
+      console.error('Failed to update episode, D1 result:', result);
+      return c.json(EpisodeUpdateFailedErrorSchema.parse({
+        success: false,
+        message: 'Failed to update episode.'
+      }), 500);
+    }
+
+    return c.json(EpisodeUpdateResponseSchema.parse({
+      success: true,
+      message: 'Episode updated successfully.'
+    }), 200);
+
+  } catch (error) {
+    console.error('Error updating episode:', error);
+    // Check for unique constraint violation error
+    if (error instanceof Error) {
+      if (error.message.includes('UNIQUE constraint failed: episodes.slug')) {
+        return c.json(EpisodeSlugExistsErrorSchema.parse({
+          success: false,
+          message: 'Episode slug already exists in this series.'
+        }), 400);
+      }
+    }
+    return c.json(GeneralServerErrorSchema.parse({
+      success: false,
+      message: 'Failed to update episode due to a server error.'
+    }), 500);
   }
 };
