@@ -59,7 +59,6 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       ORDER BY u.id ASC, r.id ASC
     `;
 
-    console.log('Executing D1 Query in listUsers:', query); // DEBUG: Log the query
     const dbResponse: D1Result<UserWithRoleFromDB> = await c.env.DB.prepare(query).all<UserWithRoleFromDB>();
 
     if (!dbResponse.success || !dbResponse.results) {

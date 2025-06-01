@@ -76,10 +76,10 @@ const EpisodeDbSchema = EpisodeBaseSchema.extend({
   // markdown_content: z.string(), // Already in EpisodeBaseSchema, DB ensures it's NOT NULL
   tags: z.string(), // Stored as JSON string in DB
   script: z.string(), // Stored as JSON string in DB
-  freezeStatus: z.boolean(), // Stored as BOOLEAN (0 or 1 in SQLite)
-  last_status_change_at: z.string().datetime(), // Stored as DATETIME string
-  created_at: z.string().datetime(), // Stored as DATETIME string
-  updated_at: z.string().datetime(), // Stored as DATETIME string
+  freezeStatus: z.union([z.boolean(), z.number()]), // Stored as BOOLEAN (0 or 1 in SQLite), accept number before transform
+  last_status_change_at: z.string(), // Stored as DATETIME string, will be transformed
+  created_at: z.string(), // Stored as DATETIME string, will be transformed
+  updated_at: z.string(), // Stored as DATETIME string, will be transformed
 });
 
 // This is the schema that EpisodeSchema transforms into. We define it explicitly.
@@ -119,14 +119,53 @@ const EpisodeOutputObjectSchema = z.object({
 export const EpisodeSchema = EpisodeDbSchema.transform(dbData => ({
   ...dbData,
   // Parse JSON string fields into arrays for API response
-  tags: JSON.parse(dbData.tags || '[]'), 
+  tags: (() => {
+    const rawTags = dbData.tags || '[]'; // Default to string '[]' if null/undefined
+    try {
+      let parsed = JSON.parse(rawTags);
+      // If the first parse results in a string, it might be double-encoded JSON
+      if (typeof parsed === 'string') {
+        parsed = JSON.parse(parsed);
+      }
+      // Ensure it's an array of strings, otherwise default to empty array
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        return parsed;
+      }
+      console.warn(`Tags field was not a valid array of strings after parsing: ${JSON.stringify(parsed)}. Defaulting to []. Raw: ${rawTags}`);
+      return [];
+    } catch (e) {
+      console.error(`Error parsing tags: '${rawTags}'. Error: ${e}. Defaulting to [].`);
+      return [];
+    }
+  })(), 
   script: JSON.parse(dbData.script || '[]'),
   // Coerce date strings from DB to Date objects for consistent handling
   // Hono/JSON response will typically serialize Date objects to ISO strings
-  last_status_change_at: new Date(dbData.last_status_change_at),
-  created_at: new Date(dbData.created_at),
-  updated_at: new Date(dbData.updated_at),
-  scheduled_publish_at: dbData.scheduled_publish_at ? new Date(dbData.scheduled_publish_at) : null,
+  last_status_change_at: (() => {
+    const original = dbData.last_status_change_at;
+    const transformed = original.replace(' ', 'T') + 'Z';
+    const dateObj = new Date(transformed);
+    return dateObj;
+  })(),
+  created_at: (() => {
+    const original = dbData.created_at;
+    const transformed = original.replace(' ', 'T') + 'Z';
+    const dateObj = new Date(transformed);
+    return dateObj;
+  })(),
+  updated_at: (() => {
+    const original = dbData.updated_at;
+    const transformed = original.replace(' ', 'T') + 'Z';
+    const dateObj = new Date(transformed);
+    return dateObj;
+  })(),
+  scheduled_publish_at: (() => {
+    if (!dbData.scheduled_publish_at) return null;
+    const original = dbData.scheduled_publish_at;
+    // Assuming scheduled_publish_at is already in a good format if it exists
+    const dateObj = new Date(original);
+    return dateObj;
+  })(),
   freezeStatus: Boolean(dbData.freezeStatus),
 })).pipe(EpisodeOutputObjectSchema) // Pipe into the explicitly defined output schema
   .openapi('Episode');
