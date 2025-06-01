@@ -18,8 +18,8 @@ export const EpisodeStatusSchema = z.enum([
   'draft',
   'researching',
   'researched',
-  'generatingSources',
-  'sourcesGenerated',
+  'generatingMaterial',
+  'materialGenerated',
   'generatingVideo',
   'videoGenerated'
 ]).openapi({description: 'The current status of the episode.', example: 'draft'});

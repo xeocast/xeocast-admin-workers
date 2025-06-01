@@ -135,7 +135,7 @@ CREATE TABLE IF NOT EXISTS episodes (
     status_on_x TEXT CHECK (status_on_x IN ('none', 'scheduled', 'public', 'private', 'deleted')),
     freezeStatus BOOLEAN DEFAULT TRUE,
     status TEXT NOT NULL CHECK (status IN (
-        'draft', 'researching', 'researched', 'generatingSources', 'sourcesGenerated', 'generatingVideo', 'videoGenerated'
+        'draft', 'researching', 'researched', 'generatingMaterial', 'materialGenerated', 'generatingVideo', 'videoGenerated'
     )),
     last_status_change_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
