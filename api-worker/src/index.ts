@@ -15,6 +15,7 @@ import youtubeChannelRoutes from './routes/youtubeChannels';
 import youtubePlaylistRoutes from './routes/youtubePlaylists';
 import storageRoutes from './routes/storage';
 import maintenanceRoutes from './routes/maintenance'; // Added
+import heavyComputeApiRoutes from './routes/heavyComputeApi';
 
 // Import middleware
 import { ensureAuth } from './middlewares/auth.middleware';
@@ -57,6 +58,7 @@ app.use('/external-tasks/*', authMiddleware);
 app.use('/youtube-channels/*', authMiddleware);
 app.use('/youtube-playlists/*', authMiddleware);
 app.use('/storage/*', authMiddleware);
+app.use('/heavy-compute-api/*', authMiddleware);
 
 // Mount protected routes
 app.route('/shows', showRoutes);
@@ -68,6 +70,7 @@ app.route('/external-tasks', externalTaskRoutes);
 app.route('/youtube-channels', youtubeChannelRoutes);
 app.route('/youtube-playlists', youtubePlaylistRoutes);
 app.route('/storage', storageRoutes);
+app.route('/heavy-compute-api', heavyComputeApiRoutes);
 
 // OpenAPI Documentation
 app.doc('/doc', {
