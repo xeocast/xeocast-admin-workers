@@ -8,6 +8,7 @@ declare namespace Cloudflare {
 		DEFAULT_FILES_BUCKET: R2Bucket;
 		DB: D1Database;
 		ASSETS: Fetcher;
+		HEAVY_COMPUTE_API_KEY: string;
 	}
 }
 interface CloudflareBindings extends Cloudflare.Env {}
