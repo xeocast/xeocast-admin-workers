@@ -36,9 +36,6 @@ importers:
         specifier: ^3.25.56
         version: 3.25.56
     devDependencies:
-      '@cloudflare/workers-types':
-        specifier: ^4.20250607.0
-        version: 4.20250607.0
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -1487,7 +1484,8 @@ snapshots:
   '@cloudflare/workerd-windows-64@1.20250525.0':
     optional: true
 
-  '@cloudflare/workers-types@4.20250607.0': {}
+  '@cloudflare/workers-types@4.20250607.0':
+    optional: true
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
