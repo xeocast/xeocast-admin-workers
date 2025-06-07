@@ -18,9 +18,12 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
         `SELECT
             e.id,
             e.slug,
+            e.title,
+            e.show_id,
+            e.series_id,
+            e.type,
             e.audio_bucket_key,
             e.background_bucket_key,
-            e.show_id,
             c.default_episode_background_bucket_key
          FROM episodes e
          JOIN shows c ON e.show_id = c.id
@@ -33,9 +36,12 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
     ).bind('materialGenerated').first<{
         id: number;
         slug: string;
+        title: string;
+        show_id: number;
+        series_id: number | null;
+        type: string;
         audio_bucket_key: string; // Ensured by the query
         background_bucket_key: string | null;
-        show_id: number;
         default_episode_background_bucket_key: string;
     }>();
 
@@ -107,7 +113,13 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
         }
 
         // Record the successful call and external_task_id in external_service_tasks
-        const newExternalTaskData = JSON.stringify({ episode_id: episodeToProcess.id });
+        const newExternalTaskData = JSON.stringify({
+            episode_id: episodeToProcess.id,
+            episode_title: episodeToProcess.title,
+            episode_show_id: episodeToProcess.show_id,
+            episode_series_id: episodeToProcess.series_id,
+            episode_type: episodeToProcess.type
+        });
         try {
             const externalTaskInsertResult = await env.DB.prepare(
                 'INSERT INTO external_service_tasks (external_task_id, type, data, status) VALUES (?, ?, ?, ?)'
