@@ -61,7 +61,14 @@
 	 * Environment variables allow you to store values that are used in your Worker.
 	 * https://developers.cloudflare.com/workers/wrangler/configuration/#environment-variables
 	 */
-	"vars": { "ENVIRONMENT": "production" },
+	"vars": {
+		"ENVIRONMENT": "production",
+		"R2_S3_ENDPOINT": "https://4b41e74071e41303184f5e7378a65507.r2.cloudflarestorage.com",
+		"R2_ACCESS_KEY_ID": "181583050d189a4737c3a5af12a67a48",
+		"R2_REGION": "auto",
+		"EPISODE_PROJECTS_BUCKET_NAME": "episode-projects",
+		"DEFAULT_FILES_BUCKET_NAME": "default-files"
+	},
 	/**
 	 * Note: Use secrets to store sensitive data.
 	 * https://developers.cloudflare.com/workers/configuration/secrets/

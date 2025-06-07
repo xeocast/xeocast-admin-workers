@@ -85,6 +85,21 @@ export const DeleteObjectSuccessResponseSchema = MessageResponseSchema.extend({
     bucket: R2BucketNameSchema
 }).openapi('DeleteObjectSuccessResponse');
 
+// Schema for GetUploadUrl request
+export const GetUploadUrlRequestSchema = z.object({
+    bucket: R2BucketNameSchema.openapi({ description: 'Logical name of the target R2 bucket for upload.' }),
+    key: z.string().min(1).openapi({ example: 'uploads/myfile.png', description: 'The desired object key (path and filename) for the upload.' }),
+    contentType: z.string().optional().openapi({ example: 'image/png', description: 'MIME type of the file to be uploaded. If not provided, the uploader will need to set it.' }),
+    // customMetadata: z.record(z.string()).optional().openapi({ example: { userId: '123' }, description: 'Custom metadata to be associated with the object. Will be applied during the PUT request by the client.'}),
+    // expiresIn: z.number().int().positive().optional().openapi({ example: 3600, description: 'Duration in seconds for which the presigned URL is valid. Defaults to 1 hour.'})
+}).openapi('GetUploadUrlRequest');
+
+// Schema for GetUploadUrl success response
+export const GetUploadUrlSuccessResponseSchema = z.object({
+    url: z.string().url().openapi({ example: 'https://presigned-url-for-upload...', description: 'The presigned URL to use for uploading the file.' }),
+    method: z.literal('PUT').openapi({ description: 'The HTTP method to use with the presigned URL (always PUT for uploads).' }),
+}).openapi('GetUploadUrlSuccessResponse');
+
 // --- Error Schemas for Storage Operations ---
 
 export const BucketNotFoundErrorSchema = GeneralNotFoundErrorSchema.extend({

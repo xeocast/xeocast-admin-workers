@@ -8,17 +8,19 @@
 		"apply-migrations": "wrangler d1 migrations apply xeocast_db --local --persist-to ../.wrangler/state"
 	},
 	"dependencies": {
+		"@aws-sdk/client-s3": "^3.826.0",
+		"@aws-sdk/s3-request-presigner": "^3.826.0",
 		"@hono/swagger-ui": "^0.5.1",
-		"@hono/zod-openapi": "^0.19.6",
+		"@hono/zod-openapi": "^0.19.8",
 		"@hono/zod-validator": "^0.5.0",
 		"bcryptjs": "^3.0.2",
-		"hono": "^4.7.10",
+		"hono": "^4.7.11",
 		"uuid": "^11.1.0",
-		"zod": "^3.25.20"
+		"zod": "^3.25.56"
 	},
 	"devDependencies": {
-		"@cloudflare/workers-types": "^4.20250522.0",
+		"@cloudflare/workers-types": "^4.20250607.0",
 		"@types/uuid": "^10.0.0",
-		"wrangler": "^4.18.0"
+		"wrangler": "^4.19.1"
 	}
 }

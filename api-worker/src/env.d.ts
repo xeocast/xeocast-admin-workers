@@ -1,41 +1,27 @@
-/// <reference types="astro/client" />
+// api-worker/src/env.d.ts
 
-import type { D1Database, R2Bucket } from '@cloudflare/workers-types';
+// Import Cloudflare Worker specific types. These should be globally available
+// if @cloudflare/workers-types is correctly configured in tsconfig.json's 'types' array,
+// but explicit imports can sometimes help resolve stubborn issues.
+import type { D1Database, R2Bucket, Fetcher } from '@cloudflare/workers-types';
 
-// Remove the separate Runtime type alias if no longer needed elsewhere
-// type Runtime = import("@astrojs/cloudflare").Runtime<CloudflareEnv>; 
+export interface CloudflareEnv {
+    // AWS S3 SDK / R2 Configuration
+    R2_S3_ENDPOINT: string;
+    R2_ACCESS_KEY_ID: string;
+    R2_SECRET_ACCESS_KEY: string;
+    R2_REGION: string; // e.g., 'auto', 'us-east-1'
+    EPISODE_PROJECTS_BUCKET_NAME: string; // Actual R2 bucket name
+    DEFAULT_FILES_BUCKET_NAME: string; // Actual R2 bucket name
 
-// Define the shape of your Cloudflare bindings
-interface CloudflareEnv {
-	// D1 Database
-	DB: D1Database;
-	// R2 Buckets
-	EPISODE_PROJECTS_BUCKET: R2Bucket; // For episode projects
-	DEFAULT_FILES_BUCKET: R2Bucket; // For default files
-	// Add other bindings like KV namespaces, etc.
-	// MY_KV_NAMESPACE: KVNamespace;
+    // Bindings defined in wrangler.toml and generated in worker-configuration.d.ts
+    ENVIRONMENT: string;
+    EPISODE_PROJECTS_BUCKET: R2Bucket;
+    DEFAULT_FILES_BUCKET: R2Bucket;
+    DB: D1Database;
+    ASSETS: Fetcher;
+    HEAVY_COMPUTE_API_KEY: string; // Existing binding
+
+    // Add any other KV Namespaces, Durable Objects, etc., bound to this worker
+    // e.g., MY_KV_NAMESPACE: KVNamespace;
 }
-
-// Define the shape of your User object (adjust based on your user schema)
-interface UserSessionData {
-	id: number;
-	email: string;
-	name: string; // Ensure name exists or make optional if needed
-	role: string;
-}
-
-// Get the base Runtime type, potentially omitting 'env' if it exists but is wrongly typed
-type BaseRuntime = import("@astrojs/cloudflare").Runtime<CloudflareEnv>;
-
-// Import the actions type
-import type { Actions } from 'astro:actions';
-
-declare namespace App {
-	// Define Locals explicitly
-	interface Locals {
-		// Define runtime property with an explicitly typed env field
-		runtime: import("@astrojs/cloudflare").Runtime<CloudflareEnv>;
-		user?: UserSessionData; // Keep our custom user property
-		actions: Actions; // Use the imported Actions type, make non-optional
-	}
-} 

@@ -8,6 +8,7 @@ import type { CloudflareEnv } from '../env';
 import { uploadObjectHandler } from '../handlers/storage/uploadObject.handler';
 import { downloadObjectHandler } from '../handlers/storage/downloadObject.handler';
 import { deleteObjectHandler } from '../handlers/storage/deleteObject.handler';
+import { getUploadUrlHandler } from '../handlers/storage/getUploadUrl.handler';
 
 // Schemas
 import {
@@ -21,7 +22,9 @@ import {
     R2OperationErrorSchema,
     InvalidKeyErrorSchema,
     InvalidCustomMetadataErrorSchema,
-    MissingContentTypeErrorSchema
+    MissingContentTypeErrorSchema,
+    GetUploadUrlRequestSchema,
+    GetUploadUrlSuccessResponseSchema
 } from '../schemas/storageSchemas';
 import {
     GeneralBadRequestErrorSchema,
@@ -201,5 +204,59 @@ storageRoutes.openapi(deleteRoute, deleteObjectHandler, (result, c) => {
         }), 400);
     }
 });
+
+// --- Get Upload URL Route ---
+const getUploadUrlRoute = createRoute({
+    method: 'post',
+    path: '/get-upload-url',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: GetUploadUrlRequestSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Successfully generated presigned URL for upload.',
+            content: {
+                'application/json': {
+                    schema: GetUploadUrlSuccessResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Bad Request - Invalid input.',
+            content: {
+                'application/json': {
+                    schema: GeneralBadRequestErrorSchema, // For Zod validation errors
+                },
+            },
+        },
+        404: {
+            description: 'Bucket Not Found - The specified bucket binding was not found.',
+            content: {
+                'application/json': {
+                    schema: BucketNotFoundErrorSchema,
+                },
+            },
+        },
+        500: {
+            description: 'Server Error - Failed to generate presigned URL.',
+            content: {
+                'application/json': {
+                    schema: R2OperationErrorSchema,
+                },
+            },
+        },
+    },
+    summary: 'Get a presigned URL for uploading an object to R2.',
+    description: 'Requests a presigned URL that can be used to PUT an object directly into a specified R2 bucket and key. The URL has a limited validity period.',
+    tags: ['Storage'],
+});
+
+storageRoutes.openapi(getUploadUrlRoute, getUploadUrlHandler);
 
 export default storageRoutes;
