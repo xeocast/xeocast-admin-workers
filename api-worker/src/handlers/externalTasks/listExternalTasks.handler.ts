@@ -33,6 +33,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
 
   const { page = 1, limit = 10, type, status } = queryParseResult.data;
   const offset = (page - 1) * limit;
+  const requestTimezone = c.req.header('CF-Timezone');
 
   try {
     let baseQuery = 'FROM external_service_tasks';
@@ -86,14 +87,39 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
         // Keep parsedData as null if parsing fails, schema expects z.any()
       }
       
+      let createdAtOutput = dbTask.created_at;
+      let updatedAtOutput = dbTask.updated_at;
+
+      if (requestTimezone) {
+        try {
+          const createdAtDate = new Date(dbTask.created_at);
+          const updatedAtDate = new Date(dbTask.updated_at);
+
+          if (!isNaN(createdAtDate.getTime())) {
+            createdAtOutput = createdAtDate.toLocaleString('en-US', { timeZone: requestTimezone });
+          } else {
+            console.warn(`Invalid created_at date string from DB for task ID ${dbTask.id}: ${dbTask.created_at}`);
+          }
+
+          if (!isNaN(updatedAtDate.getTime())) {
+            updatedAtOutput = updatedAtDate.toLocaleString('en-US', { timeZone: requestTimezone });
+          } else {
+            console.warn(`Invalid updated_at date string from DB for task ID ${dbTask.id}: ${dbTask.updated_at}`);
+          }
+        } catch (error) { // Catches errors from toLocaleString, e.g., invalid timezone
+          console.warn(`Failed to format dates for timezone '${requestTimezone}', task ID ${dbTask.id}:`, error);
+          // In case of error, createdAtOutput/updatedAtOutput retain their original DB values
+        }
+      }
+      
       const taskForValidation = {
         id: dbTask.id,
         external_task_id: dbTask.external_task_id,
         type: dbTask.type,
         data: parsedData, // Assign the parsed JSON data
         status: dbTask.status,
-        created_at: dbTask.created_at,
-        updated_at: dbTask.updated_at,
+        created_at: createdAtOutput,
+        updated_at: updatedAtOutput,
       };
 
       // Validate each task against the schema before sending
@@ -101,7 +127,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
       if (validation.success) {
         return validation.data;
       } else {
-        console.error(`Data validation failed for task ID ${dbTask.id}:`, validation.error.flatten());
+        console.error(`Data validation failed for task ID ${dbTask.id} (potentially due to date format change):`, validation.error.flatten());
         // Return null or a specific error structure for problematic tasks
         // For simplicity, returning null and filtering out later or handling as error
         return null; 
