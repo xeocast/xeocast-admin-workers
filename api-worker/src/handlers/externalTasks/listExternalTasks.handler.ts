@@ -33,7 +33,8 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
 
   const { page = 1, limit = 10, type, status } = queryParseResult.data;
   const offset = (page - 1) * limit;
-  const requestTimezone = c.req.header('CF-Timezone');
+  // const requestTimezone = c.req.header('CF-Timezone');
+  const requestTimezone = 'America/Argentina/Buenos_Aires'; // Hardcoded for now
 
   try {
     let baseQuery = 'FROM external_service_tasks';
@@ -112,12 +113,6 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
         }
       }
       
-      console.log('db created_at', dbTask.created_at);
-      console.log('db updated_at', dbTask.updated_at);
-      console.log('requestTimezone', requestTimezone);
-      console.log('created_at', createdAtOutput);
-      console.log('updated_at', updatedAtOutput);
-
       const taskForValidation = {
         id: dbTask.id,
         external_task_id: dbTask.external_task_id,
