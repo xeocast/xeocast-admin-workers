@@ -27,7 +27,7 @@ const authMiddleware = ensureAuth(); // ensure authMiddleware is defined before 
 app.use('*', (c, next) => {
   const middleware = cors({
     origin: (origin) => {
-      const allowedDevelopmentOrigin = 'http://localhost:4321';
+      const allowedDevelopmentOrigin = 'http://localhost:8080';
       const allowedProductionOrigin = 'https://dash.xeocast.com';
 
       if (c.env.ENVIRONMENT === 'production') {
