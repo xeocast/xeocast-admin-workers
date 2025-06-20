@@ -69,7 +69,7 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       return c.json(SeriesCreateResponseSchema.parse({
         
         message: 'Series created successfully.',
-        seriesId: result.meta.last_row_id
+        id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert series, D1 result:', result);

@@ -87,7 +87,7 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     if (result.success && result.meta.last_row_id) {
       return c.json(EpisodeCreateResponseSchema.parse({
         message: 'Episode created successfully.',
-        episodeId: result.meta.last_row_id,
+        id: result.meta.last_row_id,
       }), 201);
     } else {
       console.error('Failed to insert episode, D1 result:', result);

@@ -56,7 +56,7 @@ export const CreateExternalTaskSchema = z.object({
 
 export const ExternalTaskCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('External task created successfully.'),
-  taskId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('ExternalTaskCreateResponse');
 
 // Schema for query parameters when listing external tasks

@@ -35,7 +35,7 @@ export const YouTubePlaylistCreateRequestSchema = YouTubePlaylistBaseSchema;
 
 export const YouTubePlaylistCreateResponseSchema = MessageResponseSchema.extend({
   message: z.string().openapi({ example: 'YouTube playlist created successfully.' }),
-  playlistId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubePlaylistCreateResponse');
 
 // Enum for sortable fields for YouTube Playlists

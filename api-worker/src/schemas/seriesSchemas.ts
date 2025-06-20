@@ -33,7 +33,7 @@ export const SeriesCreateRequestSchema = SeriesBaseSchema;
 
 export const SeriesCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('Series created successfully.'),
-  seriesId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('SeriesCreateResponse');
 
 // Schema for the summary of a series, used in lists

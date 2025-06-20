@@ -39,7 +39,7 @@ export const createExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
       return c.json(ExternalTaskCreateResponseSchema.parse({
         
         message: 'External task created successfully.',
-        taskId: result.meta.last_row_id // Internal ID of the created task, matching ExternalTaskCreateResponseSchema
+        id: result.meta.last_row_id // Internal ID of the created task, matching ExternalTaskCreateResponseSchema
       }), 201);
     } else {
       console.error('Failed to insert external task, D1 result:', result);

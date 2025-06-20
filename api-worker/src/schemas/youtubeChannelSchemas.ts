@@ -42,7 +42,7 @@ export const YouTubeChannelCreateRequestSchema = YouTubeChannelBaseSchema;
 
 export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
   message: z.string().openapi({ example: 'YouTube channel created successfully.' }),
-  channelId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubeChannelCreateResponse');
 
 // Enum for sortable fields for YouTube Channels

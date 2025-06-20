@@ -55,7 +55,7 @@ export const ShowCreateRequestSchema = ShowBaseSchema;
 
 export const ShowCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('Show created successfully.'),
-  showId: z.number().int().positive().openapi({ example: 123 }),
+  id: z.number().int().positive().openapi({ example: 123 }),
 }).openapi('ShowCreateResponse');
 
 export const ShowSummarySchema = z.object({

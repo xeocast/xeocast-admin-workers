@@ -96,7 +96,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       return c.json(ShowCreateResponseSchema.parse({
         
         message: 'Show created successfully.',
-        showId: result.meta.last_row_id
+        id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert show, D1 result:', result);

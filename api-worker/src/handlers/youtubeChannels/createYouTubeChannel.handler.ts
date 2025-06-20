@@ -65,7 +65,7 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
       return c.json(YouTubeChannelCreateResponseSchema.parse({
         
         message: 'YouTube channel created successfully.',
-        channelId: result.meta.last_row_id
+        id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert YouTube channel, D1 result:', result);

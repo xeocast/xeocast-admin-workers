@@ -48,7 +48,7 @@ export const createRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       return c.json(RoleCreateResponseSchema.parse({
         
         message: 'Role created successfully.',
-        roleId: result.meta.last_row_id
+        id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert role, D1 result:', result);

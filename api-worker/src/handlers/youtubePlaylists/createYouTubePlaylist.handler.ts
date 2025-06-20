@@ -69,7 +69,7 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       return c.json(YouTubePlaylistCreateResponseSchema.parse({
         
         message: 'YouTube playlist created successfully.',
-        playlistId: result.meta.last_row_id
+        id: result.meta.last_row_id
       }), 201);
     } else {
       return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: 'Failed to create YouTube playlist in database.' }), 500);

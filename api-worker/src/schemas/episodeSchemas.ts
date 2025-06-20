@@ -157,7 +157,7 @@ export const EpisodeCreateRequestSchema = EpisodeBaseSchema;
 
 export const EpisodeCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('Episode created successfully.'),
-  episodeId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('EpisodeCreateResponse');
 
 // Schema for pagination details

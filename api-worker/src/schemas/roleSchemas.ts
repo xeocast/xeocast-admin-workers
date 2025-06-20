@@ -33,7 +33,7 @@ export const RoleCreateRequestSchema = RoleBaseSchema;
 
 export const RoleCreateResponseSchema = MessageResponseSchema.extend({
   message: z.literal('Role created successfully.'),
-  roleId: z.number().int().positive().openapi({ example: 101 }),
+  id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('RoleCreateResponse');
 
 // Enum for sortable fields for Roles
