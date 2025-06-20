@@ -10,6 +10,8 @@ import {
   ListEpisodesQuerySchema,
   ListEpisodesResponseSchema,
   EpisodeDbSchema,
+  EpisodeSortBySchema, // Import for validation
+  SortOrderSchema, // Import for validation
 } from '../../schemas/episodeSchemas';
 import {
   GeneralServerErrorSchema,
@@ -29,7 +31,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }), 400);
   }
 
-  const { page, limit, status, show_id, series_id, title, type } = queryParseResult.data;
+  const { page, limit, status, show_id, series_id, title, type, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -59,6 +61,24 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  // Whitelist of sortable columns and their actual DB names
+  const validSortColumns: Record<z.infer<typeof EpisodeSortBySchema>, string> = {
+    id: 'id',
+    title: 'title',
+    status: 'status',
+    type: 'type',
+    show_id: 'show_id',
+    series_id: 'series_id',
+    scheduled_publish_at: 'scheduled_publish_at',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  };
+
+  const orderByColumn = validSortColumns[sortBy] || 'created_at'; // Default to 'created_at' if invalid sortBy
+  const orderByDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC'; // Default to DESC if invalid sortOrder (though schema validates)
+
+  const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
   try {
     // Select all fields required by EpisodeDbSchema for transformation by EpisodeSchema
     const episodesQuery = c.env.DB.prepare(
@@ -69,7 +89,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
         video_bucket_key, thumbnail_bucket_key, article_image_bucket_key,
         script, thumbnail_gen_prompt, article_image_gen_prompt,
         status_on_youtube, status_on_website, status_on_x, freezeStatus, first_comment
-      FROM episodes ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      FROM episodes ${whereString} ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(

@@ -16,6 +16,8 @@ import {
   EpisodeSchema, // For placeholder data
   EpisodeStatusSchema,
   EpisodePublicationTypeSchema,
+  EpisodeSortBySchema, // Added for sorting
+  SortOrderSchema, // Added for sorting
 } from '../schemas/episodeSchemas';
 import {
   PathIdParamSchema,
@@ -74,6 +76,8 @@ const listEpisodesRouteDef = createRoute({
       series_id: z.string().optional().openapi({ description: 'Filter by series ID.' }), // Assuming string for ID from query
       title: z.string().optional().openapi({ description: 'Filter by episode title (case-insensitive, partial match).' }),
       type: EpisodePublicationTypeSchema.optional().openapi({ description: "Filter by episode publication type (e.g., 'evergreen', 'news')." }),
+      sortBy: EpisodeSortBySchema.optional().openapi({ description: 'Field to sort episodes by. Defaults to created_at.' }),
+      sortOrder: SortOrderSchema.optional().openapi({ description: 'Sort order (asc/desc). Defaults to desc.' }),
     }).openapi('ListEpisodesQuery'),
   },
   responses: {

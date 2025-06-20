@@ -15,6 +15,8 @@ import {
   ExternalTaskNotFoundErrorSchema,
   ExternalTaskUpdateFailedErrorSchema,
   ExternalTaskDeleteFailedErrorSchema,
+  ExternalTaskSortBySchema, // Added for sorting
+  SortOrderSchema, // Added for sorting
 } from '../schemas/externalTaskSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema, PaginationInfoSchema, GeneralBadRequestErrorSchema, GeneralNotFoundErrorSchema } from '../schemas/commonSchemas';
 import { createExternalTaskHandler } from '../handlers/externalTasks/createExternalTask.handler';
@@ -47,7 +49,7 @@ const listTasksRouteDef = createRoute({
   method: 'get',
   path: '/',
   request: {
-    query: ListExternalTasksQuerySchema,
+    query: ListExternalTasksQuerySchema, // ListExternalTasksQuerySchema already includes sortBy and sortOrder with OpenAPI descriptions
   },
   responses: {
     200: { content: { 'application/json': { schema: ListExternalTasksResponseSchema } }, description: 'Paginated list of external tasks' },

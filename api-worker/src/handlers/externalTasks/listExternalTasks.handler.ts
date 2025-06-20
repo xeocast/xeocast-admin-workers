@@ -6,7 +6,9 @@ import {
   ExternalTaskStatusSchema,
   ExternalTaskTypeSchema,
   ListExternalTasksQuerySchema,
-  ListExternalTasksResponseSchema
+  ListExternalTasksResponseSchema,
+  ExternalTaskSortBySchema, // Added for sorting
+  SortOrderSchema // Added for sorting
 } from '../../schemas/externalTaskSchemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema, PaginationInfoSchema } from '../../schemas/commonSchemas';
 
@@ -31,7 +33,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
     }), 400);
   }
 
-  const { page = 1, limit = 10, type, status } = queryParseResult.data;
+  const { page = 1, limit = 10, type, status, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
   // const requestTimezone = c.req.header('CF-Timezone');
   const requestTimezone = 'America/Argentina/Buenos_Aires'; // Hardcoded for now
@@ -59,8 +61,23 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
       whereClause = ' WHERE ' + conditions.join(' AND ');
     }
 
+    // Whitelist of sortable columns and their actual DB names
+    const validSortColumns: Record<z.infer<typeof ExternalTaskSortBySchema>, string> = {
+      id: 'id',
+      external_task_id: 'external_task_id',
+      type: 'type',
+      status: 'status',
+      created_at: 'created_at',
+      updated_at: 'updated_at',
+    };
+
+    const orderByColumn = validSortColumns[sortBy] || 'created_at'; // Default to 'created_at'
+    const orderByDirection = sortOrder.toUpperCase() === 'ASC' ? 'ASC' : 'DESC'; // Default to DESC
+
+    const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
     // Query for tasks
-    const tasksQuery = `SELECT id, external_task_id, type, data, status, created_at, updated_at ${baseQuery}${whereClause} ORDER BY created_at DESC LIMIT ?${bindingIndex} OFFSET ?${bindingIndex + 1}`;
+    const tasksQuery = `SELECT id, external_task_id, type, data, status, created_at, updated_at ${baseQuery}${whereClause} ${orderByString} LIMIT ?${bindingIndex} OFFSET ?${bindingIndex + 1}`;
     const tasksBindings = [...bindings, limit, offset];
     const tasksStmt = c.env.DB.prepare(tasksQuery).bind(...tasksBindings);
     const { results: dbTasks } = await tasksStmt.all<ExternalTaskFromDB>();

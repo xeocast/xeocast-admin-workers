@@ -60,11 +60,28 @@ export const ExternalTaskCreateResponseSchema = MessageResponseSchema.extend({
 }).openapi('ExternalTaskCreateResponse');
 
 // Schema for query parameters when listing external tasks
+// Enum for sortable fields for External Tasks
+export const ExternalTaskSortBySchema = z.enum([
+  'id',
+  'external_task_id',
+  'type',
+  'status',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort external tasks by.', example: 'created_at' });
+
+// Enum for sort order (re-defined here for locality, consider moving to commonSchemas if widely used)
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'desc' });
+
 export const ListExternalTasksQuerySchema = PaginationQuerySchema.extend({
   type: ExternalTaskTypeSchema.optional()
     .openapi({ description: 'Filter by task type.' }),
   status: ExternalTaskStatusSchema.optional()
     .openapi({ description: 'Filter by task status.' }),
+  sortBy: ExternalTaskSortBySchema.optional().default('created_at')
+    .openapi({ description: 'Field to sort by.', example: 'created_at' }),
+  sortOrder: SortOrderSchema.optional().default('desc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'desc' }),
 }).openapi('ListExternalTasksQuery');
 
 // Schema for listing external tasks (paginated)

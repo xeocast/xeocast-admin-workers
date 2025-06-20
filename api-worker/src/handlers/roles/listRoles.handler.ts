@@ -4,7 +4,9 @@ import type { CloudflareEnv } from '../../env';
 import {
   RoleSchema,
   ListRolesResponseSchema,
-  ListRolesQuerySchema
+  ListRolesQuerySchema,
+  RoleSortBySchema, // Added for sorting
+  SortOrderSchema // Added for sorting
 } from '../../schemas/roleSchemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
@@ -27,7 +29,7 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }), 400);
   }
 
-  const { page, limit, name } = queryParseResult.data;
+  const { page, limit, name, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -41,9 +43,22 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  // Whitelist of sortable columns and their actual DB names
+  const validSortColumns: Record<z.infer<typeof RoleSortBySchema>, string> = {
+    id: 'id',
+    name: 'name',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  };
+
+  const orderByColumn = validSortColumns[sortBy] || 'name'; // Default to 'name'
+  const orderByDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'; // Default to ASC
+
+  const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
   try {
     const rolesQuery = c.env.DB.prepare(
-      `SELECT id, name, description, permissions, created_at, updated_at FROM roles ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      `SELECT id, name, description, permissions, created_at, updated_at FROM roles ${whereString} ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
 
     const countQuery = c.env.DB.prepare(

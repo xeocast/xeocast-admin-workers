@@ -184,6 +184,22 @@ export const EpisodeListItemSchema = EpisodeOutputObjectSchema.pick({
   created_at: true,
 }).openapi('EpisodeListItem');
 
+// Enum for sortable fields
+export const EpisodeSortBySchema = z.enum([
+  'id',
+  'title',
+  'status',
+  'type',
+  'show_id',
+  'series_id',
+  'scheduled_publish_at',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort episodes by.', example: 'created_at' });
+
+// Enum for sort order
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'desc' });
+
 export const ListEpisodesQuerySchema = z.object({
   page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
   limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
@@ -192,6 +208,8 @@ export const ListEpisodesQuerySchema = z.object({
   series_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Series ID must be positive' }),
   title: z.string().optional(),
   type: EpisodePublicationTypeSchema.optional(),
+  sortBy: EpisodeSortBySchema.optional().default('created_at'),
+  sortOrder: SortOrderSchema.optional().default('desc'),
 });
 
 export const ListEpisodesResponseSchema = z.object({

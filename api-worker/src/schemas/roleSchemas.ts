@@ -36,6 +36,17 @@ export const RoleCreateResponseSchema = MessageResponseSchema.extend({
   roleId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('RoleCreateResponse');
 
+// Enum for sortable fields for Roles
+export const RoleSortBySchema = z.enum([
+  'id',
+  'name',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort roles by.', example: 'name' });
+
+// Enum for sort order (can be moved to commonSchemas if used across more modules)
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for query parameters when listing roles
 export const ListRolesQuerySchema = z.object({
   page: z.string().optional().default('1').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
@@ -49,7 +60,11 @@ export const ListRolesQuerySchema = z.object({
   name: z.string().optional().openapi({
     example: 'Admin',
     description: 'Filter roles by name (case-insensitive, partial match).'
-  })
+  }),
+  sortBy: RoleSortBySchema.optional().default('name')
+    .openapi({ description: 'Field to sort roles by.', example: 'name' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
 }).openapi('ListRolesQuery');
 
 // Schema for listing roles
