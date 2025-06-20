@@ -74,15 +74,19 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }
 
     const shows = showsDbResult.results ? showsDbResult.results.map((row: z.infer<typeof ShowSummarySchema>) => ShowSummarySchema.parse(row)) : [];
-    const total = countResult.total;
-    const totalPages = Math.ceil(total / limit);
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
 
     return c.json(ListShowsResponseSchema.parse({
       shows: shows,
-      total: total,
-      page: page,
-      limit: limit,
-      totalPages: totalPages
+      pagination: pagination,
     }), 200);
 
   } catch (error) {

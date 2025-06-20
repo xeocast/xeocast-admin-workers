@@ -102,15 +102,19 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       return null; 
     }).filter(Boolean) as z.infer<typeof RoleSchema>[];
 
-    const totalRoles = countResult.total;
-    const totalPages = Math.ceil(totalRoles / limit);
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
 
     return c.json(ListRolesResponseSchema.parse({
       roles: processedRoles,
-      total: totalRoles,
-      page,
-      limit,
-      totalPages,
+      pagination: pagination,
     }), 200);
 
   } catch (error) {

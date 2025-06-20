@@ -4,7 +4,8 @@ import {
   MessageResponseSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
-  GeneralServerErrorSchema // For generic 500 errors if needed
+  GeneralServerErrorSchema, // For generic 500 errors if needed
+  PaginationInfoSchema
 } from './commonSchemas';
 
 // Schema for a single permission
@@ -70,10 +71,7 @@ export const ListRolesQuerySchema = z.object({
 // Schema for listing roles
 export const ListRolesResponseSchema = z.object({
   roles: z.array(RoleSchema),
-  total: z.number().int().openapi({ example: 100, description: 'Total number of roles matching the query.' }),
-  page: z.number().int().openapi({ example: 1, description: 'Current page number.' }),
-  limit: z.number().int().openapi({ example: 10, description: 'Number of roles per page.' }),
-  totalPages: z.number().int().openapi({ example: 10, description: 'Total number of pages.' }),
+  pagination: PaginationInfoSchema,
 }).openapi('ListRolesResponse');
 
 // Schema for getting a single role

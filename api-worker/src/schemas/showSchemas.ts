@@ -7,7 +7,8 @@ import {
     ErrorSchema, // Added ErrorSchema for base error types
     GeneralBadRequestErrorSchema, 
     GeneralNotFoundErrorSchema, 
-    GeneralServerErrorSchema 
+    GeneralServerErrorSchema,
+  PaginationInfoSchema
 } from './commonSchemas';
 
 const ShowBaseSchema = z.object({
@@ -103,10 +104,7 @@ export const ListShowsQuerySchema = z.object({
 
 export const ListShowsResponseSchema = z.object({
   shows: z.array(ShowSummarySchema),
-  total: z.number().int().openapi({ example: 100, description: 'Total number of shows matching the query.' }),
-  page: z.number().int().openapi({ example: 1, description: 'Current page number.' }),
-  limit: z.number().int().openapi({ example: 10, description: 'Number of items per page.' }),
-  totalPages: z.number().int().openapi({ example: 10, description: 'Total number of pages.' })
+  pagination: PaginationInfoSchema,
 }).openapi('ListShowsResponse');
 
 export const GetShowResponseSchema = z.object({
