@@ -14,7 +14,6 @@ import externalTaskRoutes from './routes/externalTasks';
 import youtubeChannelRoutes from './routes/youtubeChannels';
 import youtubePlaylistRoutes from './routes/youtubePlaylists';
 import storageRoutes from './routes/storage';
-import maintenanceRoutes from './routes/maintenance'; // Added
 import heavyComputeApiRoutes from './routes/heavyComputeApi';
 
 // Import middleware
