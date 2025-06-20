@@ -36,9 +36,29 @@ export const RoleCreateResponseSchema = MessageResponseSchema.extend({
   roleId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('RoleCreateResponse');
 
+// Schema for query parameters when listing roles
+export const ListRolesQuerySchema = z.object({
+  page: z.string().optional().default('1').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
+    example: 1,
+    description: 'Page number for pagination, defaults to 1.'
+  })),
+  limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
+    example: 10,
+    description: 'Number of roles per page, defaults to 10.'
+  })),
+  name: z.string().optional().openapi({
+    example: 'Admin',
+    description: 'Filter roles by name (case-insensitive, partial match).'
+  })
+}).openapi('ListRolesQuery');
+
 // Schema for listing roles
 export const ListRolesResponseSchema = z.object({
-  roles: z.array(RoleSchema)
+  roles: z.array(RoleSchema),
+  total: z.number().int().openapi({ example: 100, description: 'Total number of roles matching the query.' }),
+  page: z.number().int().openapi({ example: 1, description: 'Current page number.' }),
+  limit: z.number().int().openapi({ example: 10, description: 'Number of roles per page.' }),
+  totalPages: z.number().int().openapi({ example: 10, description: 'Total number of pages.' }),
 }).openapi('ListRolesResponse');
 
 // Schema for getting a single role

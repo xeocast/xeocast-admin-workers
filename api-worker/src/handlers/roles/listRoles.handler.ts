@@ -1,61 +1,108 @@
 import { Context } from 'hono';
+import { z } from '@hono/zod-openapi'; // Added for ZodError
 import type { CloudflareEnv } from '../../env';
-import { RoleSchema, ListRolesResponseSchema } from '../../schemas/roleSchemas';
-import { GeneralServerErrorSchema } from '../../schemas/commonSchemas';
+import {
+  RoleSchema,
+  ListRolesResponseSchema,
+  ListRolesQuerySchema
+} from '../../schemas/roleSchemas';
+import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
 interface RoleFromDB {
   id: number;
   name: string;
-  description: string; // Changed from string | null
+  description: string;
   permissions: string; // JSON string
   created_at: string;
   updated_at: string;
 }
 
 export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
-  try {
-    const { results } = await c.env.DB.prepare('SELECT id, name, description, permissions, created_at, updated_at FROM roles ORDER BY id ASC').all<RoleFromDB>();
+  const queryParseResult = ListRolesQuerySchema.safeParse(c.req.query());
 
-    if (!results) {
-      // This case might occur if the query itself fails in a way D1 doesn't throw, or if results is undefined/null
-      return c.json(ListRolesResponseSchema.parse({ roles: [] }), 200);
+  if (!queryParseResult.success) {
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      message: 'Invalid query parameters.',
+      errors: queryParseResult.error.flatten().fieldErrors
+    }), 400);
+  }
+
+  const { page, limit, name } = queryParseResult.data;
+  const offset = (page - 1) * limit;
+
+  let whereClauses: string[] = [];
+  let bindings: (string | number)[] = [];
+  let paramIndex = 1;
+
+  if (name) {
+    whereClauses.push(`LOWER(name) LIKE LOWER(?${paramIndex++})`);
+    bindings.push(`%${name}%`);
+  }
+
+  const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+
+  try {
+    const rolesQuery = c.env.DB.prepare(
+      `SELECT id, name, description, permissions, created_at, updated_at FROM roles ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+    ).bind(...bindings, limit, offset);
+
+    const countQuery = c.env.DB.prepare(
+      `SELECT COUNT(*) as total FROM roles ${whereString}`
+    ).bind(...bindings);
+
+    const [rolesDbResult, countResult] = await Promise.all([
+      rolesQuery.all<RoleFromDB>(),
+      countQuery.first<{ total: number }>()
+    ]);
+
+    if (!rolesDbResult.results || countResult === null) {
+      console.error('Failed to fetch roles or count, D1 results:', rolesDbResult, countResult);
+      return c.json(GeneralServerErrorSchema.parse({
+        message: 'Failed to retrieve roles from the database.'
+      }), 500);
     }
 
-    const roles = results.map(dbRole => {
+    const processedRoles = rolesDbResult.results.map((dbRole: RoleFromDB) => {
       let parsedPermissions: string[];
       try {
         parsedPermissions = JSON.parse(dbRole.permissions);
         if (!Array.isArray(parsedPermissions) || !parsedPermissions.every(p => typeof p === 'string')) {
           console.warn(`Invalid permissions format for role ID ${dbRole.id}:`, dbRole.permissions);
-          parsedPermissions = []; // Default to empty array or handle as error
+          parsedPermissions = [];
         }
       } catch (e) {
         console.warn(`Failed to parse permissions for role ID ${dbRole.id}:`, e);
-        parsedPermissions = []; // Default to empty array or handle as error
+        parsedPermissions = [];
       }
       
-      // Validate each role against the RoleSchema after parsing permissions
-      // This ensures the structure is correct before sending it in the response.
-      const roleForValidation = {
+      const roleValidation = RoleSchema.safeParse({
         ...dbRole,
-        description: dbRole.description, // Directly use dbRole.description as it's now string
         permissions: parsedPermissions,
-      };
+      });
 
-      const validation = RoleSchema.safeParse(roleForValidation);
-      if (!validation.success) {
-        console.error(`Data for role ID ${dbRole.id} failed RoleSchema validation after DB fetch:`, validation.error.flatten());
-        // Decide how to handle: skip this role, return error, etc.
-        // For now, we'll filter out invalid roles. A more robust solution might log and alert.
-        return null;
+      if (roleValidation.success) {
+        return roleValidation.data;
       }
-      return validation.data;
-    }).filter(role => role !== null); // Filter out any roles that failed validation
+      console.error(`Error parsing role ID ${dbRole.id} in list:`, roleValidation.error.flatten());
+      return null; 
+    }).filter(Boolean) as z.infer<typeof RoleSchema>[];
 
-    return c.json(ListRolesResponseSchema.parse({ roles }), 200);
+    const totalRoles = countResult.total;
+    const totalPages = Math.ceil(totalRoles / limit);
+
+    return c.json(ListRolesResponseSchema.parse({
+      roles: processedRoles,
+      total: totalRoles,
+      page,
+      limit,
+      totalPages,
+    }), 200);
 
   } catch (error) {
     console.error('Error listing roles:', error);
-    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list roles due to a server error.' }), 500);
+    if (error instanceof z.ZodError) {
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing role data.', errors: error.flatten() }), 500);
+    }
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list roles due to an unexpected error.' }), 500);
   }
 };

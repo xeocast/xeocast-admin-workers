@@ -5,6 +5,7 @@ import {
   RoleCreateRequestSchema,
   RoleCreateResponseSchema,
   ListRolesResponseSchema,
+  ListRolesQuerySchema, // Added import for query schema
   GetRoleResponseSchema,
   RoleUpdateRequestSchema,
   RoleUpdateResponseSchema,
@@ -46,12 +47,16 @@ roleRoutes.openapi(createRoleRouteDef, createRoleHandler);
 const listRolesRouteDef = createRoute({
   method: 'get',
   path: '/',
+  request: {
+    query: ListRolesQuerySchema, // Added query parameters schema
+  },
   responses: {
-    200: { content: { 'application/json': { schema: ListRolesResponseSchema } }, description: 'List of roles' },
-    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
+    200: { content: { 'application/json': { schema: ListRolesResponseSchema } }, description: 'List of roles with pagination' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid query parameters)' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
-  summary: 'Lists all roles.',
+  summary: 'Lists all roles with pagination and filtering.',
+  description: 'Retrieves a list of roles, allowing pagination and filtering by name.',
   tags: ['Roles'],
 });
 roleRoutes.openapi(listRolesRouteDef, listRolesHandler);
