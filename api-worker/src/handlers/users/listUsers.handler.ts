@@ -4,7 +4,9 @@ import type { CloudflareEnv } from '../../env';
 import {
   UserSchema,
   ListUsersResponseSchema,
-  ListUsersQuerySchema // Added import for query schema
+  ListUsersQuerySchema, // Added import for query schema
+  UserSortBySchema, // Added for sorting
+  SortOrderSchema // Added for sorting
 } from '../../schemas/userSchemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
@@ -28,7 +30,7 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }), 400);
   }
 
-  const { page, limit, name, email } = queryParseResult.data;
+  const { page, limit, name, email, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -46,6 +48,20 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  // Whitelist of sortable columns and their actual DB names
+  const validSortColumns: Record<z.infer<typeof UserSortBySchema>, string> = {
+    id: 'u.id',
+    name: 'u.name',
+    email: 'u.email',
+    created_at: 'u.created_at',
+    updated_at: 'u.updated_at',
+  };
+
+  const orderByColumn = validSortColumns[sortBy] || 'u.name'; // Default to 'u.name'
+  const orderByDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'; // Default to ASC
+
+  const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}, r.id ASC`;
+
   try {
     const usersQueryStmt = `
       SELECT
@@ -55,7 +71,7 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       LEFT JOIN user_roles ur ON u.id = ur.user_id
       LEFT JOIN roles r ON ur.role_id = r.id
       ${whereString}
-      ORDER BY u.id ASC, r.id ASC
+      ${orderByString}
       LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}
     `;
 

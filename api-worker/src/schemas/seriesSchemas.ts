@@ -52,12 +52,28 @@ const PaginationSchema = z.object({
   totalPages: z.number().int().nonnegative().openapi({ example: 10, description: 'Total number of pages.' }),
 }).openapi('Pagination');
 
+// Enum for sortable fields for Series
+export const SeriesSortBySchema = z.enum([
+  'id',
+  'title',
+  'show_id',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort series by.', example: 'title' });
+
+// Enum for sort order
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for query parameters for listing series
 export const ListSeriesQuerySchema = z.object({
   page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
   limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
   title: z.string().optional().openapi({ description: 'Filter by series title (case-insensitive, partial match).' }),
   show_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
+  sortBy: SeriesSortBySchema.optional().default('title')
+    .openapi({ description: 'Field to sort series by.', example: 'title' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
 });
 
 // Schema for listing series

@@ -45,6 +45,19 @@ export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
   channelId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubeChannelCreateResponse');
 
+// Enum for sortable fields for YouTube Channels
+export const YouTubeChannelSortBySchema = z.enum([
+  'id',
+  'title',
+  'show_id',
+  'language_code',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort YouTube channels by.', example: 'title' });
+
+// Enum for sort order
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for query parameters when listing YouTube channels
 export const ListYouTubeChannelsQuerySchema = PaginationQuerySchema.extend({
   show_id: z.string().optional()
@@ -55,6 +68,10 @@ export const ListYouTubeChannelsQuerySchema = PaginationQuerySchema.extend({
     .openapi({ description: 'Filter by YouTube channel title (case-insensitive, partial match).', example: 'Awesome Channel' }),
   language_code: z.string().optional()
     .openapi({ description: 'Filter by language code (ISO 639-1 alpha-2 code).', example: 'en' }),
+  sortBy: YouTubeChannelSortBySchema.optional().default('title')
+    .openapi({ description: 'Field to sort YouTube channels by.', example: 'title' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
 }).openapi('ListYouTubeChannelsQuery');
 
 // Schema for listing YouTube channels

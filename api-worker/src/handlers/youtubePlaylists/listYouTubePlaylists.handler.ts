@@ -4,7 +4,9 @@ import { z } from '@hono/zod-openapi'; // Added for z.infer
 import {
   YouTubePlaylistSchema,
   ListYouTubePlaylistsQuerySchema,
-  ListYouTubePlaylistsResponseSchema
+  ListYouTubePlaylistsResponseSchema,
+  YouTubePlaylistSortBySchema,
+  SortOrderSchema
 } from '../../schemas/youtubePlaylistSchemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
@@ -30,7 +32,7 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid query parameters.'}), 400);
   }
 
-  const { page, limit, title, series_id, channel_id } = queryParseResult.data;
+  const { page, limit, title, series_id, channel_id, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   try {
@@ -60,7 +62,22 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
       query += whereClause;
       countQueryStr += whereClause;
     }
-    query += ` ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
+
+    // Whitelist of sortable columns
+    const validSortColumns: Record<z.infer<typeof YouTubePlaylistSortBySchema>, string> = {
+      id: 'id',
+      title: 'title',
+      series_id: 'series_id',
+      channel_id: 'channel_id',
+      created_at: 'created_at',
+      updated_at: 'updated_at'
+    };
+
+    const orderByColumn = validSortColumns[sortBy] || 'title';
+    const orderByDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
+    query += ` ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
 
     const playlistsStmt = c.env.DB.prepare(query).bind(...bindings, limit, offset);
     const countStmt = c.env.DB.prepare(countQueryStr).bind(...bindings);

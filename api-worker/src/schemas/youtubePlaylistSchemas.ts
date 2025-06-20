@@ -38,6 +38,19 @@ export const YouTubePlaylistCreateResponseSchema = MessageResponseSchema.extend(
   playlistId: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('YouTubePlaylistCreateResponse');
 
+// Enum for sortable fields for YouTube Playlists
+export const YouTubePlaylistSortBySchema = z.enum([
+  'id',
+  'title',
+  'series_id',
+  'channel_id',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort YouTube playlists by.', example: 'title' });
+
+// Enum for sort order
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for query parameters when listing YouTube playlists
 export const ListYouTubePlaylistsQuerySchema = z.object({
   page: z.string().optional()
@@ -58,6 +71,10 @@ export const ListYouTubePlaylistsQuerySchema = z.object({
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),
+  sortBy: YouTubePlaylistSortBySchema.optional().default('title')
+    .openapi({ description: 'Field to sort YouTube playlists by.', example: 'title' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
 }).openapi('ListYouTubePlaylistsQuery');
 
 // Schema for listing YouTube playlists

@@ -4,7 +4,9 @@ import { z } from 'zod';
 import {
   ListShowsQuerySchema, // Added
   ListShowsResponseSchema,
-  ShowSummarySchema
+  ShowSummarySchema,
+  ShowSortBySchema, // Added for sorting
+  SortOrderSchema // Added for sorting
 } from '../../schemas/showSchemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas'; // Added GeneralBadRequestErrorSchema
 
@@ -18,7 +20,7 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }), 400);
   }
 
-  const { page, limit, name, language_code } = queryParseResult.data;
+  const { page, limit, name, language_code, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -36,9 +38,23 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+  // Whitelist of sortable columns and their actual DB names
+  const validSortColumns: Record<z.infer<typeof ShowSortBySchema>, string> = {
+    id: 'id',
+    name: 'name',
+    language_code: 'language_code',
+    created_at: 'created_at',
+    updated_at: 'updated_at',
+  };
+
+  const orderByColumn = validSortColumns[sortBy] || 'name'; // Default to 'name'
+  const orderByDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'; // Default to ASC
+
+  const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
   try {
     const showsQuery = c.env.DB.prepare(
-      `SELECT id, name, language_code, slug FROM shows ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+      `SELECT id, name, language_code, slug FROM shows ${whereString} ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
     const countQuery = c.env.DB.prepare(

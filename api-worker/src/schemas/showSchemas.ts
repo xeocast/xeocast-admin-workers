@@ -65,6 +65,18 @@ export const ShowSummarySchema = z.object({
   language_code: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('ShowSummary');
 
+// Enum for sortable fields for Shows
+export const ShowSortBySchema = z.enum([
+  'id',
+  'name',
+  'language_code',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort shows by.', example: 'name' });
+
+// Enum for sort order (can be moved to commonSchemas if used across more modules)
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for query parameters when listing shows
 export const ListShowsQuerySchema = z.object({
   page: z.string().optional().default('1').transform(Number).pipe(z.number().int().positive().openapi({
@@ -82,7 +94,11 @@ export const ListShowsQuerySchema = z.object({
   language_code: z.string().length(2).optional().openapi({
     example: 'en',
     description: 'Filter by show language code.'
-  })
+  }),
+  sortBy: ShowSortBySchema.optional().default('name')
+    .openapi({ description: 'Field to sort shows by.', example: 'name' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
 }).openapi('ListShowsQuery');
 
 export const ListShowsResponseSchema = z.object({

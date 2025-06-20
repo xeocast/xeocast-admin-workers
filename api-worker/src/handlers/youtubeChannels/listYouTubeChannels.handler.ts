@@ -4,7 +4,9 @@ import { z } from '@hono/zod-openapi'; // Added zod import
 import {
   YouTubeChannelSchema,
   ListYouTubeChannelsQuerySchema,
-  ListYouTubeChannelsResponseSchema
+  ListYouTubeChannelsResponseSchema,
+  YouTubeChannelSortBySchema,
+  SortOrderSchema
 } from '../../schemas/youtubeChannelSchemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
@@ -37,7 +39,7 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     }), 400);
   }
 
-  const { page, limit, show_id, title, language_code } = validationResult.data;
+  const { page, limit, show_id, title, language_code, sortBy, sortOrder } = validationResult.data;
   const offset = (page - 1) * limit;
 
   try {
@@ -61,9 +63,23 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
 
     const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
+    // Whitelist of sortable columns
+    const validSortColumns: Record<z.infer<typeof YouTubeChannelSortBySchema>, string> = {
+      id: 'id',
+      title: 'title',
+      show_id: 'show_id',
+      language_code: 'language_code',
+      created_at: 'created_at',
+      updated_at: 'updated_at'
+    };
+
+    const orderByColumn = validSortColumns[sortBy] || 'title';
+    const orderByDirection = sortOrder.toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const orderByString = `ORDER BY ${orderByColumn} ${orderByDirection}`;
+
     const channelsSelectFields = 'id, show_id, youtube_platform_id, youtube_platform_category_id, title, description, video_description_template, first_comment_template, language_code, created_at, updated_at';
 
-    const channelsQueryString = `SELECT ${channelsSelectFields} ${baseQuery} ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
+    const channelsQueryString = `SELECT ${channelsSelectFields} ${baseQuery} ${whereString} ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
     const countQueryString = `SELECT COUNT(*) as total ${baseQuery} ${whereString}`;
 
     const channelsStmt = c.env.DB.prepare(channelsQueryString).bind(...bindings, limit, offset);

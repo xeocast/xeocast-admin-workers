@@ -29,6 +29,18 @@ export const UserSchema = UserBaseSchema.extend({
   roles: z.array(RoleSchema).optional().openapi({ description: 'Roles assigned to the user' }),
 }).openapi('User');
 
+// Enum for sortable fields for Users
+export const UserSortBySchema = z.enum([
+  'id',
+  'name',
+  'email',
+  'created_at',
+  'updated_at'
+]).openapi({ description: 'Field to sort users by.', example: 'name' });
+
+// Enum for sort order
+export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
+
 // Schema for creating a new user
 export const UserCreateRequestSchema = UserBaseSchema.extend({
   role_ids: z.array(z.number().int().positive()).optional().openapi({ example: [1, 2], description: 'Array of role IDs to assign to the user. Defaults to [2] (editor) if not provided.' }),
@@ -58,6 +70,10 @@ export const ListUsersQuerySchema = z.object({
     description: 'Filter by user email (case-insensitive, partial match).',
     example: 'user@example.com',
   }),
+  sortBy: UserSortBySchema.optional().default('name')
+    .openapi({ description: 'Field to sort users by.', example: 'name' }),
+  sortOrder: SortOrderSchema.optional().default('asc')
+    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
 }).openapi('ListUsersQuery');
 
 // Schema for listing users

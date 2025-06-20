@@ -14,7 +14,8 @@ import {
   SeriesCreateFailedErrorSchema,
   SeriesNotFoundErrorSchema,
   SeriesUpdateFailedErrorSchema,
-  SeriesDeleteFailedErrorSchema
+  SeriesDeleteFailedErrorSchema,
+  ListSeriesQuerySchema // Added import for the query schema
 } from '../schemas/seriesSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/commonSchemas';
 import { createSeriesHandler } from '../handlers/series/createSeries.handler';
@@ -47,12 +48,7 @@ const listSeriesRouteDef = createRoute({
   method: 'get',
   path: '/',
   request: {
-    query: z.object({
-      page: z.string().optional().openapi({ example: '1', description: 'Page number for pagination.' }),
-      limit: z.string().optional().openapi({ example: '10', description: 'Number of items per page (max 100).' }),
-      title: z.string().optional().openapi({ example: 'Tech Talk', description: 'Filter by series title (case-insensitive, partial match).' }),
-      show_id: z.string().optional().openapi({ example: '123', description: 'Filter by show ID.' }),
-    }).openapi('ListSeriesQuery'),
+    query: ListSeriesQuerySchema, // Use the imported schema
   },
   responses: {
     200: { content: { 'application/json': { schema: ListSeriesResponseSchema } }, description: 'A paginated list of series.' },
