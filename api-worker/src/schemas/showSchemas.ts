@@ -65,8 +65,32 @@ export const ShowSummarySchema = z.object({
   language_code: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('ShowSummary');
 
+// Schema for query parameters when listing shows
+export const ListShowsQuerySchema = z.object({
+  page: z.string().optional().default('1').transform(Number).pipe(z.number().int().positive().openapi({
+    example: 1,
+    description: 'Page number for pagination, defaults to 1.'
+  })),
+  limit: z.string().optional().default('10').transform(Number).pipe(z.number().int().positive().openapi({
+    example: 10,
+    description: 'Number of items per page, defaults to 10.'
+  })),
+  name: z.string().optional().openapi({
+    example: 'Tech',
+    description: 'Filter by show name (case-insensitive, partial match).'
+  }),
+  language_code: z.string().length(2).optional().openapi({
+    example: 'en',
+    description: 'Filter by show language code.'
+  })
+}).openapi('ListShowsQuery');
+
 export const ListShowsResponseSchema = z.object({
-  shows: z.array(ShowSummarySchema)
+  shows: z.array(ShowSummarySchema),
+  total: z.number().int().openapi({ example: 100, description: 'Total number of shows matching the query.' }),
+  page: z.number().int().openapi({ example: 1, description: 'Current page number.' }),
+  limit: z.number().int().openapi({ example: 10, description: 'Number of items per page.' }),
+  totalPages: z.number().int().openapi({ example: 10, description: 'Total number of pages.' })
 }).openapi('ListShowsResponse');
 
 export const GetShowResponseSchema = z.object({

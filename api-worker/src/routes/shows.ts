@@ -4,6 +4,7 @@ import type { CloudflareEnv } from '../env';
 import {
   ShowCreateRequestSchema,
   ShowCreateResponseSchema,
+  ListShowsQuerySchema, // Added
   ListShowsResponseSchema,
   GetShowResponseSchema,
   ShowUpdateRequestSchema,
@@ -43,11 +44,17 @@ showRoutes.openapi(createShowRouteDef, createShowHandler);
 // GET /shows
 const listShowsRouteDef = createRoute({
   method: 'get', path: '/',
+  request: {
+    query: ListShowsQuerySchema,
+  },
   responses: {
     200: { content: { 'application/json': { schema: ListShowsResponseSchema } }, description: 'List of shows' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Invalid query parameters' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
-  summary: 'Lists all shows.', tags: ['Shows'],
+  summary: 'Lists all shows.', 
+  description: 'Retrieves a list of all shows. Supports pagination and filtering by name and language code.',
+  tags: ['Shows'],
 });
 showRoutes.openapi(listShowsRouteDef, listShowsHandler);
 

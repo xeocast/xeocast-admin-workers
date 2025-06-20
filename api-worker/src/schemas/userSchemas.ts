@@ -5,7 +5,8 @@ import {
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
   GeneralServerErrorSchema,
-  SimpleListResponseSchema
+  SimpleListResponseSchema,
+  PaginationInfoSchema // Corrected import for pagination
 } from './commonSchemas';
 
 // Base schema for role properties
@@ -39,9 +40,30 @@ export const UserCreateResponseSchema = MessageResponseSchema.extend({
   id: z.number().int().positive().openapi({ example: 101 }),
 }).openapi('UserCreateResponse');
 
+// Schema for query parameters when listing users
+export const ListUsersQuerySchema = z.object({
+  page: z.coerce.number().int().positive().optional().default(1).openapi({
+    description: 'Page number for pagination.',
+    example: 1,
+  }),
+  limit: z.coerce.number().int().positive().max(100).optional().default(10).openapi({
+    description: 'Number of items per page.',
+    example: 10,
+  }),
+  name: z.string().optional().openapi({
+    description: 'Filter by user name (case-insensitive, partial match).',
+    example: 'John',
+  }),
+  email: z.string().email().optional().openapi({
+    description: 'Filter by user email (case-insensitive, partial match).',
+    example: 'user@example.com',
+  }),
+}).openapi('ListUsersQuery');
+
 // Schema for listing users
 export const ListUsersResponseSchema = z.object({
-  users: z.array(UserSchema)
+  users: z.array(UserSchema),
+  pagination: PaginationInfoSchema, // Corrected to use PaginationInfoSchema
 }).openapi('ListUsersResponse');
 
 // Schema for getting a single user

@@ -13,7 +13,8 @@ import {
   UserNotFoundErrorSchema,
   UserCreateFailedErrorSchema,
   UserUpdateFailedErrorSchema,
-  UserEmailExistsErrorSchema
+  UserEmailExistsErrorSchema,
+  ListUsersQuerySchema // Added import
 } from '../schemas/userSchemas';
 import {
   PathIdParamSchema,
@@ -63,10 +64,7 @@ const listUsersRouteDef = createRoute({
   method: 'get',
   path: '/',
   request: {
-    query: z.object({
-      page: z.string().optional().openapi({ example: '1', description: 'Page number for pagination.' }),
-      limit: z.string().optional().openapi({ example: '10', description: 'Number of items per page.' }),
-    }).openapi('ListUsersQuery'),
+    query: ListUsersQuerySchema, // Updated to use the imported schema
   },
   responses: {
     200: {
