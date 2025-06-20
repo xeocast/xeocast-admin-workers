@@ -39,7 +39,7 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       
       if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== role_ids.length) {
         // Find which roles are invalid for a more specific error message (optional)
-        const validFoundIds = new Set(existingRolesResult.results?.map(r => r.id) || []);
+                const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
         const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
         return c.json(GeneralBadRequestErrorSchema.parse({
                         message: `Invalid role_ids provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`

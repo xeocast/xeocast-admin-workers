@@ -10,13 +10,7 @@ import {
   UpdateExternalTaskSchema as ExternalTaskUpdateRequestSchema,
   ExternalTaskUpdateResponseSchema,
   ExternalTaskDeleteResponseSchema,
-  ExternalTaskSchema,
-  ExternalTaskCreateFailedErrorSchema,
-  ExternalTaskNotFoundErrorSchema,
-  ExternalTaskUpdateFailedErrorSchema,
-  ExternalTaskDeleteFailedErrorSchema,
-  ExternalTaskSortBySchema, // Added for sorting
-  SortOrderSchema, // Added for sorting
+  ExternalTaskCreateFailedErrorSchema
 } from '../schemas/externalTaskSchemas';
 import { PathIdParamSchema, GeneralServerErrorSchema, PaginationInfoSchema, GeneralBadRequestErrorSchema, GeneralNotFoundErrorSchema } from '../schemas/commonSchemas';
 import { createExternalTaskHandler } from '../handlers/externalTasks/createExternalTask.handler';

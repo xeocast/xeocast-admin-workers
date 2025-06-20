@@ -116,7 +116,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         const existingRolesStmt = c.env.DB.prepare(`SELECT id FROM roles WHERE id IN (${placeholders})`);
         const existingRolesResult = await existingRolesStmt.bind(...role_ids).all<{id: number}>();
         if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== role_ids.length) {
-          const validFoundIds = new Set(existingRolesResult.results?.map(r => r.id) || []);
+                    const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
           const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
           return c.json(GeneralBadRequestErrorSchema.parse({
                             message: `Invalid role_ids provided for update: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
@@ -140,7 +140,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
             .run();
         });
         const insertResults = await Promise.all(insertPromises);
-        if (insertResults.some(res => !res.success)) {
+        if (insertResults.some((res: D1Result) => !res.success)) {
           console.error(`One or more roles failed to be assigned to user ${id}. Results:`, insertResults);
           // Continue, but roles might be partially assigned
         }

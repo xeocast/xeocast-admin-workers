@@ -7,7 +7,6 @@ import {
 } from '../../schemas/userSchemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 import { z } from 'zod';
-import { D1Result } from '@cloudflare/workers-types';
 
 interface UserWithRoleFromDB {
   id: number;
@@ -36,7 +35,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
   const id = parseInt(paramValidation.data.id, 10);
 
   try {
-    const dbResults: D1Result<UserWithRoleFromDB> = await c.env.DB.prepare(
+    const dbResults = await c.env.DB.prepare(
       `SELECT
          u.id, u.email, u.name, u.created_at, u.updated_at,
          r.id as role_id, r.name as role_name
@@ -52,8 +51,8 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
 
     const firstRow = dbResults.results[0];
     const roles = dbResults.results
-      .filter(row => row.role_id !== null && row.role_name !== null)
-      .map(row => ({
+      .filter((row: UserWithRoleFromDB) => row.role_id !== null && row.role_name !== null)
+      .map((row: UserWithRoleFromDB) => ({
         id: row.role_id!,
         name: row.role_name!,
       }));
