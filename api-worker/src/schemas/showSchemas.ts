@@ -66,13 +66,11 @@ export const ShowSummarySchema = z.object({
 }).openapi('ShowSummary');
 
 export const ListShowsResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   shows: z.array(ShowSummarySchema)
 }).openapi('ListShowsResponse');
 
 export const GetShowResponseSchema = z.object({
-    success: z.boolean().openapi({ example: true }),
-    show: ShowSchema
+      show: ShowSchema
 }).openapi('GetShowResponse');
 
 export const ShowUpdateRequestSchema = ShowBaseSchema.partial().openapi('ShowUpdateRequest');

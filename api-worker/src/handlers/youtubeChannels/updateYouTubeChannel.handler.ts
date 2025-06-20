@@ -12,7 +12,7 @@ import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSche
 export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramsValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format in path.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format in path.' }), 400);
   }
   const id = parseInt(paramsValidation.data.id, 10);
 
@@ -20,13 +20,13 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = YouTubeChannelUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for updating YouTube channel.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -35,21 +35,21 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   const updateData = validationResult.data;
 
   if (Object.keys(updateData).length === 0) {
-    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
+    return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: 'No update data provided.' }), 400);
   }
 
   try {
     // Check if channel exists
     const existingChannel = await c.env.DB.prepare('SELECT * FROM youtube_channels WHERE id = ?1').bind(id).first();
     if (!existingChannel) {
-      return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, message: 'YouTube channel not found.' }), 404);
+      return c.json(YouTubeChannelNotFoundErrorSchema.parse({ message: 'YouTube channel not found.' }), 404);
     }
 
     // Validate show_id if provided
     if (updateData.show_id !== undefined) {
       const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1').bind(updateData.show_id).first();
       if (!showExists) {
-        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Show with id ${updateData.show_id} not found.` }), 400);
+        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: `Show with id ${updateData.show_id} not found.` }), 400);
       }
     }
 
@@ -58,7 +58,7 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
       const platformIdExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE youtube_platform_id = ?1 AND id != ?2')
         .bind(updateData.youtube_platform_id, id).first();
       if (platformIdExists) {
-        return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube platform ID already exists for another channel.' }), 400);
+        return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ message: 'YouTube platform ID already exists for another channel.' }), 400);
       }
     }
     
@@ -97,7 +97,7 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     }
 
     if (fieldsToUpdate.length === 0) {
-      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'No valid fields to update provided.' }), 400);
+      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: 'No valid fields to update provided.' }), 400);
     }
 
     fieldsToUpdate.push(`updated_at = CURRENT_TIMESTAMP`);
@@ -108,22 +108,22 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     const result = await stmt.run();
 
     if (result.success && result.meta.changes > 0) {
-      return c.json(YouTubeChannelUpdateResponseSchema.parse({ success: true, message: 'YouTube channel updated successfully.' }), 200);
+      return c.json(YouTubeChannelUpdateResponseSchema.parse({ message: 'YouTube channel updated successfully.' }), 200);
     } else if (result.success && result.meta.changes === 0) {
-      return c.json(YouTubeChannelUpdateResponseSchema.parse({ success: true, message: 'No changes were made to the YouTube channel.' }), 200); // Or a 304 Not Modified, or a specific message
+      return c.json(YouTubeChannelUpdateResponseSchema.parse({ message: 'No changes were made to the YouTube channel.' }), 200); // Or a 304 Not Modified, or a specific message
     } else {
-      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update YouTube channel.' }), 500);
+      return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: 'Failed to update YouTube channel.' }), 500);
     }
 
   } catch (error: any) {
     console.error('Error updating YouTube channel:', error);
     if (error.message && error.message.includes('UNIQUE constraint failed: youtube_channels.youtube_platform_id')) {
-      return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube platform ID already exists.' }), 400);
+      return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ message: 'YouTube platform ID already exists.' }), 400);
     }
     // Catch other DB constraint errors e.g. NOT NULL
     if (error.message && error.message.toLowerCase().includes('constraint failed')) {
-        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ success: false, message: `Database constraint failed: ${error.message}`}), 400);
+        return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: `Database constraint failed: ${error.message}`}), 400);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update YouTube channel due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to update YouTube channel due to a server error.' }), 500);
   }
 };

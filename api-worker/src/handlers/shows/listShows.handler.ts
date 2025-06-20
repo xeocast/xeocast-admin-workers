@@ -16,15 +16,14 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     const shows = results ? results.map(row => ShowSummarySchema.parse(row)) : [];
 
     return c.json(ListShowsResponseSchema.parse({
-      success: true,
+      
       shows: shows
     }), 200);
 
   } catch (error) {
     console.error('Error listing shows:', error);
     return c.json(GeneralServerErrorSchema.parse({
-        success: false,
-        message: 'Failed to retrieve shows.'
+                message: 'Failed to retrieve shows.'
     }), 500);
   }
 };

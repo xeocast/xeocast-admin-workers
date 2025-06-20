@@ -18,7 +18,7 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
     if (!results) {
       // This case might occur if the query itself fails in a way D1 doesn't throw, or if results is undefined/null
-      return c.json(ListRolesResponseSchema.parse({ success: true, roles: [] }), 200);
+      return c.json(ListRolesResponseSchema.parse({ roles: [] }), 200);
     }
 
     const roles = results.map(dbRole => {
@@ -52,10 +52,10 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       return validation.data;
     }).filter(role => role !== null); // Filter out any roles that failed validation
 
-    return c.json(ListRolesResponseSchema.parse({ success: true, roles }), 200);
+    return c.json(ListRolesResponseSchema.parse({ roles }), 200);
 
   } catch (error) {
     console.error('Error listing roles:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list roles due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list roles due to a server error.' }), 500);
   }
 };

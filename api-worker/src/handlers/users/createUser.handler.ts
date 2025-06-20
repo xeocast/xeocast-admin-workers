@@ -14,13 +14,13 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(UserCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = UserCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(UserCreateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for creating user.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -42,8 +42,7 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         const validFoundIds = new Set(existingRolesResult.results?.map(r => r.id) || []);
         const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
         return c.json(GeneralBadRequestErrorSchema.parse({
-            success: false,
-            message: `Invalid role_ids provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
+                        message: `Invalid role_ids provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
         }), 400);
       }
       // At this point, all provided role_ids are valid and are in rolesToAssignIds
@@ -56,7 +55,7 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       .first<{ id: number }>();
 
     if (existingUserByEmail) {
-      return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+      return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'email_exists' }), 400);
     }
 
     // 3. Hash password securely.
@@ -92,24 +91,24 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       }
 
       return c.json(UserCreateResponseSchema.parse({
-        success: true,
+        
         message: 'User created successfully.',
         id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert user, D1 result:', result);
       // This could be a D1 error or the unique constraint on email if not caught above (race condition)
-      return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create user.' }), 500);
+      return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user.' }), 500);
     }
 
   } catch (error) {
     console.error('Error creating user:', error);
     if (error instanceof Error) {
         if (error.message.includes('UNIQUE constraint failed: users.email')) {
-            return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+            return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'email_exists' }), 400);
         }
 
     }
-    return c.json(UserCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create user due to a server error.' }), 500);
+    return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user due to a server error.' }), 500);
   }
 };

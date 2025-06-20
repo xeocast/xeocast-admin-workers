@@ -21,7 +21,7 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -31,7 +31,7 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
     ).bind(id).first<SeriesFromDB>();
 
     if (!dbSeries) {
-      return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+      return c.json(SeriesNotFoundErrorSchema.parse({ message: 'Series not found.' }), 404);
     }
 
     // Prepare for validation, ensuring optional fields are handled correctly
@@ -43,13 +43,13 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const validation = SeriesSchema.safeParse(seriesForValidation);
     if (!validation.success) {
       console.error(`Data for series ID ${dbSeries.id} failed SeriesSchema validation after DB fetch:`, validation.error.flatten());
-      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing series data.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing series data.' }), 500);
     }
 
-    return c.json(GetSeriesResponseSchema.parse({ success: true, series: validation.data }), 200);
+    return c.json(GetSeriesResponseSchema.parse({ series: validation.data }), 200);
 
   } catch (error) {
     console.error('Error getting series by ID:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve series due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve series due to a server error.' }), 500);
   }
 };

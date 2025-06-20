@@ -12,7 +12,7 @@ export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
 
   if (!paramParseResult.success) {
     // This case should ideally be caught by routing validation if PathIdParamSchema is used in createRoute
-    return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Invalid episode ID format.' }), 400);
+    return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Invalid episode ID format.' }), 400);
   }
 
   const { id } = paramParseResult.data;
@@ -30,7 +30,7 @@ export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
     ).bind(id).first<any>();
 
     if (!dbEpisode) {
-      return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Episode not found.' }), 404);
+      return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Episode not found.' }), 404);
     }
 
     const parsedEpisode = EpisodeSchema.safeParse(dbEpisode);
@@ -38,21 +38,19 @@ export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
     if (!parsedEpisode.success) {
       console.error(`Error parsing episode ID ${id} from DB:`, parsedEpisode.error.flatten());
       return c.json(GeneralServerErrorSchema.parse({
-        success: false,
-        message: 'Error processing episode data from database.',
+                message: 'Error processing episode data from database.',
       }), 500);
     }
 
     return c.json(GetEpisodeResponseSchema.parse({
-      success: true,
+      
       episode: parsedEpisode.data,
     }), 200);
 
   } catch (error) {
     console.error(`Error fetching episode by ID ${id}:`, error);
     return c.json(GeneralServerErrorSchema.parse({
-      success: false,
-      message: 'Failed to retrieve episode due to a server error.',
+            message: 'Failed to retrieve episode due to a server error.',
     }), 500);
   }
 };

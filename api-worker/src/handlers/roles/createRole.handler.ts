@@ -12,13 +12,13 @@ export const createRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(RoleCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = RoleCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(RoleCreateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for creating role.',
         // errors: validationResult.error.flatten().fieldErrors // Optional for more detailed errors
     }), 400);
@@ -33,7 +33,7 @@ export const createRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       .first<{ id: number }>();
 
     if (existingRole) {
-      return c.json(RoleNameExistsErrorSchema.parse({ success: false, message: 'Role name already exists.' }), 400);
+      return c.json(RoleNameExistsErrorSchema.parse({ message: 'Role name already exists.' }), 400);
     }
 
     const permissionsJson = JSON.stringify(permissions);
@@ -46,17 +46,17 @@ export const createRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     if (result.success && result.meta.last_row_id) {
       return c.json(RoleCreateResponseSchema.parse({
-        success: true,
+        
         message: 'Role created successfully.',
         roleId: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert role, D1 result:', result);
-      return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create role.' }), 500);
+      return c.json(RoleCreateFailedErrorSchema.parse({ message: 'Failed to create role.' }), 500);
     }
 
   } catch (error) {
     console.error('Error creating role:', error);
-    return c.json(RoleCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create role due to a server error.' }), 500);
+    return c.json(RoleCreateFailedErrorSchema.parse({ message: 'Failed to create role due to a server error.' }), 500);
   }
 };

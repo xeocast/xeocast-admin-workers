@@ -30,7 +30,7 @@ export const getYouTubeChannelByIdHandler = async (c: Context<{ Bindings: Cloudf
 
   if (!paramsValidation.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid ID format in path.',
         // errors: paramsValidation.error.flatten().fieldErrors 
     }), 400);
@@ -46,18 +46,18 @@ export const getYouTubeChannelByIdHandler = async (c: Context<{ Bindings: Cloudf
     const row = await stmt.first();
 
     if (!row) {
-      return c.json(YouTubeChannelNotFoundErrorSchema.parse({ success: false, message: 'YouTube channel not found.' }), 404);
+      return c.json(YouTubeChannelNotFoundErrorSchema.parse({ message: 'YouTube channel not found.' }), 404);
     }
 
     const channel = mapDbRowToYouTubeChannel(row);
-    return c.json(GetYouTubeChannelResponseSchema.parse({ success: true, channel: channel }), 200);
+    return c.json(GetYouTubeChannelResponseSchema.parse({ channel: channel }), 200);
 
   } catch (error: any) {
     console.error('Error getting YouTube channel by ID:', error);
     if (error instanceof z.ZodError) {
         console.error('Zod validation error during mapping getById result:', error.flatten());
-        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing channel data.'}), 500);
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing channel data.'}), 500);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve YouTube channel.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve YouTube channel.' }), 500);
   }
 };

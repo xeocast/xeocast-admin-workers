@@ -25,8 +25,7 @@ export const downloadObjectHandler: Handler<{
         const parsedParams = ObjectPathParamsSchema.safeParse({ logicalBucketName, objectKey });
         if (!parsedParams.success) {
             return c.json(GeneralBadRequestErrorSchema.parse({
-                success: false,
-                message: 'Invalid path parameters.',
+                                message: 'Invalid path parameters.',
                 // errors: parsedParams.error.flatten().fieldErrors
             }), 400);
         }
@@ -34,8 +33,7 @@ export const downloadObjectHandler: Handler<{
         const bucket = getR2Bucket(c, parsedParams.data.logicalBucketName);
         if (!bucket) {
             return c.json(BucketNotFoundErrorSchema.parse({
-                success: false,
-                message: 'The specified bucket binding was not found or is not configured.',
+                                message: 'The specified bucket binding was not found or is not configured.',
                 bucketNameAttempted: parsedParams.data.logicalBucketName
             }), 500);
         }
@@ -44,8 +42,7 @@ export const downloadObjectHandler: Handler<{
 
         if (object === null) {
             return c.json(ObjectNotFoundErrorSchema.parse({
-                success: false,
-                message: 'The requested object was not found in the specified bucket.',
+                                message: 'The requested object was not found in the specified bucket.',
                 objectKeyAttempted: parsedParams.data.objectKey,
                 bucketQueried: parsedParams.data.logicalBucketName
             }), 404);
@@ -74,14 +71,12 @@ export const downloadObjectHandler: Handler<{
         console.error('Download error:', error);
         if (error instanceof z.ZodError) {
              return c.json(GeneralBadRequestErrorSchema.parse({
-                success: false,
-                message: 'Invalid request data due to Zod validation.',
+                                message: 'Invalid request data due to Zod validation.',
                 // errors: error.flatten().fieldErrors
             }), 400);
         }
         return c.json(R2OperationErrorSchema.parse({
-            success: false,
-            message: 'An unexpected error occurred while attempting to download the object.',
+                        message: 'An unexpected error occurred while attempting to download the object.',
             details: error.message || 'Unknown R2 operation error.'
         }), 500);
     }

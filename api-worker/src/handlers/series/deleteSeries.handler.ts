@@ -11,7 +11,7 @@ export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -22,7 +22,7 @@ export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       .first<{ id: number }>();
 
     if (!seriesExists) {
-      return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+      return c.json(SeriesNotFoundErrorSchema.parse({ message: 'Series not found.' }), 404);
     }
 
     // 2. Check for associated episodes
@@ -31,7 +31,7 @@ export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       .first<{ id: number }>();
 
     if (associatedEpisode) {
-      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Cannot delete series: It has associated episodes.' }), 400);
+      return c.json(SeriesDeleteFailedErrorSchema.parse({ message: 'Cannot delete series: It has associated episodes.' }), 400);
     }
 
     // 3. Delete series
@@ -39,17 +39,17 @@ export const deleteSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     const result = await stmt.run();
 
     if (result.success && result.meta.changes > 0) {
-      return c.json(SeriesDeleteResponseSchema.parse({ success: true, message: 'Series deleted successfully.' }), 200);
+      return c.json(SeriesDeleteResponseSchema.parse({ message: 'Series deleted successfully.' }), 200);
     } else if (result.success && result.meta.changes === 0) {
         // This case should ideally be caught by the seriesExists check, but as a fallback
-        return c.json(SeriesNotFoundErrorSchema.parse({ success: false, message: 'Series not found.' }), 404);
+        return c.json(SeriesNotFoundErrorSchema.parse({ message: 'Series not found.' }), 404);
     }else {
       console.error('Failed to delete series, D1 result:', result);
-      return c.json(SeriesDeleteFailedErrorSchema.parse({ success: false, message: 'Failed to delete series.' }), 500);
+      return c.json(SeriesDeleteFailedErrorSchema.parse({ message: 'Failed to delete series.' }), 500);
     }
 
   } catch (error) {
     console.error('Error deleting series:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to delete series due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to delete series due to a server error.' }), 500);
   }
 };

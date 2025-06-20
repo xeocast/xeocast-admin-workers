@@ -39,7 +39,7 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
   if (!queryParseResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid query parameters.',
         // errors: queryParseResult.error.flatten().fieldErrors
     }), 400);
@@ -63,7 +63,7 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
 
     if (!dbResponse.success || !dbResponse.results) {
       console.error('Failed to fetch users from database or no results:', dbResponse.error);
-      return c.json(ListUsersResponseSchema.parse({ success: true, users: [] }), 200);
+      return c.json(ListUsersResponseSchema.parse({ users: [] }), 200);
     }
 
     const usersMap = new Map<number, z.input<typeof UserSchema>>();
@@ -104,11 +104,11 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       return validation.data;
     }).filter(u => u !== null) as z.infer<typeof UserSchema>[];
 
-    return c.json(ListUsersResponseSchema.parse({ success: true, users: validatedUsers }), 200);
+    return c.json(ListUsersResponseSchema.parse({ users: validatedUsers }), 200);
     // TODO: Add total count for pagination if ListUsersResponseSchema is updated
 
   } catch (error) {
     console.error('Error listing users:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list users due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list users due to a server error.' }), 500);
   }
 };

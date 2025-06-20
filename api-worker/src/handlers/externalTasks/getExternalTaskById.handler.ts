@@ -29,7 +29,7 @@ export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: Cloudfla
 
   if (!params.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid ID format.'
     }), 400);
   }
@@ -43,7 +43,7 @@ export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: Cloudfla
     const dbTask = await stmt.first<ExternalTaskFromDB>();
 
     if (!dbTask) {
-      return c.json(GeneralNotFoundErrorSchema.parse({ success: false, message: 'External task not found.' }), 404);
+      return c.json(GeneralNotFoundErrorSchema.parse({ message: 'External task not found.' }), 404);
     }
 
     let parsedData = null;
@@ -68,13 +68,13 @@ export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: Cloudfla
     if (!validation.success) {
       console.error(`Data for task ID ${dbTask.id} failed ExternalTaskSchema validation:`, validation.error.flatten());
       // This case indicates a potential mismatch between DB data and schema, or bad data in DB.
-      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing task data.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing task data.' }), 500);
     }
 
-    return c.json(GetExternalTaskResponseSchema.parse({ success: true, task: validation.data }), 200);
+    return c.json(GetExternalTaskResponseSchema.parse({ task: validation.data }), 200);
 
   } catch (error) {
     console.error(`Error fetching external task by ID ${id}:`, error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to fetch external task due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to fetch external task due to a server error.' }), 500);
   }
 };

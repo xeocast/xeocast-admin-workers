@@ -56,7 +56,6 @@ export const ListYouTubePlaylistsResponseSchema = SimpleListResponseSchema(YouTu
 
 // Schema for getting a single YouTube playlist
 export const GetYouTubePlaylistResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   playlist: YouTubePlaylistSchema
 }).openapi('GetYouTubePlaylistResponse');
 

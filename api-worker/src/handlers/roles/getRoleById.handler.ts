@@ -20,7 +20,7 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -30,7 +30,7 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     ).bind(id).first<RoleFromDB>();
 
     if (!dbRole) {
-      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found.' }), 404);
+      return c.json(RoleNotFoundErrorSchema.parse({ message: 'Role not found.' }), 404);
     }
 
     let parsedPermissions: string[];
@@ -38,11 +38,11 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
       parsedPermissions = JSON.parse(dbRole.permissions);
       if (!Array.isArray(parsedPermissions) || !parsedPermissions.every(p => typeof p === 'string')) {
         console.error(`Invalid permissions format in DB for role ID ${dbRole.id}:`, dbRole.permissions);
-        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing role data.' }), 500);
       }
     } catch (e) {
       console.error(`Failed to parse permissions from DB for role ID ${dbRole.id}:`, e);
-      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing role data.' }), 500);
     }
 
     const roleForValidation = {
@@ -54,13 +54,13 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     const validation = RoleSchema.safeParse(roleForValidation);
     if (!validation.success) {
       console.error(`Data for role ID ${dbRole.id} failed RoleSchema validation after DB fetch:`, validation.error.flatten());
-      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing role data.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing role data.' }), 500);
     }
 
-    return c.json(GetRoleResponseSchema.parse({ success: true, role: validation.data }), 200);
+    return c.json(GetRoleResponseSchema.parse({ role: validation.data }), 200);
 
   } catch (error) {
     console.error('Error getting role by ID:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve role due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve role due to a server error.' }), 500);
   }
 };

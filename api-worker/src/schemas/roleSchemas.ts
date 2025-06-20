@@ -38,13 +38,11 @@ export const RoleCreateResponseSchema = MessageResponseSchema.extend({
 
 // Schema for listing roles
 export const ListRolesResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   roles: z.array(RoleSchema)
 }).openapi('ListRolesResponse');
 
 // Schema for getting a single role
 export const GetRoleResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   role: RoleSchema
 }).openapi('GetRoleResponse');
 

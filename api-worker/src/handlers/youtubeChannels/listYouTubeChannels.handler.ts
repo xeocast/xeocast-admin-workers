@@ -31,7 +31,7 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
 
   if (!validationResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid query parameters.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -55,15 +55,15 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
 
     const channels = results ? results.map(mapDbRowToYouTubeChannel) : [];
     
-    return c.json(ListYouTubeChannelsResponseSchema.parse({ success: true, channels: channels }), 200);
+    return c.json(ListYouTubeChannelsResponseSchema.parse({ channels: channels }), 200);
 
   } catch (error: any) {
     console.error('Error listing YouTube channels:', error);
     // Check if it's a Zod parsing error during mapping
     if (error instanceof z.ZodError) {
         console.error('Zod validation error during mapping list results:', error.flatten());
-        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing channel data.'}), 500);
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing channel data.'}), 500);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list YouTube channels.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list YouTube channels.' }), 500);
   }
 };

@@ -14,7 +14,6 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   if (!parseResult.success) {
     return c.json(EpisodeCreateFailedErrorSchema.parse({
-      success: false,
       message: 'Invalid request body.',
       errors: parseResult.error.flatten().fieldErrors,
     }), 400);
@@ -41,15 +40,13 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
     if (existingEpisode) {
       return c.json(EpisodeSlugExistsErrorSchema.parse({
-        success: false,
-        message: 'Episode slug already exists for this show/series combination.',
+                message: 'Episode slug already exists for this show/series combination.',
       }), 400);
     }
   } catch (dbError) {
     console.error('Error checking for existing slug:', dbError);
     return c.json(EpisodeCreateFailedErrorSchema.parse({
-      success: false,
-      message: 'Database error while checking for existing slug.',
+            message: 'Database error while checking for existing slug.',
     }), 500);
   }
 
@@ -89,22 +86,20 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
     if (result.success && result.meta.last_row_id) {
       return c.json(EpisodeCreateResponseSchema.parse({
-        success: true,
+        
         message: 'Episode created successfully.',
         episodeId: result.meta.last_row_id,
       }), 201);
     } else {
       console.error('Failed to insert episode, D1 result:', result);
       return c.json(EpisodeCreateFailedErrorSchema.parse({
-        success: false,
-        message: 'Failed to save episode to the database.',
+                message: 'Failed to save episode to the database.',
       }), 500);
     }
   } catch (error) {
     console.error('Error creating episode:', error);
     return c.json(EpisodeCreateFailedErrorSchema.parse({
-      success: false,
-      message: 'An unexpected error occurred while creating the episode.',
+            message: 'An unexpected error occurred while creating the episode.',
     }), 500);
   }
 };

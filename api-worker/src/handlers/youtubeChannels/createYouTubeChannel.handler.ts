@@ -13,13 +13,13 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = YouTubeChannelCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for creating YouTube channel.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -43,7 +43,7 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     const showCheckStmt = c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1').bind(show_id);
     const showExists = await showCheckStmt.first();
     if (!showExists) {
-        return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: `Show with id ${show_id} not found.` }), 400);
+        return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ message: `Show with id ${show_id} not found.` }), 400);
     }
 
     const stmt = c.env.DB.prepare(
@@ -63,20 +63,20 @@ export const createYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
 
     if (result.success && result.meta.last_row_id) {
       return c.json(YouTubeChannelCreateResponseSchema.parse({
-        success: true,
+        
         message: 'YouTube channel created successfully.',
         channelId: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert YouTube channel, D1 result:', result);
-      return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create YouTube channel.' }), 500);
+      return c.json(YouTubeChannelCreateFailedErrorSchema.parse({ message: 'Failed to create YouTube channel.' }), 500);
     }
 
   } catch (error: any) {
     console.error('Error creating YouTube channel:', error);
     if (error.message && error.message.includes('UNIQUE constraint failed: youtube_channels.youtube_platform_id')) {
-      return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube platform ID already exists.' }), 400);
+      return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ message: 'YouTube platform ID already exists.' }), 400);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to create YouTube channel due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to create YouTube channel due to a server error.' }), 500);
   }
 };

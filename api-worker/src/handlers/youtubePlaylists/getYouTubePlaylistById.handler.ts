@@ -26,7 +26,7 @@ const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSc
 export const getYouTubePlaylistByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramsValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format in path.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format in path.' }), 400);
   }
   const id = parseInt(paramsValidation.data.id, 10);
 
@@ -38,14 +38,14 @@ export const getYouTubePlaylistByIdHandler = async (c: Context<{ Bindings: Cloud
     const dbPlaylist = await stmt.first();
 
     if (!dbPlaylist) {
-      return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, message: 'YouTube playlist not found.' }), 404);
+      return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ message: 'YouTube playlist not found.' }), 404);
     }
 
     const playlist = mapDbRowToYouTubePlaylist(dbPlaylist);
-    return c.json(GetYouTubePlaylistResponseSchema.parse({ success: true, playlist: playlist }), 200);
+    return c.json(GetYouTubePlaylistResponseSchema.parse({ playlist: playlist }), 200);
 
   } catch (error: any) {
     console.error(`Error getting YouTube playlist by ID ${id}:`, error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to get YouTube playlist due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to get YouTube playlist due to a server error.' }), 500);
   }
 };

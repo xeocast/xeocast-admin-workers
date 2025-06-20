@@ -23,8 +23,7 @@ export const getTokenHandler = async (c: Context<{ Bindings: CloudflareBindings 
       }
       // Adhere to GeneralServerErrorSchema structure for 500 responses
       return c.json({
-        success: false,
-        message: message,
+                message: message,
       }, 500);
     }
   }
@@ -36,8 +35,7 @@ export const getTokenHandler = async (c: Context<{ Bindings: CloudflareBindings 
     console.error('HEAVY_COMPUTE_API_KEY is not set in environment variables for non-dev environment.');
     // Adhere to GeneralServerErrorSchema structure for 500 responses
     return c.json({
-      success: false,
-      message: 'Internal server error: API key not configured for this environment.',
+            message: 'Internal server error: API key not configured for this environment.',
     }, 500);
   }
 
@@ -58,8 +56,7 @@ export const getTokenHandler = async (c: Context<{ Bindings: CloudflareBindings 
 
     // Adhere to GeneralServerErrorSchema structure for 500 responses
     return c.json({
-      success: false,
-      message: message,
+            message: message,
     }, 500);
   }
 };

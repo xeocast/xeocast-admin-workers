@@ -21,7 +21,7 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -29,26 +29,26 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(ShowUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = ShowUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     console.error('Update show validation error:', validationResult.error.flatten());
-    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid input for updating show.' }), 400);
+    return c.json(ShowUpdateFailedErrorSchema.parse({ message: 'Invalid input for updating show.' }), 400);
   }
 
   const updateData = validationResult.data;
 
   if (Object.keys(updateData).length === 0) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'No update data provided.' }), 400);
   }
 
   try {
     // Check if show exists and get its current name and slug
     const existingShow = await c.env.DB.prepare('SELECT id, name, slug FROM shows WHERE id = ?1').bind(id).first<ExistingShow>();
     if (!existingShow) {
-      return c.json(ShowNotFoundErrorSchema.parse({ success: false, message: 'Show not found.' }), 404);
+      return c.json(ShowNotFoundErrorSchema.parse({ message: 'Show not found.' }), 404);
     }
 
     // If name is being updated, check for conflicts
@@ -58,7 +58,7 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       ).bind(updateData.name, id).first<{ id: number }>();
 
       if (existingShowWithName) {
-        return c.json(ShowNameExistsErrorSchema.parse({ success: false, message: 'Show name already exists.' }), 400);
+        return c.json(ShowNameExistsErrorSchema.parse({ message: 'Show name already exists.' }), 400);
       }
     }
 
@@ -127,7 +127,7 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       // No actual data fields to update (e.g., only slug was provided but it resulted in no change, or empty payload)
       // However, the initial check for Object.keys(updateData).length === 0 should catch empty payloads.
       // If slug was the only field and it didn't change, this path might be hit.
-      return c.json(ShowUpdateResponseSchema.parse({ success: true, message: 'No effective changes to apply.' }), 200);
+      return c.json(ShowUpdateResponseSchema.parse({ message: 'No effective changes to apply.' }), 200);
     }
 
     setClauses.push(`updated_at = CURRENT_TIMESTAMP`); // Always update timestamp
@@ -142,14 +142,14 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     if (result.success) {
         // D1's run() result for UPDATE doesn't directly confirm a row was changed if values were same.
         // It indicates the query executed. We assume success if no error.
-        return c.json(ShowUpdateResponseSchema.parse({ success: true, message: 'Show updated successfully.' }), 200);
+        return c.json(ShowUpdateResponseSchema.parse({ message: 'Show updated successfully.' }), 200);
     } else {
       console.error('Failed to update show, D1 result:', result);
-      return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update show.' }), 500);
+      return c.json(ShowUpdateFailedErrorSchema.parse({ message: 'Failed to update show.' }), 500);
     }
 
   } catch (error) {
     console.error('Error updating show:', error);
-    return c.json(ShowUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update show.' }), 500);
+    return c.json(ShowUpdateFailedErrorSchema.parse({ message: 'Failed to update show.' }), 500);
   }
 };

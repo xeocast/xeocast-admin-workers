@@ -14,7 +14,6 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
   if (!queryParseResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-      success: false, 
       message: 'Invalid query parameters.', 
       errors: queryParseResult.error.flatten().fieldErrors 
     }), 400);
@@ -75,7 +74,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     if (!episodesDbResult.results || countResult === null) {
         console.error('Failed to fetch episodes or count, D1 results:', episodesDbResult, countResult);
         return c.json(GeneralServerErrorSchema.parse({ 
-          success: false, 
+          
           message: 'Failed to retrieve episodes from the database.'
         }), 500);
     }
@@ -99,7 +98,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     if (!validatedEpisodesList.success) {
         console.error('Final episode list validation error:', validatedEpisodesList.error.flatten());
         return c.json(GeneralServerErrorSchema.parse({ 
-          success: false, 
+          
           message: 'Error validating final episode list structure.'
         }), 500);
     }
@@ -115,7 +114,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     };
 
     return c.json(ListEpisodesResponseSchema.parse({
-      success: true,
+      
       episodes: validatedEpisodesList.data,
       pagination: pagination,
     }), 200);
@@ -123,7 +122,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   } catch (error) {
     console.error('Error listing episodes:', error);
     return c.json(GeneralServerErrorSchema.parse({ 
-      success: false, 
+      
       message: 'Failed to list episodes due to a server error.' 
     }), 500);
   }

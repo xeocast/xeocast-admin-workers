@@ -13,7 +13,7 @@ import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSche
 export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -21,13 +21,13 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(UserUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = UserUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(UserUpdateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for updating user.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -43,7 +43,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
                           role_ids !== undefined;
 
   if (!hasActualUpdate) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No update data provided.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'No update data provided.' }), 400);
   }
 
   // The old check: const hasActualUpdateFields = name !== undefined || 
@@ -58,7 +58,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       .first<{ id: number; email: string }>();
 
     if (!userToUpdate) {
-      return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
+      return c.json(UserNotFoundErrorSchema.parse({ message: 'User not found.' }), 404);
     }
 
     // 2. If email is being changed, check if the new email already exists for another user
@@ -67,7 +67,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         .bind(email, id)
         .first<{ id: number }>();
       if (existingUserWithNewEmail) {
-        return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
+        return c.json(UserEmailExistsErrorSchema.parse({ message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
       }
     }
 
@@ -99,7 +99,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         userModelFieldsEffectivelyUpdated = true;
       } else if (!userUpdateResult.success) {
         console.error('Failed to update user model fields, D1 result:', userUpdateResult);
-        return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update user fields.' }), 500);
+        return c.json(UserUpdateFailedErrorSchema.parse({ message: 'Failed to update user fields.' }), 500);
       }
       // If success but changes === 0, userModelFieldsEffectivelyUpdated remains false.
     }
@@ -119,8 +119,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
           const validFoundIds = new Set(existingRolesResult.results?.map(r => r.id) || []);
           const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
           return c.json(GeneralBadRequestErrorSchema.parse({
-              success: false,
-              message: `Invalid role_ids provided for update: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
+                            message: `Invalid role_ids provided for update: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
           }), 400);
         }
       }
@@ -151,12 +150,12 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     // Determine final response
     if (userModelFieldsEffectivelyUpdated || rolesWereManaged) {
-      return c.json(UserUpdateResponseSchema.parse({ success: true, message: 'User updated successfully.' }), 200);
+      return c.json(UserUpdateResponseSchema.parse({ message: 'User updated successfully.' }), 200);
     } else if (!userModelFieldsEffectivelyUpdated && !rolesWereManaged) {
        // This case should be caught by the initial `!hasActualUpdate` check if role_ids was the only field and was undefined.
        // If role_ids was provided (e.g. empty array) but no other fields, this means roles were processed.
        // If only user fields were provided but matched existing values, userFieldsUpdated would be false.
-      return c.json(UserUpdateResponseSchema.parse({ success: true, message: 'No effective changes applied to the user.' }), 200);
+      return c.json(UserUpdateResponseSchema.parse({ message: 'No effective changes applied to the user.' }), 200);
     } else { // This 'else' corresponds to the `if (userModelFieldsEffectivelyUpdated || rolesWereManaged)` block
       // This path should ideally not be reached if the above logic is correct,
       // unless there was a D1 error in updating user fields that wasn't caught.
@@ -164,16 +163,16 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       // That is now handled inside the `if (updateFields.length > 1)` block.
       // This could be a D1 error or a unique constraint violation if not caught earlier (race condition for email)
       console.error('Failed to update user due to an unexpected issue after processing field and role updates.');
-      return c.json(UserUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update user.' }), 500);
+      return c.json(UserUpdateFailedErrorSchema.parse({ message: 'Failed to update user.' }), 500);
     }
 
   } catch (error) {
     console.error('Error updating user:', error);
     if (error instanceof Error) {
         if (error.message.includes('UNIQUE constraint failed: users.email')) {
-            return c.json(UserEmailExistsErrorSchema.parse({ success: false, message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
+            return c.json(UserEmailExistsErrorSchema.parse({ message: 'This email is already in use by another user.', error: 'email_exists' }), 400);
         }
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update user due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to update user due to a server error.' }), 500);
   }
 };

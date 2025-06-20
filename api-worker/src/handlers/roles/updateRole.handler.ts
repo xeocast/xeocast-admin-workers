@@ -17,7 +17,7 @@ interface RoleFromDB {
 export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -25,13 +25,13 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(RoleUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = RoleUpdateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(RoleUpdateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for updating role.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -41,7 +41,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   // If updateData is empty, no changes to make.
   if (Object.keys(updateData).length === 0) {
-    return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
+    return c.json(RoleUpdateResponseSchema.parse({ message: 'Role updated successfully.' }), 200);
   }
 
   try {
@@ -51,7 +51,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       .first<RoleFromDB>();
 
     if (!currentRole) {
-      return c.json(RoleNotFoundErrorSchema.parse({ success: false, message: 'Role not found.' }), 404);
+      return c.json(RoleNotFoundErrorSchema.parse({ message: 'Role not found.' }), 404);
     }
 
     // If name is being updated, check for uniqueness
@@ -60,7 +60,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         .bind(updateData.name, id)
         .first<{ id: number }>();
       if (existingRoleWithNewName) {
-        return c.json(RoleNameExistsErrorSchema.parse({ success: false, message: 'Role name already exists.' }), 400);
+        return c.json(RoleNameExistsErrorSchema.parse({ message: 'Role name already exists.' }), 400);
       }
     }
 
@@ -87,7 +87,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     // If, after checks, there are no actual fields to update (e.g. name was same as current)
     // This can happen if the only field provided was 'name' but it matched currentRole.name
     if (fieldsToUpdate.length === 0) {
-        return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
+        return c.json(RoleUpdateResponseSchema.parse({ message: 'Role updated successfully.' }), 200);
     }
 
     valuesToBind.push(id.toString()); // For the WHERE clause (D1 expects all bind params as strings or compatible)
@@ -100,14 +100,14 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       // D1 .run() for UPDATE returns meta.changes for rows changed.
       // If meta.changes is 0, it might mean the data provided was identical to existing data for the matched row.
       // This is still considered a successful update operation.
-      return c.json(RoleUpdateResponseSchema.parse({ success: true, message: 'Role updated successfully.' }), 200);
+      return c.json(RoleUpdateResponseSchema.parse({ message: 'Role updated successfully.' }), 200);
     } else {
       console.error('Failed to update role, D1 result:', result);
-      return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update role.' }), 500);
+      return c.json(RoleUpdateFailedErrorSchema.parse({ message: 'Failed to update role.' }), 500);
     }
 
   } catch (error) {
     console.error('Error updating role:', error);
-    return c.json(RoleUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update role due to a server error.' }), 500);
+    return c.json(RoleUpdateFailedErrorSchema.parse({ message: 'Failed to update role due to a server error.' }), 500);
   }
 };

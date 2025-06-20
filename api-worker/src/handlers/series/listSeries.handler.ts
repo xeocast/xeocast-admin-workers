@@ -24,7 +24,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   if (!queryParseResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid query parameters.',
         // errors: queryParseResult.error.flatten().fieldErrors
     }), 400);
@@ -46,7 +46,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     const { results } = await stmt.all<SeriesSummaryFromDB>();
 
     if (!results) {
-      return c.json(ListSeriesResponseSchema.parse({ success: true, series: [] }), 200);
+      return c.json(ListSeriesResponseSchema.parse({ series: [] }), 200);
     }
 
     // Validate each summary - though if query is specific, this is more of a sanity check
@@ -61,10 +61,10 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       return validation.data;
     }).filter(s => s !== null);
 
-    return c.json(ListSeriesResponseSchema.parse({ success: true, series: seriesSummaries }), 200);
+    return c.json(ListSeriesResponseSchema.parse({ series: seriesSummaries }), 200);
 
   } catch (error) {
     console.error('Error listing series:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list series due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list series due to a server error.' }), 500);
   }
 };

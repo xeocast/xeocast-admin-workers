@@ -27,7 +27,7 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
   const queryParseResult = ListYouTubePlaylistsQuerySchema.safeParse(c.req.query());
 
   if (!queryParseResult.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid query parameters.'}), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid query parameters.'}), 400);
   }
 
   const { series_id, channel_id } = queryParseResult.data; // Renamed from youtube_channel_id
@@ -59,15 +59,15 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     const dbResult = await stmt.all();
 
     if (!dbResult || !dbResult.results) {
-        return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to fetch playlists: Invalid database response.' }), 500);
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to fetch playlists: Invalid database response.' }), 500);
     }
 
     const playlists = dbResult.results.map(mapDbRowToYouTubePlaylist);
     
-    return c.json(ListYouTubePlaylistsResponseSchema.parse({ success: true, playlists: playlists }), 200);
+    return c.json(ListYouTubePlaylistsResponseSchema.parse({ playlists: playlists }), 200);
 
   } catch (error: any) {
     console.error('Error listing YouTube playlists:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list YouTube playlists due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list YouTube playlists due to a server error.' }), 500);
   }
 };

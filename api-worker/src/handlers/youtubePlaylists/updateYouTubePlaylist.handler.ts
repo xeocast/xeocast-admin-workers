@@ -12,7 +12,7 @@ import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSche
 export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramsValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format in path.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format in path.' }), 400);
   }
   const id = parseInt(paramsValidation.data.id, 10);
 
@@ -20,17 +20,17 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
   try {
     requestBody = await c.req.json();
   } catch (e) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const bodyValidation = YouTubePlaylistUpdateRequestSchema.safeParse(requestBody);
   if (!bodyValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid request body.', details: bodyValidation.error.flatten() }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid request body.', details: bodyValidation.error.flatten() }), 400);
   }
   const updateData = bodyValidation.data;
 
   if (Object.keys(updateData).length === 0) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No fields provided for update.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'No fields provided for update.' }), 400);
   }
 
   try {
@@ -39,7 +39,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     const existingPlaylist = await existingPlaylistStmt.first<{ youtube_platform_id: string; channel_id: number; series_id: number }>();
 
     if (!existingPlaylist) {
-      return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ success: false, message: 'YouTube playlist not found.' }), 404);
+      return c.json(YouTubePlaylistNotFoundErrorSchema.parse({ message: 'YouTube playlist not found.' }), 404);
     }
 
     // 2. Validate youtube_platform_id uniqueness if changed
@@ -47,7 +47,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       const platformIdCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE youtube_platform_id = ?1 AND id != ?2').bind(updateData.youtube_platform_id, id);
       const platformIdConflict = await platformIdCheckStmt.first();
       if (platformIdConflict) {
-        return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube playlist platform ID already exists.' }), 400);
+        return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.parse({ message: 'YouTube playlist platform ID already exists.' }), 400);
       }
     }
 
@@ -56,7 +56,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       const seriesCheckStmt = c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(updateData.series_id);
       const seriesExists = await seriesCheckStmt.first();
       if (!seriesExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: `Series with ID ${updateData.series_id} not found.` }), 400);
+        return c.json(GeneralBadRequestErrorSchema.parse({ message: `Series with ID ${updateData.series_id} not found.` }), 400);
       }
     }
 
@@ -65,7 +65,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       const channelCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(updateData.channel_id);
       const channelExists = await channelCheckStmt.first();
       if (!channelExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: `YouTube channel with ID ${updateData.channel_id} not found.` }), 400);
+        return c.json(GeneralBadRequestErrorSchema.parse({ message: `YouTube channel with ID ${updateData.channel_id} not found.` }), 400);
       }
     }
 
@@ -83,7 +83,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
     if (fieldsToUpdate.length === 0) {
       // This case should be caught earlier, but as a safeguard:
-      return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'No updatable fields provided.' }), 400);
+      return c.json(GeneralBadRequestErrorSchema.parse({ message: 'No updatable fields provided.' }), 400);
     }
 
     fieldsToUpdate.push('updated_at = strftime(\'%Y-%m-%dT%H:%M:%fZ\', \'now\')');
@@ -95,19 +95,19 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     const dbResult = await updateStmt.run();
 
     if (dbResult.success) {
-      return c.json(YouTubePlaylistUpdateResponseSchema.parse({ success: true, message: 'YouTube playlist updated successfully.' }), 200);
+      return c.json(YouTubePlaylistUpdateResponseSchema.parse({ message: 'YouTube playlist updated successfully.' }), 200);
     } else {
       // This part might not be reached if DB errors throw exceptions directly
       console.error('DB update failed:', dbResult.error || 'Unknown D1 error');
-      return c.json(YouTubePlaylistUpdateFailedErrorSchema.parse({ success: false, message: 'Failed to update YouTube playlist due to a database error.'}), 500);
+      return c.json(YouTubePlaylistUpdateFailedErrorSchema.parse({ message: 'Failed to update YouTube playlist due to a database error.'}), 500);
     }
 
   } catch (error: any) {
     console.error(`Error updating YouTube playlist ID ${id}:`, error);
     // Check for specific D1 constraint errors if possible, e.g., UNIQUE constraint on youtube_platform_id
     if (error.message && error.message.includes('UNIQUE constraint failed: youtube_playlists.youtube_platform_id')) {
-        return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.parse({ success: false, message: 'YouTube playlist platform ID already exists.' }), 400);
+        return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.parse({ message: 'YouTube playlist platform ID already exists.' }), 400);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to update YouTube playlist due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to update YouTube playlist due to a server error.' }), 500);
   }
 };

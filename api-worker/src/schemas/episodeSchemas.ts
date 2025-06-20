@@ -195,13 +195,11 @@ export const ListEpisodesQuerySchema = z.object({
 });
 
 export const ListEpisodesResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   episodes: z.array(EpisodeListItemSchema),
   pagination: PaginationSchema
 }).openapi('ListEpisodesResponse');
 
 export const GetEpisodeResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   episode: EpisodeSchema
 }).openapi('GetEpisodeResponse');
 

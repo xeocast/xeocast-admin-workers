@@ -25,7 +25,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
 
   if (!queryParseResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid query parameters.',
         // errors: queryParseResult.error.flatten().fieldErrors
     }), 400);
@@ -73,7 +73,7 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
 
     if (!dbTasks) {
       return c.json(ListExternalTasksResponseSchema.parse({
-        success: true, 
+        
         tasks: [], 
         pagination: { page, limit, totalItems, totalPages: 0 }
       }), 200);
@@ -142,10 +142,10 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
         totalPages: Math.ceil(totalItems / limit),
     });
 
-    return c.json(ListExternalTasksResponseSchema.parse({ success: true, tasks, pagination }), 200);
+    return c.json(ListExternalTasksResponseSchema.parse({ tasks, pagination }), 200);
 
   } catch (error) {
     console.error('Error listing external tasks:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to list external tasks due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list external tasks due to a server error.' }), 500);
   }
 };

@@ -12,13 +12,13 @@ export const createExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(ExternalTaskCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(ExternalTaskCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = CreateExternalTaskSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(ExternalTaskCreateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for creating external task.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -37,18 +37,18 @@ export const createExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
 
     if (result.success && result.meta.last_row_id) {
       return c.json(ExternalTaskCreateResponseSchema.parse({
-        success: true,
+        
         message: 'External task created successfully.',
         taskId: result.meta.last_row_id // Internal ID of the created task, matching ExternalTaskCreateResponseSchema
       }), 201);
     } else {
       console.error('Failed to insert external task, D1 result:', result);
-      return c.json(ExternalTaskCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create external task.' }), 500);
+      return c.json(ExternalTaskCreateFailedErrorSchema.parse({ message: 'Failed to create external task.' }), 500);
     }
 
   } catch (error) {
     console.error('Error creating external task:', error);
     // Check for specific D1 errors like UNIQUE constraint if external_task_id needs to be unique (schema doesn't specify)
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to create external task due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to create external task due to a server error.' }), 500);
   }
 };

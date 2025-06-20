@@ -57,7 +57,6 @@ export const ListYouTubeChannelsResponseSchema = SimpleListResponseSchema(YouTub
 
 // Schema for getting a single YouTube channel
 export const GetYouTubeChannelResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   channel: YouTubeChannelSchema
 }).openapi('GetYouTubeChannelResponse');
 

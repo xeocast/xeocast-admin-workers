@@ -50,23 +50,20 @@ export const uploadObjectHandler: Handler<{
 
         if (!(file instanceof File)) {
             return c.json(FileUploadErrorSchema.parse({
-                success: false,
-                message: 'File upload failed. No file provided in the \'file\' field or invalid form data.'
+                                message: 'File upload failed. No file provided in the \'file\' field or invalid form data.'
             }), 400);
         }
 
         if (typeof bucketNameInput !== 'string') {
              return c.json(FileUploadErrorSchema.parse({
-                success: false,
-                message: 'Bucket name is required and must be a string.'
+                                message: 'Bucket name is required and must be a string.'
             }), 400);
         }
 
         const parsedBucketName = R2BucketNameSchema.safeParse(bucketNameInput);
         if (!parsedBucketName.success) {
             return c.json(BucketNotFoundErrorSchema.parse({
-                success: false,
-                message: `Invalid bucket name provided: ${bucketNameInput}. Valid names are: ${R2BucketNameSchema.options.join(', ')}`,
+                                message: `Invalid bucket name provided: ${bucketNameInput}. Valid names are: ${R2BucketNameSchema.options.join(', ')}`,
                 bucketNameAttempted: bucketNameInput
             }), 400);
         }
@@ -75,8 +72,7 @@ export const uploadObjectHandler: Handler<{
         const bucket = getR2Bucket(c, logicalBucketName);
         if (!bucket) {
             return c.json(BucketNotFoundErrorSchema.parse({
-                success: false,
-                message: 'The specified bucket binding was not found or is not configured.',
+                                message: 'The specified bucket binding was not found or is not configured.',
                 bucketNameAttempted: logicalBucketName
             }), 500);
         }
@@ -86,8 +82,7 @@ export const uploadObjectHandler: Handler<{
             objectKey = sanitizeKey(keyInput.trim());
             if (!objectKey) { // SanitizeKey might return empty if original key was just slashes
                  return c.json(InvalidKeyErrorSchema.parse({
-                    success: false,
-                    message: 'Provided object key is invalid after sanitization.'
+                                        message: 'Provided object key is invalid after sanitization.'
                 }), 400);
             }
         } else {
@@ -96,12 +91,12 @@ export const uploadObjectHandler: Handler<{
         }
 
         if (objectKey.length === 0 || objectKey.length > 1024) {
-            return c.json(InvalidKeyErrorSchema.parse({ success: false }), 400);
+            return c.json(InvalidKeyErrorSchema.parse({}), 400);
         }
 
         const contentType = (typeof contentTypeInput === 'string' && contentTypeInput.trim() !== '') ? contentTypeInput.trim() : file.type;
         if (!contentType) {
-            return c.json(MissingContentTypeErrorSchema.parse({ success: false }), 400);
+            return c.json(MissingContentTypeErrorSchema.parse({}), 400);
         }
 
         let httpMetadata: R2HTTPMetadata = { contentType };
@@ -121,7 +116,7 @@ export const uploadObjectHandler: Handler<{
                     throw new Error('Parsed metadata is not an object');
                 }
             } catch (e) {
-                return c.json(InvalidCustomMetadataErrorSchema.parse({ success: false }), 400);
+                return c.json(InvalidCustomMetadataErrorSchema.parse({}), 400);
             }
         }
 
@@ -131,7 +126,7 @@ export const uploadObjectHandler: Handler<{
         });
 
         return c.json(UploadObjectSuccessResponseSchema.parse({
-            success: true,
+            
             message: 'File uploaded successfully.',
             objectKey: objectKey,
             bucket: logicalBucketName,
@@ -145,14 +140,12 @@ export const uploadObjectHandler: Handler<{
             // This case might be less common here as primary validation is on form data fields directly
             // but kept for robustness if any Zod parsing is added before R2 ops.
             return c.json({
-                success: false,
-                message: 'Invalid request data due to Zod validation.',
+                                message: 'Invalid request data due to Zod validation.',
                 errors: error.flatten().fieldErrors
             }, 400);
         }
         return c.json(R2OperationErrorSchema.parse({
-            success: false,
-            message: 'An unexpected error occurred during file upload.',
+                        message: 'An unexpected error occurred during file upload.',
             details: error.message || 'Unknown R2 operation error.'
         }), 500);
     }

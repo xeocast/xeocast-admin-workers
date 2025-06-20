@@ -9,7 +9,6 @@ export const LoginRequestSchema = z.object({
 }).openapi('LoginRequest');
 
 export const LoginSuccessResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
 }).openapi('LoginSuccessResponse');
 
 export const LoginMissingFieldsErrorSchema = ErrorSchema.extend({
@@ -49,16 +48,35 @@ export const SessionUserSchema = z.object({
 export const SessionActiveResponseSchema = z.object({
   isActive: z.literal(true),
   user: SessionUserSchema,
-}).openapi('SessionActiveResponse');
+}).openapi('SessionActiveResponse', {
+  example: {
+    isActive: true,
+    user: {
+      id: 1,
+      email: 'user@example.com',
+      name: 'John Doe',
+      role: 'admin',
+    },
+  },
+});
 
 export const SessionInactiveResponseSchema = z.object({
   isActive: z.literal(false),
-}).openapi('SessionInactiveResponse');
+}).openapi('SessionInactiveResponse', {
+  example: {
+    isActive: false,
+  },
+});
 
 export const SessionErrorResponseSchema = ErrorSchema.extend({
   error: z.literal('session_error'),
   message: z.literal('An error occurred while fetching session status.'),
-}).openapi('SessionErrorResponse');
+}).openapi('SessionErrorResponse', {
+  example: {
+    error: 'session_error',
+    message: 'An error occurred while fetching session status.',
+  },
+});
 
 // POST /auth/logout
 export const LogoutSuccessResponseSchema = MessageResponseSchema.extend({

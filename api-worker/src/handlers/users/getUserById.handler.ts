@@ -31,7 +31,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ success: false, message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
   }
   const id = parseInt(paramValidation.data.id, 10);
 
@@ -47,7 +47,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     ).bind(id).all<UserWithRoleFromDB>();
 
     if (!dbResults.success || !dbResults.results || dbResults.results.length === 0) {
-      return c.json(UserNotFoundErrorSchema.parse({ success: false, message: 'User not found.' }), 404);
+      return c.json(UserNotFoundErrorSchema.parse({ message: 'User not found.' }), 404);
     }
 
     const firstRow = dbResults.results[0];
@@ -70,13 +70,13 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     const validation = UserSchema.safeParse(userForValidation);
     if (!validation.success) {
       console.error(`Data for user ID ${firstRow.id} failed UserSchema validation after DB fetch:`, validation.error.flatten());
-      return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Error processing user data.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing user data.' }), 500);
     }
 
-    return c.json(GetUserResponseSchema.parse({ success: true, user: validation.data }), 200);
+    return c.json(GetUserResponseSchema.parse({ user: validation.data }), 200);
 
   } catch (error) {
     console.error('Error getting user by ID:', error);
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to retrieve user due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve user due to a server error.' }), 500);
   }
 };

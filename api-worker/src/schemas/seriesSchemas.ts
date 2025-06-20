@@ -46,13 +46,11 @@ export const SeriesSummarySchema = z.object({
 
 // Schema for listing series
 export const ListSeriesResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   series: z.array(SeriesSummarySchema) // Using SeriesSummarySchema for lists
 }).openapi('ListSeriesResponse');
 
 // Schema for getting a single series
 export const GetSeriesResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   series: SeriesSchema
 }).openapi('GetSeriesResponse');
 

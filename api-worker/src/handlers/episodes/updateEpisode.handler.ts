@@ -14,7 +14,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
   const paramParseResult = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramParseResult.success) {
-    return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Invalid episode ID format.' }), 400);
+    return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Invalid episode ID format.' }), 400);
   }
   const { id } = paramParseResult.data;
 
@@ -23,8 +23,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   if (!parseResult.success) {
     return c.json(EpisodeUpdateFailedErrorSchema.parse({
-      success: false,
-      message: 'Invalid request body.',
+            message: 'Invalid request body.',
       errors: parseResult.error.flatten().fieldErrors,
     }), 400);
   }
@@ -33,8 +32,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
   if (Object.keys(updates).length === 0) {
     return c.json(EpisodeUpdateFailedErrorSchema.parse({
-      success: false,
-      message: 'No update fields provided.',
+            message: 'No update fields provided.',
     }), 400);
   }
 
@@ -45,7 +43,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
       .first<{ slug: string; title: string; show_id: number; series_id: number | null }>();
 
     if (!currentEpisode) {
-      return c.json(EpisodeNotFoundErrorSchema.parse({ success: false, message: 'Episode not found.' }), 404);
+      return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Episode not found.' }), 404);
     }
 
     let newSlug = updates.slug;
@@ -73,8 +71,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
       const existingEpisodeWithSlug = await slugCheckQuery.first();
       if (existingEpisodeWithSlug) {
         return c.json(EpisodeSlugExistsErrorSchema.parse({
-          success: false,
-          message: 'Episode slug already exists for this show/series combination.',
+                    message: 'Episode slug already exists for this show/series combination.',
         }), 400);
       }
       updates.slug = newSlug; // Ensure the updates object has the new slug
@@ -98,7 +95,7 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     if (fieldsToUpdate.length === 0) {
       // This can happen if only `slug` was in `updates` but it was the same as current, or if title was updated but generated slug was same
       // Or if all values were undefined (though caught earlier by Object.keys(updates).length === 0)
-      return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'No changes detected to update.' }), 200);
+      return c.json(EpisodeUpdateResponseSchema.parse({ message: 'No changes detected to update.' }), 200);
     }
 
     // Add updated_at timestamp
@@ -114,23 +111,21 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const result = await c.env.DB.prepare(updateStatement).bind(...bindings).run();
 
     if (result.success && result.meta.changes > 0) {
-      return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'Episode updated successfully.' }), 200);
+      return c.json(EpisodeUpdateResponseSchema.parse({ message: 'Episode updated successfully.' }), 200);
     } else if (result.success && result.meta.changes === 0) {
       // This could mean the episode was not found, or the data provided was identical to existing data
       // We already check for not found, so this means data was identical or no effective change
-      return c.json(EpisodeUpdateResponseSchema.parse({ success: true, message: 'Episode updated successfully (no changes applied).' }), 200);
+      return c.json(EpisodeUpdateResponseSchema.parse({ message: 'Episode updated successfully (no changes applied).' }), 200);
     } else {
       console.error('Failed to update episode, D1 result:', result);
       return c.json(EpisodeUpdateFailedErrorSchema.parse({
-        success: false,
-        message: 'Failed to update episode in the database.',
+                message: 'Failed to update episode in the database.',
       }), 500);
     }
   } catch (error) {
     console.error(`Error updating episode ${id}:`, error);
     return c.json(GeneralServerErrorSchema.parse({
-      success: false,
-      message: 'An unexpected error occurred while updating the episode.',
+            message: 'An unexpected error occurred while updating the episode.',
     }), 500);
   }
 };

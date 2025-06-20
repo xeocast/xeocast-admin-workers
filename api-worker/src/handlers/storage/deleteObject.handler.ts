@@ -23,8 +23,7 @@ export const deleteObjectHandler: Handler<{
         const parsedParams = ObjectPathParamsSchema.safeParse({ logicalBucketName, objectKey });
         if (!parsedParams.success) {
             return c.json(GeneralBadRequestErrorSchema.parse({
-                success: false,
-                message: 'Invalid path parameters.',
+                                message: 'Invalid path parameters.',
                 // errors: parsedParams.error.flatten().fieldErrors
             }), 400);
         }
@@ -32,8 +31,7 @@ export const deleteObjectHandler: Handler<{
         const bucket = getR2Bucket(c, parsedParams.data.logicalBucketName);
         if (!bucket) {
             return c.json(BucketNotFoundErrorSchema.parse({
-                success: false,
-                message: 'The specified bucket binding was not found or is not configured.',
+                                message: 'The specified bucket binding was not found or is not configured.',
                 bucketNameAttempted: parsedParams.data.logicalBucketName
             }), 500);
         }
@@ -44,7 +42,7 @@ export const deleteObjectHandler: Handler<{
         await bucket.delete(parsedParams.data.objectKey);
 
         return c.json(DeleteObjectSuccessResponseSchema.parse({
-            success: true,
+            
             message: 'Object deleted successfully.',
             objectKey: parsedParams.data.objectKey,
             bucket: parsedParams.data.logicalBucketName
@@ -54,14 +52,12 @@ export const deleteObjectHandler: Handler<{
         console.error('Delete error:', error);
         if (error instanceof z.ZodError) {
             return c.json(GeneralBadRequestErrorSchema.parse({
-               success: false,
-               message: 'Invalid request data due to Zod validation.',
+                              message: 'Invalid request data due to Zod validation.',
                // errors: error.flatten().fieldErrors
            }), 400);
        }
         return c.json(R2OperationErrorSchema.parse({
-            success: false,
-            message: 'An unexpected error occurred while attempting to delete the object.',
+                        message: 'An unexpected error occurred while attempting to delete the object.',
             details: error.message || 'Unknown R2 operation error.'
         }), 500);
     }

@@ -41,13 +41,11 @@ export const UserCreateResponseSchema = MessageResponseSchema.extend({
 
 // Schema for listing users
 export const ListUsersResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   users: z.array(UserSchema)
 }).openapi('ListUsersResponse');
 
 // Schema for getting a single user
 export const GetUserResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   user: UserSchema,
 }).openapi('GetUserResponse');
 

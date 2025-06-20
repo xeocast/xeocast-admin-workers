@@ -13,8 +13,7 @@ export const getShowByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
 
   if (!paramValidation.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({
-        success: false,
-        message: 'Invalid ID format.'
+                message: 'Invalid ID format.'
     }), 400);
   }
 
@@ -39,15 +38,14 @@ export const getShowByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
 
     if (!showRaw) {
       return c.json(ShowNotFoundErrorSchema.parse({
-        success: false,
-        message: 'Show not found.'
+                message: 'Show not found.'
       }), 404);
     }
     
     const show = ShowSchema.parse(showRaw);
 
     return c.json(GetShowResponseSchema.parse({
-      success: true,
+      
       show: show
     }), 200);
 
@@ -55,14 +53,12 @@ export const getShowByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     if (error instanceof z.ZodError) {
         console.error('Get show by ID validation error:', error.flatten());
         return c.json(GeneralServerErrorSchema.parse({
-            success: false,
-            message: 'Response validation failed for show data.'
+                        message: 'Response validation failed for show data.'
         }), 500);
     }
     console.error('Error fetching show by ID:', error);
     return c.json(GeneralServerErrorSchema.parse({
-        success: false,
-        message: 'Failed to retrieve show.'
+                message: 'Failed to retrieve show.'
     }), 500);
   }
 };

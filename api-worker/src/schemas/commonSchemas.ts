@@ -22,26 +22,22 @@ export const PaginationQuerySchema = z.object({
 
 
 export const ErrorSchema = z.object({
-  success: z.boolean().openapi({ example: false }),
   error: z.string().optional().openapi({ example: 'error_code' }),
   message: z.string().openapi({ example: 'A detailed error message.' }),
 }).openapi('ErrorResponse');
 
 
 export const SuccessSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   message: z.string().optional().openapi({ example: 'Operation successful.' }),
 }).openapi('SuccessResponse');
 
 export const MessageResponseSchema = z.object({
-    success: z.boolean().openapi({example: true}),
     message: z.string().openapi({example: "Action completed successfully."})
 }).openapi('MessageResponse');
 
 // Generic function to create a paginated response schema
 export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T, keyName: string) =>
   z.object({
-    success: z.boolean().openapi({ example: true }),
     [keyName]: z.array(itemSchema),
     pagination: PaginationInfoSchema, // Added pagination info object
   });
@@ -51,7 +47,6 @@ export const PaginatedResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T, k
 // Generic function to create a simple list response schema
 export const SimpleListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T, keyName: string) =>
   z.object({
-    success: z.boolean().openapi({ example: true }),
     [keyName]: z.array(itemSchema),
   });
 

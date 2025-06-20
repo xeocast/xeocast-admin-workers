@@ -72,7 +72,6 @@ export const ListExternalTasksResponseSchema = PaginatedResponseSchema(ExternalT
 
 // Schema for getting a single external task
 export const GetExternalTaskResponseSchema = z.object({
-  success: z.boolean().openapi({ example: true }),
   task: ExternalTaskSchema
 }).openapi('GetExternalTaskResponse');
 

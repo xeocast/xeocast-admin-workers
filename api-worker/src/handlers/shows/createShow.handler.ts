@@ -15,8 +15,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     requestBody = await c.req.json();
   } catch (error) {
     return c.json(ShowCreateFailedErrorSchema.parse({
-      success: false,
-      message: 'Invalid JSON payload.'
+            message: 'Invalid JSON payload.'
     }), 400);
   }
 
@@ -25,8 +24,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   if (!validationResult.success) {
     console.error('Create show validation error:', validationResult.error.flatten());
     return c.json(ShowCreateFailedErrorSchema.parse({
-      success: false,
-      message: 'Invalid input for creating show.',
+            message: 'Invalid input for creating show.',
       // errors: validationResult.error.flatten().fieldErrors // Optional: include detailed field errors
     }), 400);
   }
@@ -49,8 +47,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     if (existingShowByName) {
       return c.json(ShowNameExistsErrorSchema.parse({
-        success: false,
-        message: 'Show name already exists.'
+                message: 'Show name already exists.'
       }), 400);
     }
 
@@ -97,15 +94,14 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
     if (result.success && result.meta.last_row_id) {
       return c.json(ShowCreateResponseSchema.parse({
-        success: true,
+        
         message: 'Show created successfully.',
         showId: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert show, D1 result:', result);
       return c.json(ShowCreateFailedErrorSchema.parse({
-        success: false,
-        message: 'Failed to create show.'
+                message: 'Failed to create show.'
       }), 500);
     }
 
@@ -114,8 +110,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     // Check for specific D1 errors if possible, e.g., unique constraint violation if not caught above
     // For now, a general server error
     return c.json(ShowCreateFailedErrorSchema.parse({
-        success: false,
-        message: 'Failed to create show.'
+                message: 'Failed to create show.'
     }), 500);
   }
 };

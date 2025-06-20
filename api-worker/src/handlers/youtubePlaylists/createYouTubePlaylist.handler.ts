@@ -14,13 +14,13 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
   try {
     requestBody = await c.req.json();
   } catch (error) {
-    return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: 'Invalid JSON payload.' }), 400);
+    return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 
   const validationResult = YouTubePlaylistCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ 
-        success: false, 
+        
         message: 'Invalid input for creating YouTube playlist.'
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
@@ -39,12 +39,12 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     // Validate foreign keys
     const channelExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(channel_id).first();
     if (!channelExists) {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: `YouTube channel with id ${channel_id} not found.` }), 400);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `YouTube channel with id ${channel_id} not found.` }), 400);
     }
 
     const seriesExists = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(series_id).first();
     if (!seriesExists) {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: `Series with id ${series_id} not found.` }), 400);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `Series with id ${series_id} not found.` }), 400);
     }
 
     // Check for youtube_platform_id uniqueness (globally, as per DB constraint)
@@ -54,7 +54,7 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
       // The schema YouTubePlaylistPlatformIdExistsErrorSchema says '...for this channel', but DB constraint is global.
       // Adjusting message to reflect global uniqueness.
       return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.extend({message: z.literal('YouTube playlist platform ID already exists.')}).parse({ 
-          success: false, 
+          
           message: 'YouTube playlist platform ID already exists.' 
       }), 400);
     }
@@ -67,26 +67,26 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
     if (result.success && result.meta.last_row_id) {
       return c.json(YouTubePlaylistCreateResponseSchema.parse({
-        success: true,
+        
         message: 'YouTube playlist created successfully.',
         playlistId: result.meta.last_row_id
       }), 201);
     } else {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: 'Failed to create YouTube playlist in database.' }), 500);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: 'Failed to create YouTube playlist in database.' }), 500);
     }
 
   } catch (error: any) {
     console.error('Error creating YouTube playlist:', error);
     if (error.message && error.message.includes('UNIQUE constraint failed: youtube_playlists.youtube_platform_id')) {
         return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.extend({message: z.literal('YouTube playlist platform ID already exists.')}).parse({ 
-            success: false, 
+            
             message: 'YouTube playlist platform ID already exists.' 
         }), 400);
     }
     // Catch other DB constraint errors e.g. FOREIGN KEY
     if (error.message && error.message.toLowerCase().includes('constraint failed')) {
-        return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ success: false, message: `Database constraint failed: ${error.message}`}), 400);
+        return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `Database constraint failed: ${error.message}`}), 400);
     }
-    return c.json(GeneralServerErrorSchema.parse({ success: false, message: 'Failed to create YouTube playlist due to a server error.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to create YouTube playlist due to a server error.' }), 500);
   }
 };
