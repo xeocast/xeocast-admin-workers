@@ -1,6 +1,5 @@
 // src/schemas/commonSchemas.ts
 import { z } from '@hono/zod-openapi';
-// import 'zod-openapi/extend'; // Extends Zod with .openapi() method
 
 // Schema for pagination information in responses
 export const PaginationInfoSchema = z.object({

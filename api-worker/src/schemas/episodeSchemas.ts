@@ -56,7 +56,7 @@ const EpisodeBaseSchema = z.object({
 
 // Schema for data as it's stored in/retrieved from the database
 // This is an intermediate schema, not directly used for API request/response validation usually
-const EpisodeDbSchema = EpisodeBaseSchema.extend({
+export const EpisodeDbSchema = EpisodeBaseSchema.extend({
   id: z.number().int().positive(),
   // Ensure all fields from DB are represented, especially those with defaults or specific types
   // slug, description, markdown_content are already in EpisodeBaseSchema and DB ensures they are NOT NULL
@@ -214,7 +214,7 @@ export const EpisodeDeleteResponseSchema = MessageResponseSchema.extend({
 }).openapi('EpisodeDeleteResponse');
 
 export const EpisodeCreateFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
-    message: z.literal("Failed to create episode."),
+    message: z.string().openapi({ example: "Failed to create episode." }),
 }).openapi('EpisodeCreateFailedError');
 
 export const EpisodeSlugExistsErrorSchema = GeneralBadRequestErrorSchema.extend({

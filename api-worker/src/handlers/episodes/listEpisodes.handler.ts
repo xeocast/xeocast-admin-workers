@@ -1,13 +1,23 @@
 import { Context } from 'hono';
 import type { CloudflareEnv } from '../../env';
+import { z } from '@hono/zod-openapi';
+
+// Define the type for raw database episode data using the imported Zod schema
+type RawDbEpisode = z.infer<typeof EpisodeDbSchema>;
 import {
   EpisodeSchema,
   EpisodeListItemSchema,
   ListEpisodesQuerySchema,
-  ListEpisodesResponseSchema
+  ListEpisodesResponseSchema,
+  EpisodeDbSchema,
 } from '../../schemas/episodeSchemas';
-import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
-import { z } from 'zod';
+import {
+  GeneralServerErrorSchema,
+  GeneralBadRequestErrorSchema,
+} from '../../schemas/commonSchemas';
+
+// Define the type for raw database episode data
+type DbEpisode = z.infer<typeof EpisodeDbSchema>;
 
 export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParseResult = ListEpisodesQuerySchema.safeParse(c.req.query());
@@ -67,7 +77,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     ).bind(...bindings);
 
     const [episodesDbResult, countResult] = await Promise.all([
-      episodesQuery.all<any>(), 
+      episodesQuery.all<RawDbEpisode>(), 
       countQuery.first<{ total: number }>()
     ]);
 
@@ -79,7 +89,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
         }), 500);
     }
 
-    const processedEpisodes = episodesDbResult.results.map(dbEpisode => {
+    const processedEpisodes = episodesDbResult.results.map((dbEpisode: RawDbEpisode) => {
       const parsedEpisode = EpisodeSchema.safeParse(dbEpisode);
       if (!parsedEpisode.success) {
         console.error(`Error parsing episode ID ${dbEpisode.id} in list:`, parsedEpisode.error.flatten());
