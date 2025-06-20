@@ -46,13 +46,21 @@ seriesRoutes.openapi(createSeriesRouteDef, createSeriesHandler);
 const listSeriesRouteDef = createRoute({
   method: 'get',
   path: '/',
-  // Add query params for filtering by show_id if needed in future
+  request: {
+    query: z.object({
+      page: z.string().optional().openapi({ example: '1', description: 'Page number for pagination.' }),
+      limit: z.string().optional().openapi({ example: '10', description: 'Number of items per page (max 100).' }),
+      title: z.string().optional().openapi({ example: 'Tech Talk', description: 'Filter by series title (case-insensitive, partial match).' }),
+      show_id: z.string().optional().openapi({ example: '123', description: 'Filter by show ID.' }),
+    }).openapi('ListSeriesQuery'),
+  },
   responses: {
-    200: { content: { 'application/json': { schema: ListSeriesResponseSchema } }, description: 'List of series' },
-    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request' },
+    200: { content: { 'application/json': { schema: ListSeriesResponseSchema } }, description: 'A paginated list of series.' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid query parameters).' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
-  summary: 'Lists all series.',
+  summary: 'Lists all series with pagination and filtering.',
+  description: 'Retrieves a list of series. Supports pagination, filtering by title (case-insensitive, partial match), and filtering by show ID.',
   tags: ['Series'],
 });
 seriesRoutes.openapi(listSeriesRouteDef, listSeriesHandler);

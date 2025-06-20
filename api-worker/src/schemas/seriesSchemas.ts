@@ -44,9 +44,26 @@ export const SeriesSummarySchema = z.object({
   show_id: z.number().int().positive().openapi({ example: 1 })
 }).openapi('SeriesSummary');
 
+// Schema for pagination details
+const PaginationSchema = z.object({
+  page: z.number().int().positive().openapi({ example: 1, description: 'Current page number.' }),
+  limit: z.number().int().positive().openapi({ example: 10, description: 'Number of items per page.' }),
+  totalItems: z.number().int().nonnegative().openapi({ example: 100, description: 'Total number of items available.' }),
+  totalPages: z.number().int().nonnegative().openapi({ example: 10, description: 'Total number of pages.' }),
+}).openapi('Pagination');
+
+// Schema for query parameters for listing series
+export const ListSeriesQuerySchema = z.object({
+  page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
+  limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
+  title: z.string().optional().openapi({ description: 'Filter by series title (case-insensitive, partial match).' }),
+  show_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
+});
+
 // Schema for listing series
 export const ListSeriesResponseSchema = z.object({
-  series: z.array(SeriesSummarySchema) // Using SeriesSummarySchema for lists
+  series: z.array(SeriesSummarySchema), // Using SeriesSummarySchema for lists
+  pagination: PaginationSchema
 }).openapi('ListSeriesResponse');
 
 // Schema for getting a single series

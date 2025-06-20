@@ -1,22 +1,20 @@
 import { Context } from 'hono';
-import { z } from 'zod';
 import type { CloudflareEnv } from '../../env';
+import { z } from 'zod';
 import {
   SeriesSummarySchema,
+  ListSeriesQuerySchema, // Import new query schema
   ListSeriesResponseSchema
 } from '../../schemas/seriesSchemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/commonSchemas';
 
-// Schema for query parameters
-const ListSeriesQuerySchema = z.object({
-  show_id: z.string().regex(/^\d+$/).transform(Number).pipe(z.number().int().positive()).optional(),
-});
-
 interface SeriesSummaryFromDB {
   id: number;
   title: string;
-  slug: string; // Added slug
+  slug: string;
   show_id: number;
+  // created_at and updated_at are not in SeriesSummarySchema, so not strictly needed here
+  // but if they were, they'd be: created_at: string; updated_at: string;
 }
 
 export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -24,44 +22,74 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   if (!queryParseResult.success) {
     return c.json(GeneralBadRequestErrorSchema.parse({ 
-        
-        message: 'Invalid query parameters.',
-        // errors: queryParseResult.error.flatten().fieldErrors
+      message: 'Invalid query parameters.', 
+      errors: queryParseResult.error.flatten().fieldErrors 
     }), 400);
   }
 
-  const { show_id } = queryParseResult.data;
+  const { page, limit, title, show_id } = queryParseResult.data;
+  const offset = (page - 1) * limit;
+
+  let whereClauses: string[] = [];
+  let bindings: (string | number)[] = [];
+  let paramIndex = 1;
+
+  if (show_id !== undefined) {
+    whereClauses.push(`show_id = ?${paramIndex++}`);
+    bindings.push(show_id);
+  }
+  if (title) {
+    whereClauses.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
+    bindings.push(`%${title}%`);
+  }
+
+  const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
   try {
-    let query = 'SELECT id, title, slug, show_id FROM series'; // Added slug
-    const bindings: (number | string)[] = [];
+    const seriesQueryStmt = c.env.DB.prepare(
+      `SELECT id, title, slug, show_id FROM series ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
+    ).bind(...bindings, limit, offset);
 
-    if (show_id !== undefined) {
-      query += ' WHERE show_id = ?1';
-      bindings.push(show_id);
+    const countQueryStmt = c.env.DB.prepare(
+      `SELECT COUNT(*) as total FROM series ${whereString}`
+    ).bind(...bindings);
+
+    const [seriesDbResult, countResult] = await Promise.all([
+      seriesQueryStmt.all<SeriesSummaryFromDB>(),
+      countQueryStmt.first<{ total: number }>()
+    ]);
+
+    if (!seriesDbResult.results || countResult === null) {
+      console.error('Failed to fetch series or count, D1 results:', seriesDbResult, countResult);
+      return c.json(GeneralServerErrorSchema.parse({ 
+        message: 'Failed to retrieve series from the database.'
+      }), 500);
     }
-    query += ' ORDER BY id ASC';
 
-    const stmt = bindings.length > 0 ? c.env.DB.prepare(query).bind(...bindings) : c.env.DB.prepare(query);
-    const { results } = await stmt.all<SeriesSummaryFromDB>();
+    // Validate each summary - SeriesSummarySchema does not include created_at/updated_at, so direct mapping is fine.
+    const validatedSeriesSummaries = z.array(SeriesSummarySchema).safeParse(seriesDbResult.results);
 
-    if (!results) {
-      return c.json(ListSeriesResponseSchema.parse({ series: [] }), 200);
+    if (!validatedSeriesSummaries.success) {
+      console.error('Final series list validation error:', validatedSeriesSummaries.error.flatten());
+      return c.json(GeneralServerErrorSchema.parse({ 
+        message: 'Error validating final series list structure.'
+      }), 500);
     }
 
-    // Validate each summary - though if query is specific, this is more of a sanity check
-    const seriesSummaries = results.map(dbSeries => {
-      const validation = SeriesSummarySchema.safeParse({
-        ...dbSeries
-      });
-      if (!validation.success) {
-        console.warn(`Data for series ID ${dbSeries.id} failed SeriesSummarySchema validation:`, validation.error.flatten());
-        return null; // Filter out invalid ones
-      }
-      return validation.data;
-    }).filter(s => s !== null);
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
 
-    return c.json(ListSeriesResponseSchema.parse({ series: seriesSummaries }), 200);
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
+
+    return c.json(ListSeriesResponseSchema.parse({
+      series: validatedSeriesSummaries.data,
+      pagination: pagination,
+    }), 200);
 
   } catch (error) {
     console.error('Error listing series:', error);
