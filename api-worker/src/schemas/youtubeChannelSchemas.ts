@@ -5,7 +5,9 @@ import {
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
   GeneralServerErrorSchema,
-  SimpleListResponseSchema // Using SimpleList for now, can switch to Paginated if needed
+  PaginatedResponseSchema,
+  PaginationQuerySchema, // For request query params
+  PaginationInfoSchema // For response body
 } from './commonSchemas';
 
 // Base schema for YouTube channel properties
@@ -44,15 +46,19 @@ export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
 }).openapi('YouTubeChannelCreateResponse');
 
 // Schema for query parameters when listing YouTube channels
-export const ListYouTubeChannelsQuerySchema = z.object({
-  show_id: z.string().optional() // Keep as string for query param
+export const ListYouTubeChannelsQuerySchema = PaginationQuerySchema.extend({
+  show_id: z.string().optional()
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by show ID.', example: '1' }),
+  title: z.string().optional()
+    .openapi({ description: 'Filter by YouTube channel title (case-insensitive, partial match).', example: 'Awesome Channel' }),
+  language_code: z.string().optional()
+    .openapi({ description: 'Filter by language code (ISO 639-1 alpha-2 code).', example: 'en' }),
 }).openapi('ListYouTubeChannelsQuery');
 
 // Schema for listing YouTube channels
-export const ListYouTubeChannelsResponseSchema = SimpleListResponseSchema(YouTubeChannelSchema, 'channels')
+export const ListYouTubeChannelsResponseSchema = PaginatedResponseSchema(YouTubeChannelSchema, 'channels')
   .openapi('ListYouTubeChannelsResponse');
 
 // Schema for getting a single YouTube channel

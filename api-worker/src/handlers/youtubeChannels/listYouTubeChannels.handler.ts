@@ -37,25 +37,60 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     }), 400);
   }
 
-  const { show_id } = validationResult.data;
+  const { page, limit, show_id, title, language_code } = validationResult.data;
+  const offset = (page - 1) * limit;
 
   try {
-    let query = 'SELECT id, show_id, youtube_platform_id, youtube_platform_category_id, title, description, video_description_template, first_comment_template, language_code, created_at, updated_at FROM youtube_channels';
-    const bindings: any[] = [];
+    const baseQuery = 'FROM youtube_channels';
+    const whereClauses: string[] = [];
+    const bindings: (string | number)[] = [];
+    let paramIndex = 1;
 
     if (show_id !== undefined) {
-      query += ' WHERE show_id = ?1';
+      whereClauses.push(`show_id = ?${paramIndex++}`);
       bindings.push(show_id);
     }
+    if (title) {
+      whereClauses.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
+      bindings.push(`%${title}%`);
+    }
+    if (language_code) {
+      whereClauses.push(`language_code = ?${paramIndex++}`);
+      bindings.push(language_code);
+    }
 
-    query += ' ORDER BY id ASC'; // Default ordering
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
-    const stmt = c.env.DB.prepare(query).bind(...bindings);
-    const { results } = await stmt.all();
+    const channelsSelectFields = 'id, show_id, youtube_platform_id, youtube_platform_category_id, title, description, video_description_template, first_comment_template, language_code, created_at, updated_at';
 
-    const channels = results ? results.map(mapDbRowToYouTubeChannel) : [];
-    
-    return c.json(ListYouTubeChannelsResponseSchema.parse({ channels: channels }), 200);
+    const channelsQueryString = `SELECT ${channelsSelectFields} ${baseQuery} ${whereString} ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
+    const countQueryString = `SELECT COUNT(*) as total ${baseQuery} ${whereString}`;
+
+    const channelsStmt = c.env.DB.prepare(channelsQueryString).bind(...bindings, limit, offset);
+    const countStmt = c.env.DB.prepare(countQueryString).bind(...bindings);
+
+    const [{ results: channelResults }, countResult] = await Promise.all([
+      channelsStmt.all(),
+      countStmt.first<{ total: number }>(),
+    ]);
+
+    if (!channelResults || countResult === null) {
+      console.error('Failed to fetch YouTube channels or count, D1 results:', channelResults, countResult);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve YouTube channels from the database.' }), 500);
+    }
+
+    const channels = channelResults ? channelResults.map(mapDbRowToYouTubeChannel) : [];
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
+
+    return c.json(ListYouTubeChannelsResponseSchema.parse({ channels, pagination }), 200);
 
   } catch (error: any) {
     console.error('Error listing YouTube channels:', error);

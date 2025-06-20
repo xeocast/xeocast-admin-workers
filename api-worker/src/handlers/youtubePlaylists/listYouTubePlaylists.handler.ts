@@ -9,7 +9,7 @@ import {
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/commonSchemas';
 
 // Helper to map DB row to YouTubePlaylistSchema compatible object
-const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSchema> => {
+const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSchema> => { // Ensure this maps all fields for YouTubePlaylistSchema
   return YouTubePlaylistSchema.parse({
     id: dbRow.id,
     youtube_platform_id: dbRow.youtube_platform_id,
@@ -30,41 +30,63 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid query parameters.'}), 400);
   }
 
-  const { series_id, channel_id } = queryParseResult.data; // Renamed from youtube_channel_id
+  const { page, limit, title, series_id, channel_id } = queryParseResult.data;
+  const offset = (page - 1) * limit;
 
   try {
-    let query = 'SELECT id, youtube_platform_id, title, description, channel_id, series_id, created_at, updated_at FROM youtube_playlists';
+    const selectFields = 'id, youtube_platform_id, title, description, channel_id, series_id, created_at, updated_at';
+    let query = `SELECT ${selectFields} FROM youtube_playlists`;
+    let countQueryStr = 'SELECT COUNT(*) as total FROM youtube_playlists';
+    
     const conditions: string[] = [];
-    const bindings: any[] = [];
-    let bindingIdx = 1;
+    const bindings: (string | number)[] = [];
+    let paramIndex = 1;
 
-    if (series_id !== undefined) {
-      conditions.push(`series_id = ?${bindingIdx}`);
-      bindings.push(series_id);
-      bindingIdx++;
+    if (title) {
+      conditions.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
+      bindings.push(`%${title}%`);
     }
-
+    if (series_id !== undefined) {
+      conditions.push(`series_id = ?${paramIndex++}`);
+      bindings.push(series_id);
+    }
     if (channel_id !== undefined) {
-      conditions.push(`channel_id = ?${bindingIdx}`); // DB uses channel_id
+      conditions.push(`channel_id = ?${paramIndex++}`);
       bindings.push(channel_id);
-      bindingIdx++;
     }
 
     if (conditions.length > 0) {
-      query += ' WHERE ' + conditions.join(' AND ');
+      const whereClause = ' WHERE ' + conditions.join(' AND ');
+      query += whereClause;
+      countQueryStr += whereClause;
     }
-    query += ' ORDER BY id ASC';
+    query += ` ORDER BY id ASC LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`;
 
-    const stmt = c.env.DB.prepare(query).bind(...bindings);
-    const dbResult = await stmt.all();
+    const playlistsStmt = c.env.DB.prepare(query).bind(...bindings, limit, offset);
+    const countStmt = c.env.DB.prepare(countQueryStr).bind(...bindings);
 
-    if (!dbResult || !dbResult.results) {
-        return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to fetch playlists: Invalid database response.' }), 500);
+    const [playlistsDbResult, countResult] = await Promise.all([
+      playlistsStmt.all(),
+      countStmt.first<{ total: number }>()
+    ]);
+
+    if (!playlistsDbResult || !playlistsDbResult.results || countResult === null) {
+        return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to fetch playlists or count: Invalid database response.' }), 500);
     }
 
-    const playlists = dbResult.results.map(mapDbRowToYouTubePlaylist);
+    const playlists = playlistsDbResult.results.map(mapDbRowToYouTubePlaylist);
     
-    return c.json(ListYouTubePlaylistsResponseSchema.parse({ playlists: playlists }), 200);
+    const totalItems = countResult.total;
+    const totalPages = Math.ceil(totalItems / limit);
+
+    const pagination = {
+      page,
+      limit,
+      totalItems,
+      totalPages,
+    };
+
+    return c.json(ListYouTubePlaylistsResponseSchema.parse({ playlists, pagination }), 200);
 
   } catch (error: any) {
     console.error('Error listing YouTube playlists:', error);

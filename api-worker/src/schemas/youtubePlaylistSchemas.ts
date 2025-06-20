@@ -5,7 +5,7 @@ import {
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
   GeneralServerErrorSchema,
-  SimpleListResponseSchema // Using SimpleList for now
+  PaginationInfoSchema // Changed from SimpleListResponseSchema
 } from './commonSchemas';
 
 // Base schema for YouTube playlist properties
@@ -40,19 +40,31 @@ export const YouTubePlaylistCreateResponseSchema = MessageResponseSchema.extend(
 
 // Schema for query parameters when listing YouTube playlists
 export const ListYouTubePlaylistsQuerySchema = z.object({
+  page: z.string().optional()
+    .transform(val => val ? parseInt(val, 10) : 1)
+    .pipe(z.number().int().positive().default(1))
+    .openapi({ description: 'Page number for pagination.', example: '1' }),
+  limit: z.string().optional()
+    .transform(val => val ? parseInt(val, 10) : 10)
+    .pipe(z.number().int().positive().default(10))
+    .openapi({ description: 'Number of items per page.', example: '10' }),
+  title: z.string().optional()
+    .openapi({ description: 'Filter by playlist title (case-insensitive, partial match).', example: 'Awesome Playlist' }),
   series_id: z.string().optional()
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by series ID.', example: '1' }),
-  channel_id: z.string().optional() // Renamed from youtube_channel_id
+  channel_id: z.string().optional()
     .transform(val => val ? parseInt(val, 10) : undefined)
     .pipe(z.number().int().positive().optional())
     .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),
 }).openapi('ListYouTubePlaylistsQuery');
 
 // Schema for listing YouTube playlists
-export const ListYouTubePlaylistsResponseSchema = SimpleListResponseSchema(YouTubePlaylistSchema, 'playlists')
-  .openapi('ListYouTubePlaylistsResponse');
+export const ListYouTubePlaylistsResponseSchema = z.object({
+  playlists: z.array(YouTubePlaylistSchema),
+  pagination: PaginationInfoSchema,
+}).openapi('ListYouTubePlaylistsResponse');
 
 // Schema for getting a single YouTube playlist
 export const GetYouTubePlaylistResponseSchema = z.object({
