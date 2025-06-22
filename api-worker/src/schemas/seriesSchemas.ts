@@ -65,16 +65,29 @@ export const SeriesSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters for listing series
-export const ListSeriesQuerySchema = z.object({
-  page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
-  limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
-  title: z.string().optional().openapi({ description: 'Filter by series title (case-insensitive, partial match).' }),
-  show_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
-  sortBy: SeriesSortBySchema.optional().default('title')
-    .openapi({ description: 'Field to sort series by.', example: 'title' }),
-  sortOrder: SortOrderSchema.optional().default('asc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
-});
+export const ListSeriesQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query;
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+    if (q.per_page) processed.limit = q.per_page;
+    if (q.sort_by) processed.sortBy = q.sort_by;
+    if (q.sort_order) processed.sortOrder = q.sort_order;
+    return processed;
+  },
+  z.object({
+    page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
+    limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0 && val <= 100, { message: 'Limit must be between 1 and 100' }),
+    title: z.string().optional().openapi({ description: 'Filter by series title (case-insensitive, partial match).' }),
+    show_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
+    sortBy: SeriesSortBySchema.optional().default('title')
+      .openapi({ description: 'Field to sort series by.', example: 'title' }),
+    sortOrder: SortOrderSchema.optional().default('asc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
+  })
+);
 
 // Schema for listing series
 export const ListSeriesResponseSchema = z.object({

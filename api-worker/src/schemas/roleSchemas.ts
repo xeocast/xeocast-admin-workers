@@ -49,24 +49,37 @@ export const RoleSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing roles
-export const ListRolesQuerySchema = z.object({
-  page: z.string().optional().default('1').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
-    example: 1,
-    description: 'Page number for pagination, defaults to 1.'
-  })),
-  limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
-    example: 10,
-    description: 'Number of roles per page, defaults to 10.'
-  })),
-  name: z.string().optional().openapi({
-    example: 'Admin',
-    description: 'Filter roles by name (case-insensitive, partial match).'
-  }),
-  sortBy: RoleSortBySchema.optional().default('name')
-    .openapi({ description: 'Field to sort roles by.', example: 'name' }),
-  sortOrder: SortOrderSchema.optional().default('asc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
-}).openapi('ListRolesQuery');
+export const ListRolesQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query;
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+    if (q.per_page) processed.limit = q.per_page;
+    if (q.sort_by) processed.sortBy = q.sort_by;
+    if (q.sort_order) processed.sortOrder = q.sort_order;
+    return processed;
+  },
+  z.object({
+    page: z.string().optional().default('1').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
+      example: 1,
+      description: 'Page number for pagination, defaults to 1.'
+    })),
+    limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
+      example: 10,
+      description: 'Number of roles per page, defaults to 10.'
+    })),
+    name: z.string().optional().openapi({
+      example: 'Admin',
+      description: 'Filter roles by name (case-insensitive, partial match).'
+    }),
+    sortBy: RoleSortBySchema.optional().default('name')
+      .openapi({ description: 'Field to sort roles by.', example: 'name' }),
+    sortOrder: SortOrderSchema.optional().default('asc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
+  })
+).openapi('ListRolesQuery');
 
 // Schema for listing roles
 export const ListRolesResponseSchema = z.object({

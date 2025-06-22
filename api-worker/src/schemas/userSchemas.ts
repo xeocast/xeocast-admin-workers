@@ -53,28 +53,41 @@ export const UserCreateResponseSchema = MessageResponseSchema.extend({
 }).openapi('UserCreateResponse');
 
 // Schema for query parameters when listing users
-export const ListUsersQuerySchema = z.object({
-  page: z.coerce.number().int().positive().optional().default(1).openapi({
-    description: 'Page number for pagination.',
-    example: 1,
-  }),
-  limit: z.coerce.number().int().positive().max(100).optional().default(10).openapi({
-    description: 'Number of items per page.',
-    example: 10,
-  }),
-  name: z.string().optional().openapi({
-    description: 'Filter by user name (case-insensitive, partial match).',
-    example: 'John',
-  }),
-  email: z.string().email().optional().openapi({
-    description: 'Filter by user email (case-insensitive, partial match).',
-    example: 'user@example.com',
-  }),
-  sortBy: UserSortBySchema.optional().default('name')
-    .openapi({ description: 'Field to sort users by.', example: 'name' }),
-  sortOrder: SortOrderSchema.optional().default('asc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
-}).openapi('ListUsersQuery');
+export const ListUsersQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query;
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+    if (q.per_page) processed.limit = q.per_page;
+    if (q.sort_by) processed.sortBy = q.sort_by;
+    if (q.sort_order) processed.sortOrder = q.sort_order;
+    return processed;
+  },
+  z.object({
+    page: z.coerce.number().int().positive().optional().default(1).openapi({
+      description: 'Page number for pagination.',
+      example: 1,
+    }),
+    limit: z.coerce.number().int().positive().max(100).optional().default(10).openapi({
+      description: 'Number of items per page.',
+      example: 10,
+    }),
+    name: z.string().optional().openapi({
+      description: 'Filter by user name (case-insensitive, partial match).',
+      example: 'John',
+    }),
+    email: z.string().email().optional().openapi({
+      description: 'Filter by user email (case-insensitive, partial match).',
+      example: 'user@example.com',
+    }),
+    sortBy: UserSortBySchema.optional().default('name')
+      .openapi({ description: 'Field to sort users by.', example: 'name' }),
+    sortOrder: SortOrderSchema.optional().default('asc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
+  })
+).openapi('ListUsersQuery');
 
 // Schema for listing users
 export const ListUsersResponseSchema = z.object({

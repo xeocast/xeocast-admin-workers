@@ -52,30 +52,43 @@ export const YouTubePlaylistSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing YouTube playlists
-export const ListYouTubePlaylistsQuerySchema = z.object({
-  page: z.string().optional()
-    .transform(val => val ? parseInt(val, 10) : 1)
-    .pipe(z.number().int().positive().default(1))
-    .openapi({ description: 'Page number for pagination.', example: '1' }),
-  limit: z.string().optional()
-    .transform(val => val ? parseInt(val, 10) : 10)
-    .pipe(z.number().int().positive().default(10))
-    .openapi({ description: 'Number of items per page.', example: '10' }),
-  title: z.string().optional()
-    .openapi({ description: 'Filter by playlist title (case-insensitive, partial match).', example: 'Awesome Playlist' }),
-  series_id: z.string().optional()
-    .transform(val => val ? parseInt(val, 10) : undefined)
-    .pipe(z.number().int().positive().optional())
-    .openapi({ description: 'Filter by series ID.', example: '1' }),
-  channel_id: z.string().optional()
-    .transform(val => val ? parseInt(val, 10) : undefined)
-    .pipe(z.number().int().positive().optional())
-    .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),
-  sortBy: YouTubePlaylistSortBySchema.optional().default('title')
-    .openapi({ description: 'Field to sort YouTube playlists by.', example: 'title' }),
-  sortOrder: SortOrderSchema.optional().default('asc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
-}).openapi('ListYouTubePlaylistsQuery');
+export const ListYouTubePlaylistsQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query;
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+    if (q.per_page) processed.limit = q.per_page;
+    if (q.sort_by) processed.sortBy = q.sort_by;
+    if (q.sort_order) processed.sortOrder = q.sort_order;
+    return processed;
+  },
+  z.object({
+    page: z.string().optional()
+      .transform(val => val ? parseInt(val, 10) : 1)
+      .pipe(z.number().int().positive().default(1))
+      .openapi({ description: 'Page number for pagination.', example: '1' }),
+    limit: z.string().optional()
+      .transform(val => val ? parseInt(val, 10) : 10)
+      .pipe(z.number().int().positive().default(10))
+      .openapi({ description: 'Number of items per page.', example: '10' }),
+    title: z.string().optional()
+      .openapi({ description: 'Filter by playlist title (case-insensitive, partial match).', example: 'Awesome Playlist' }),
+    series_id: z.string().optional()
+      .transform(val => val ? parseInt(val, 10) : undefined)
+      .pipe(z.number().int().positive().optional())
+      .openapi({ description: 'Filter by series ID.', example: '1' }),
+    channel_id: z.string().optional()
+      .transform(val => val ? parseInt(val, 10) : undefined)
+      .pipe(z.number().int().positive().optional())
+      .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),
+    sortBy: YouTubePlaylistSortBySchema.optional().default('title')
+      .openapi({ description: 'Field to sort YouTube playlists by.', example: 'title' }),
+    sortOrder: SortOrderSchema.optional().default('asc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
+  })
+).openapi('ListYouTubePlaylistsQuery');
 
 // Schema for listing YouTube playlists
 export const ListYouTubePlaylistsResponseSchema = z.object({

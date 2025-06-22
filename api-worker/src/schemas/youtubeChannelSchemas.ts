@@ -59,20 +59,33 @@ export const YouTubeChannelSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing YouTube channels
-export const ListYouTubeChannelsQuerySchema = PaginationQuerySchema.extend({
-  show_id: z.string().optional()
-    .transform(val => val ? parseInt(val, 10) : undefined)
-    .pipe(z.number().int().positive().optional())
-    .openapi({ description: 'Filter by show ID.', example: '1' }),
-  title: z.string().optional()
-    .openapi({ description: 'Filter by YouTube channel title (case-insensitive, partial match).', example: 'Awesome Channel' }),
-  language_code: z.string().optional()
-    .openapi({ description: 'Filter by language code (ISO 639-1 alpha-2 code).', example: 'en' }),
-  sortBy: YouTubeChannelSortBySchema.optional().default('title')
-    .openapi({ description: 'Field to sort YouTube channels by.', example: 'title' }),
-  sortOrder: SortOrderSchema.optional().default('asc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
-}).openapi('ListYouTubeChannelsQuery');
+export const ListYouTubeChannelsQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query;
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+    if (q.per_page) processed.limit = q.per_page;
+    if (q.sort_by) processed.sortBy = q.sort_by;
+    if (q.sort_order) processed.sortOrder = q.sort_order;
+    return processed;
+  },
+  PaginationQuerySchema.extend({
+    show_id: z.string().optional()
+      .transform(val => val ? parseInt(val, 10) : undefined)
+      .pipe(z.number().int().positive().optional())
+      .openapi({ description: 'Filter by show ID.', example: '1' }),
+    title: z.string().optional()
+      .openapi({ description: 'Filter by YouTube channel title (case-insensitive, partial match).', example: 'Awesome Channel' }),
+    language_code: z.string().optional()
+      .openapi({ description: 'Filter by language code (ISO 639-1 alpha-2 code).', example: 'en' }),
+    sortBy: YouTubeChannelSortBySchema.optional().default('title')
+      .openapi({ description: 'Field to sort YouTube channels by.', example: 'title' }),
+    sortOrder: SortOrderSchema.optional().default('asc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
+  })
+).openapi('ListYouTubeChannelsQuery');
 
 // Schema for listing YouTube channels
 export const ListYouTubeChannelsResponseSchema = PaginatedResponseSchema(YouTubeChannelSchema, 'channels')

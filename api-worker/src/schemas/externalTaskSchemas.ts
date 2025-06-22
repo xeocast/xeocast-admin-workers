@@ -73,16 +73,37 @@ export const ExternalTaskSortBySchema = z.enum([
 // Enum for sort order (re-defined here for locality, consider moving to commonSchemas if widely used)
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'desc' });
 
-export const ListExternalTasksQuerySchema = PaginationQuerySchema.extend({
-  type: ExternalTaskTypeSchema.optional()
-    .openapi({ description: 'Filter by task type.' }),
-  status: ExternalTaskStatusSchema.optional()
-    .openapi({ description: 'Filter by task status.' }),
-  sortBy: ExternalTaskSortBySchema.optional().default('created_at')
-    .openapi({ description: 'Field to sort by.', example: 'created_at' }),
-  sortOrder: SortOrderSchema.optional().default('desc')
-    .openapi({ description: 'Sort order (asc/desc).', example: 'desc' }),
-}).openapi('ListExternalTasksQuery');
+export const ListExternalTasksQuerySchema = z.preprocess(
+  (query: unknown) => {
+    if (typeof query !== 'object' || query === null) {
+      return query; // Let Zod handle non-object inputs
+    }
+    const q = query as Record<string, unknown>;
+    const processed = { ...q };
+
+    if (q.per_page) {
+      processed.limit = q.per_page;
+    }
+    if (q.sort_by) {
+      processed.sortBy = q.sort_by;
+    }
+    if (q.sort_order) {
+      processed.sortOrder = q.sort_order;
+    }
+
+    return processed;
+  },
+  PaginationQuerySchema.extend({
+    type: ExternalTaskTypeSchema.optional()
+      .openapi({ description: 'Filter by task type.' }),
+    status: ExternalTaskStatusSchema.optional()
+      .openapi({ description: 'Filter by task status.' }),
+    sortBy: ExternalTaskSortBySchema.optional().default('created_at')
+      .openapi({ description: 'Field to sort by.', example: 'created_at' }),
+    sortOrder: SortOrderSchema.optional().default('desc')
+      .openapi({ description: 'Sort order (asc/desc).', example: 'desc' }),
+  })
+).openapi('ListExternalTasksQuery');
 
 // Schema for listing external tasks (paginated)
 export const ListExternalTasksResponseSchema = PaginatedResponseSchema(ExternalTaskSchema, 'tasks');
