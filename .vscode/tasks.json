@@ -1,0 +1,41 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Check Types (All Files)",
+			"type": "shell",
+			"command": "pnpm typecheck",
+			"options": {
+				"cwd": "${workspaceFolder}/api-worker"
+			},
+			"group": "build",
+			"problemMatcher": {
+				"base": "$tsc",
+				"fileLocation": [
+					"relative",
+					"${workspaceFolder}/api-worker"
+				]
+			},
+			"presentation": {
+				"reveal": "never",
+				"clear": true
+			}
+		},
+		{
+			"label": "Lint with Oxc (All Files)",
+			"type": "shell",
+			"command": "pnpm lint --format=stylish",
+			"options": {
+				"cwd": "${workspaceFolder}/api-worker"
+			},
+			"group": "build",
+			"problemMatcher": [
+				"$eslint-stylish"
+			],
+			"presentation": {
+				"reveal": "never",
+				"clear": true
+			}
+		}
+	]
+}

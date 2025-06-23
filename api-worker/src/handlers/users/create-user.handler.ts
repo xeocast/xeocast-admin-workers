@@ -13,7 +13,7 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(UserCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

@@ -5,7 +5,9 @@
 		"deploy": "wrangler deploy --minify",
 		"cf-typegen": "wrangler types --env-interface CloudflareBindings",
 		"list-migrations": "wrangler d1 migrations list xeocast_db --local --persist-to ../.wrangler/state",
-		"apply-migrations": "wrangler d1 migrations apply xeocast_db --local --persist-to ../.wrangler/state"
+		"apply-migrations": "wrangler d1 migrations apply xeocast_db --local --persist-to ../.wrangler/state",
+		"typecheck": "tsc --noEmit",
+		"lint": "oxlint"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.826.0",
@@ -20,6 +22,7 @@
 	},
 	"devDependencies": {
 		"@types/uuid": "^10.0.0",
+		"oxlint": "^1.3.0",
 		"wrangler": "^4.19.1"
 	}
 }
