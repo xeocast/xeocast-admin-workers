@@ -7,6 +7,7 @@ import { swaggerUI } from '@hono/swagger-ui';
 import authRoutes from './routes/auth.routes';
 import showRoutes from './routes/shows.routes';
 import episodeRoutes from './routes/episodes.routes';
+import whatsNextRoutes from './routes/whats-next.routes';
 import userRoutes from './routes/users.routes';
 import roleRoutes from './routes/roles.routes';
 import seriesRoutes from './routes/series.routes';
@@ -56,6 +57,7 @@ app.use('/series/*', authMiddleware);
 app.use('/external-tasks/*', authMiddleware);
 app.use('/youtube-channels/*', authMiddleware);
 app.use('/youtube-playlists/*', authMiddleware);
+app.use('/whats-next/*', authMiddleware);
 app.use('/storage/*', authMiddleware);
 app.use('/heavy-compute-api/*', authMiddleware);
 
@@ -68,6 +70,7 @@ app.route('/series', seriesRoutes);
 app.route('/external-tasks', externalTaskRoutes);
 app.route('/youtube-channels', youtubeChannelRoutes);
 app.route('/youtube-playlists', youtubePlaylistRoutes);
+app.route('/whats-next', whatsNextRoutes);
 app.route('/storage', storageRoutes);
 app.route('/heavy-compute-api', heavyComputeApiRoutes);
 
