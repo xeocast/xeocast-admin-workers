@@ -4,17 +4,17 @@ import { cors } from 'hono/cors';
 import { swaggerUI } from '@hono/swagger-ui';
 
 // Import routes
-import authRoutes from './routes/auth';
-import showRoutes from './routes/shows';
-import episodeRoutes from './routes/episodes';
-import userRoutes from './routes/users';
-import roleRoutes from './routes/roles';
-import seriesRoutes from './routes/series';
-import externalTaskRoutes from './routes/externalTasks';
-import youtubeChannelRoutes from './routes/youtubeChannels';
-import youtubePlaylistRoutes from './routes/youtubePlaylists';
-import storageRoutes from './routes/storage';
-import heavyComputeApiRoutes from './routes/heavyComputeApi';
+import authRoutes from './routes/auth.routes';
+import showRoutes from './routes/shows.routes';
+import episodeRoutes from './routes/episodes.routes';
+import userRoutes from './routes/users.routes';
+import roleRoutes from './routes/roles.routes';
+import seriesRoutes from './routes/series.routes';
+import externalTaskRoutes from './routes/external-tasks.routes';
+import youtubeChannelRoutes from './routes/youtube-channels.routes';
+import youtubePlaylistRoutes from './routes/youtube-playlists.routes';
+import storageRoutes from './routes/storage.routes';
+import heavyComputeApiRoutes from './routes/heavy-compute-api.routes';
 
 // Import middleware
 import { ensureAuth } from './middlewares/auth.middleware';

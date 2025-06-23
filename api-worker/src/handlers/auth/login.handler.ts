@@ -2,7 +2,7 @@ import { Context } from 'hono';
 import { setCookie } from 'hono/cookie';
 import bcrypt from 'bcryptjs'; // For password hashing, as in old code
 // crypto.randomUUID() will be used for session tokens, no specific import needed.
-import { LoginRequestSchema } from '../../schemas/authSchemas';
+import { LoginRequestSchema } from '../../schemas/auth.schemas';
 
 // Define types for DB results
 interface UserRecord {
