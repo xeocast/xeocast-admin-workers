@@ -10,7 +10,6 @@ import {
   YouTubeChannelUpdateRequestSchema,
   YouTubeChannelUpdateResponseSchema,
   YouTubeChannelDeleteResponseSchema,
-  YouTubeChannelSchema,
   YouTubeChannelPlatformIdExistsErrorSchema,
   YouTubeChannelCreateFailedErrorSchema,
   YouTubeChannelNotFoundErrorSchema,

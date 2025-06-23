@@ -4,10 +4,8 @@ import {
   MessageResponseSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
-  GeneralServerErrorSchema,
   PaginatedResponseSchema,
   PaginationQuerySchema, // For request query params
-  PaginationInfoSchema // For response body
 } from './common.schemas';
 
 // Base schema for YouTube channel properties

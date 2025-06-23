@@ -4,12 +4,10 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { CloudflareEnv } from '../../env'; // Adjusted path
 import {
-    GetUploadUrlRequestSchema, // Will be used by the router, not directly here for c.req.json()
     GetUploadUrlSuccessResponseSchema,
     BucketNotFoundErrorSchema,
     R2OperationErrorSchema // Can be repurposed or replaced with a generic S3 error schema
 } from '../../schemas/storage.schemas';
-import { z } from 'zod'; // For schema parsing if needed, though request body is now just c.req.json()
 
 const DEFAULT_PRESIGNED_URL_EXPIRY_SECONDS = 3600; // 1 hour
 

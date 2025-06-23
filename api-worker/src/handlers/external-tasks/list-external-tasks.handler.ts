@@ -8,7 +8,6 @@ import {
   ListExternalTasksQuerySchema,
   ListExternalTasksResponseSchema,
   ExternalTaskSortBySchema, // Added for sorting
-  SortOrderSchema // Added for sorting
 } from '../../schemas/external-task.schemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema, PaginationInfoSchema } from '../../schemas/common.schemas';
 

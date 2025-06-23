@@ -19,7 +19,7 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (e) {
+  } catch {
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

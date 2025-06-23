@@ -5,7 +5,7 @@ import {
   RoleNotFoundErrorSchema,
   RoleDeleteFailedErrorSchema
 } from '../../schemas/role.schemas';
-import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 
 export const deleteRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());

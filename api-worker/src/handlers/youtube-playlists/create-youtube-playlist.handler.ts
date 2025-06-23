@@ -13,7 +13,7 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

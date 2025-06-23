@@ -6,7 +6,6 @@ import {
   ListSeriesQuerySchema, // Import new query schema
   ListSeriesResponseSchema,
   SeriesSortBySchema, // Added for sorting
-  SortOrderSchema // Added for sorting
 } from '../../schemas/series.schemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 

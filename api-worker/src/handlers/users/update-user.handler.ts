@@ -20,7 +20,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(UserUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

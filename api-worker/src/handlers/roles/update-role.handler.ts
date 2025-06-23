@@ -7,7 +7,7 @@ import {
   RoleNameExistsErrorSchema,
   RoleUpdateFailedErrorSchema
 } from '../../schemas/role.schemas';
-import { PathIdParamSchema, GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
+import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 
 interface RoleFromDB {
   id: number;
@@ -24,7 +24,7 @@ export const updateRoleHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(RoleUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

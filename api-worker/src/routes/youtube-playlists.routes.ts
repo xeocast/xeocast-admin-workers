@@ -10,14 +10,13 @@ import {
   YouTubePlaylistUpdateRequestSchema,
   YouTubePlaylistUpdateResponseSchema,
   YouTubePlaylistDeleteResponseSchema,
-  YouTubePlaylistSchema,
   YouTubePlaylistPlatformIdExistsErrorSchema,
   YouTubePlaylistCreateFailedErrorSchema,
   YouTubePlaylistNotFoundErrorSchema,
   YouTubePlaylistUpdateFailedErrorSchema,
   YouTubePlaylistDeleteFailedErrorSchema
 } from '../schemas/youtube-playlist.schemas';
-import { PathIdParamSchema, GeneralServerErrorSchema, MessageResponseSchema, GeneralBadRequestErrorSchema } from '../schemas/common.schemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../schemas/common.schemas';
 import { createYouTubePlaylistHandler } from '../handlers/youtube-playlists/create-youtube-playlist.handler';
 import { listYouTubePlaylistsHandler } from '../handlers/youtube-playlists/list-youtube-playlists.handler';
 import { getYouTubePlaylistByIdHandler } from '../handlers/youtube-playlists/get-youtube-playlist-by-id.handler';

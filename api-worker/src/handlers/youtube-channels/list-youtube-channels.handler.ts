@@ -6,7 +6,6 @@ import {
   ListYouTubeChannelsQuerySchema,
   ListYouTubeChannelsResponseSchema,
   YouTubeChannelSortBySchema,
-  SortOrderSchema
 } from '../../schemas/youtube-channel.schemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 

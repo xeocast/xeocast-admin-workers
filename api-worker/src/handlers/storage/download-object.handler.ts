@@ -7,7 +7,6 @@ import {
     BucketNotFoundErrorSchema,
     ObjectNotFoundErrorSchema,
     R2OperationErrorSchema,
-    R2BucketNameSchema // For direct use in getR2Bucket
 } from '../../schemas/storage.schemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 import { getR2Bucket } from './utils'; // Import from shared utils

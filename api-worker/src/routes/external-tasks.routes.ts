@@ -1,5 +1,5 @@
 // src/routes/externalTasks.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
   CreateExternalTaskSchema as ExternalTaskCreateRequestSchema,
@@ -12,7 +12,7 @@ import {
   ExternalTaskDeleteResponseSchema,
   ExternalTaskCreateFailedErrorSchema
 } from '../schemas/external-task.schemas';
-import { PathIdParamSchema, GeneralServerErrorSchema, PaginationInfoSchema, GeneralBadRequestErrorSchema, GeneralNotFoundErrorSchema } from '../schemas/common.schemas';
+import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSchema, GeneralNotFoundErrorSchema } from '../schemas/common.schemas';
 import { createExternalTaskHandler } from '../handlers/external-tasks/create-external-task.handler';
 import { listExternalTasksHandler } from '../handlers/external-tasks/list-external-tasks.handler';
 import { getExternalTaskByIdHandler } from '../handlers/external-tasks/get-external-task-by-id.handler';

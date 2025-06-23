@@ -1,7 +1,6 @@
 // src/routes/storage.ts
 import { z } from 'zod';
 import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
-import { zValidator } from '@hono/zod-validator';
 import type { CloudflareEnv } from '../env';
 
 // Handlers
@@ -28,8 +27,6 @@ import {
 } from '../schemas/storage.schemas';
 import {
     GeneralBadRequestErrorSchema,
-    GeneralNotFoundErrorSchema, // For download 404 if object not found
-    GeneralServerErrorSchema
 } from '../schemas/common.schemas';
 
 const storageRoutes = new OpenAPIHono<{

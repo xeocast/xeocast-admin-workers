@@ -5,7 +5,6 @@ import {
   ShowUpdateResponseSchema,
   ShowNotFoundErrorSchema,
   ShowNameExistsErrorSchema,
-  ShowSlugExistsErrorSchema,
   ShowUpdateFailedErrorSchema
 } from '../../schemas/show.schemas';
 import { PathIdParamSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
@@ -28,7 +27,7 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(ShowUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

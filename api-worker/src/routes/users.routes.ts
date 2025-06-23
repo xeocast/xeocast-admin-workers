@@ -2,7 +2,6 @@
 import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
-  UserSchema,
   UserCreateRequestSchema,
   UserCreateResponseSchema,
   ListUsersResponseSchema,

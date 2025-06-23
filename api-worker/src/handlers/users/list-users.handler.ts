@@ -6,7 +6,6 @@ import {
   ListUsersResponseSchema,
   ListUsersQuerySchema, // Added import for query schema
   UserSortBySchema, // Added for sorting
-  SortOrderSchema // Added for sorting
 } from '../../schemas/user.schemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 

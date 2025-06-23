@@ -6,7 +6,6 @@ import {
   ListRolesResponseSchema,
   ListRolesQuerySchema,
   RoleSortBySchema, // Added for sorting
-  SortOrderSchema // Added for sorting
 } from '../../schemas/role.schemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 

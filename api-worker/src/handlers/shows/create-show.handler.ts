@@ -3,7 +3,6 @@ import type { CloudflareEnv } from '../../env';
 import {
   ShowCreateRequestSchema,
   ShowNameExistsErrorSchema,
-  ShowSlugExistsErrorSchema,
   ShowCreateFailedErrorSchema,
   ShowCreateResponseSchema
 } from '../../schemas/show.schemas';
@@ -13,7 +12,7 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(ShowCreateFailedErrorSchema.parse({
             message: 'Invalid JSON payload.'
     }), 400);

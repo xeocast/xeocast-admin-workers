@@ -4,7 +4,6 @@ import {
   MessageResponseSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
-  GeneralServerErrorSchema,
   PaginationQuerySchema,
   PaginatedResponseSchema
 } from './common.schemas';

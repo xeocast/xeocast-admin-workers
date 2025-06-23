@@ -6,9 +6,7 @@ import {
     ObjectPathParamsSchema,
     DeleteObjectSuccessResponseSchema,
     BucketNotFoundErrorSchema,
-    ObjectNotFoundErrorSchema, // Can be used if you want to confirm existence before delete, though R2 delete is idempotent
     R2OperationErrorSchema,
-    R2BucketNameSchema
 } from '../../schemas/storage.schemas';
 import { GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 import { getR2Bucket } from './utils'; // Import from shared utils

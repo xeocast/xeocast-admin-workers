@@ -4,7 +4,6 @@ import {
   MessageResponseSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
-  GeneralServerErrorSchema, // For generic 500 errors if needed
   PaginationInfoSchema
 } from './common.schemas';
 

@@ -1,7 +1,5 @@
 // src/handlers/storage/uploadObject.handler.ts
 import { z } from 'zod';
-import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
-import { zValidator } from '@hono/zod-validator';
 import type { Handler } from 'hono';
 import { v4 as uuidv4 } from 'uuid';
 import type { CloudflareEnv } from '../../env';
@@ -16,7 +14,6 @@ import {
     MissingContentTypeErrorSchema,
     R2BucketNameSchema
 } from '../../schemas/storage.schemas';
-import { GeneralBadRequestErrorSchema } from '../../schemas/common.schemas'; // For the ZodError catch block
 import { getR2Bucket } from './utils'; // Import from shared utils
 
 // Helper to sanitize the key
@@ -115,7 +112,7 @@ export const uploadObjectHandler: Handler<{
                 } else {
                     throw new Error('Parsed metadata is not an object');
                 }
-            } catch (e) {
+            } catch {
                 return c.json(InvalidCustomMetadataErrorSchema.parse({}), 400);
             }
         }

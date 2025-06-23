@@ -18,14 +18,6 @@ interface UserWithRoleFromDB {
   role_name: string | null;
 }
 
-interface UserFromDB { // This interface might still be used if other parts of the code expect it, or can be removed if not.
-  id: number;
-  email: string;
-  name: string;
-  created_at: string;
-  updated_at: string;
-}
-
 export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 

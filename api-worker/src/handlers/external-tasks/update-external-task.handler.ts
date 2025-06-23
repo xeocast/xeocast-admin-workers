@@ -22,7 +22,7 @@ export const updateExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

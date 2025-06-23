@@ -2,7 +2,6 @@
 import { z } from '@hono/zod-openapi';
 import {
     MessageResponseSchema,
-    ErrorSchema, // Keep if used directly, otherwise can be removed if only extended versions are used
     GeneralBadRequestErrorSchema,
     GeneralNotFoundErrorSchema,
     GeneralServerErrorSchema
@@ -33,12 +32,12 @@ export const UploadObjectFormSchema = z.object({
             try {
                 const parsed = JSON.parse(val);
                 return typeof parsed === 'object' && parsed !== null; // Ensure it's an object
-            } catch (e) {
+            } catch {
                 return false;
             }
         },
         { message: 'customMetadata must be a valid JSON string representing an object.' }
-    ).openapi({type: 'string', format: 'json', example: '{\"userId\":\"123\", \"source\":\"uploadForm\"}', description: 'Stringified JSON object for custom R2 object metadata.'})
+    ).openapi({type: 'string', format: 'json', example: '{"userId":"123", "source":"uploadForm"}', description: 'Stringified JSON object for custom R2 object metadata.'})
 }).openapi('UploadObjectForm');
 
 

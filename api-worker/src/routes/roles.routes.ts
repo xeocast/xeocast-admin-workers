@@ -10,7 +10,6 @@ import {
   RoleUpdateRequestSchema,
   RoleUpdateResponseSchema,
   RoleDeleteResponseSchema,
-  RoleSchema,
   RoleNameExistsErrorSchema,
   RoleCreateFailedErrorSchema,
   RoleNotFoundErrorSchema,

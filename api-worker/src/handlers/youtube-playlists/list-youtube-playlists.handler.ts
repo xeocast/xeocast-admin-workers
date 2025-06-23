@@ -6,7 +6,6 @@ import {
   ListYouTubePlaylistsQuerySchema,
   ListYouTubePlaylistsResponseSchema,
   YouTubePlaylistSortBySchema,
-  SortOrderSchema
 } from '../../schemas/youtube-playlist.schemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 

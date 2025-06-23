@@ -11,15 +11,11 @@ import {
   ListEpisodesResponseSchema,
   EpisodeDbSchema,
   EpisodeSortBySchema, // Import for validation
-  SortOrderSchema, // Import for validation
 } from '../../schemas/episode.schemas';
 import {
   GeneralServerErrorSchema,
   GeneralBadRequestErrorSchema,
 } from '../../schemas/common.schemas';
-
-// Define the type for raw database episode data
-type DbEpisode = z.infer<typeof EpisodeDbSchema>;
 
 export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParseResult = ListEpisodesQuerySchema.safeParse(c.req.query());

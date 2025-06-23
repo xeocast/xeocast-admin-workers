@@ -2,7 +2,6 @@
 import { z } from '@hono/zod-openapi';
 import {
   MessageResponseSchema,
-  PathIdParamSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
   GeneralServerErrorSchema

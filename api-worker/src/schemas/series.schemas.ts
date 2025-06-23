@@ -4,7 +4,6 @@ import {
   MessageResponseSchema,
   GeneralBadRequestErrorSchema,
   GeneralNotFoundErrorSchema,
-  GeneralServerErrorSchema
 } from './common.schemas';
 
 // Base schema for series properties

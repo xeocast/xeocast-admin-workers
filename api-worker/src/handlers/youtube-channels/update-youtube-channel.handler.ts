@@ -19,7 +19,7 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
   let requestBody;
   try {
     requestBody = await c.req.json();
-  } catch (error) {
+  } catch {
     return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: 'Invalid JSON payload.' }), 400);
   }
 

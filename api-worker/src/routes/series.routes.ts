@@ -1,5 +1,5 @@
 // src/routes/series.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
   SeriesCreateRequestSchema,
@@ -9,8 +9,6 @@ import {
   SeriesUpdateRequestSchema,
   SeriesUpdateResponseSchema,
   SeriesDeleteResponseSchema,
-  SeriesSchema, // For placeholder in GET by ID and List (if full detail was needed)
-  SeriesSummarySchema, // For placeholder in List
   SeriesCreateFailedErrorSchema,
   SeriesNotFoundErrorSchema,
   SeriesUpdateFailedErrorSchema,

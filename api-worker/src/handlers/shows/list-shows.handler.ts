@@ -6,7 +6,6 @@ import {
   ListShowsResponseSchema,
   ShowSummarySchema,
   ShowSortBySchema, // Added for sorting
-  SortOrderSchema // Added for sorting
 } from '../../schemas/show.schemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas'; // Added GeneralBadRequestErrorSchema
 

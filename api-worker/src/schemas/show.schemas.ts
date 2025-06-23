@@ -2,12 +2,8 @@
 import { z } from '@hono/zod-openapi';
 import { 
     MessageResponseSchema, 
-    PathIdParamSchema, 
-    SimpleListResponseSchema, 
-    ErrorSchema, // Added ErrorSchema for base error types
     GeneralBadRequestErrorSchema, 
-    GeneralNotFoundErrorSchema, 
-    GeneralServerErrorSchema,
+    GeneralNotFoundErrorSchema,
   PaginationInfoSchema
 } from './common.schemas';
 
@@ -37,7 +33,7 @@ const ShowBaseSchema = z.object({
       try {
         JSON.parse(val);
         return true;
-      } catch (e) {
+      } catch {
         return false;
       }
     },
