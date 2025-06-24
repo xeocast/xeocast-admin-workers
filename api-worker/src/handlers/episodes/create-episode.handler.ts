@@ -19,7 +19,7 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     }), 400);
   }
 
-  const { title, show_id, series_id } = parseResult.data;
+  const { title, showId, seriesId } = parseResult.data;
   let slug = parseResult.data.slug;
 
   // Generate slug if not provided or if it's just whitespace
@@ -27,14 +27,14 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     slug = generateSlug(title);
   }
 
-  // Check if slug is unique for the given show_id and series_id (if series_id is present)
+  // Check if slug is unique for the given showId and seriesId (if seriesId is present)
   try {
     let slugCheckQuery;
-    if (series_id) {
-      slugCheckQuery = c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND show_id = ?2 AND series_id = ?3').bind(slug, show_id, series_id);
+    if (seriesId) {
+      slugCheckQuery = c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND show_id = ?2 AND series_id = ?3').bind(slug, showId, seriesId);
     } else {
-      // If no series_id, check slug uniqueness only within the show (where series_id IS NULL)
-      slugCheckQuery = c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND show_id = ?2 AND series_id IS NULL').bind(slug, show_id);
+      // If no seriesId, check slug uniqueness only within the show (where series_id IS NULL)
+      slugCheckQuery = c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND show_id = ?2 AND series_id IS NULL').bind(slug, showId);
     }
     const existingEpisode = await slugCheckQuery.first();
 
@@ -56,29 +56,29 @@ export const createEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     const statement = c.env.DB.prepare(
       'INSERT INTO episodes (show_id, series_id, title, slug, description, markdown_content, tags, type, first_comment, script, audio_bucket_key, background_bucket_key, background_music_bucket_key, intro_music_bucket_key, video_bucket_key, thumbnail_bucket_key, article_image_bucket_key, thumbnail_gen_prompt, article_image_gen_prompt, scheduled_publish_at, status_on_youtube, status_on_website, status_on_x, freezeStatus, status, last_status_change_at) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22, ?23, ?24, ?25, CURRENT_TIMESTAMP)'
     ).bind(
-      episodeData.show_id,
-      episodeData.series_id ?? null,
+      episodeData.showId,
+      episodeData.seriesId ?? null,
       episodeData.title,
       episodeData.slug,
       episodeData.description,
-      episodeData.markdown_content,
+      episodeData.markdownContent,
       episodeData.tags ?? '[]',
       episodeData.type,
-      episodeData.first_comment ?? null,
+      episodeData.firstComment ?? null,
       episodeData.script ?? '[]',
-      episodeData.audio_bucket_key ?? null,
-      episodeData.background_bucket_key ?? null,
-      episodeData.background_music_bucket_key ?? null,
-      episodeData.intro_music_bucket_key ?? null,
-      episodeData.video_bucket_key ?? null,
-      episodeData.thumbnail_bucket_key ?? null,
-      episodeData.article_image_bucket_key ?? null,
-      episodeData.thumbnail_gen_prompt ?? null,
-      episodeData.article_image_gen_prompt ?? null,
-      episodeData.scheduled_publish_at ?? null,
-      episodeData.status_on_youtube ?? null,
-      episodeData.status_on_website ?? null,
-      episodeData.status_on_x ?? null,
+      episodeData.audioBucketKey ?? null,
+      episodeData.backgroundBucketKey ?? null,
+      episodeData.backgroundMusicBucketKey ?? null,
+      episodeData.introMusicBucketKey ?? null,
+      episodeData.videoBucketKey ?? null,
+      episodeData.thumbnailBucketKey ?? null,
+      episodeData.articleImageBucketKey ?? null,
+      episodeData.thumbnailGenPrompt ?? null,
+      episodeData.articleImageGenPrompt ?? null,
+      episodeData.scheduledPublishAt ?? null,
+      episodeData.statusOnYoutube ?? null,
+      episodeData.statusOnWebsite ?? null,
+      episodeData.statusOnX ?? null,
       episodeData.freezeStatus === undefined ? 1 : (episodeData.freezeStatus ? 1 : 0), // Convert boolean to 0/1 for SQLite
       episodeData.status ?? 'draft'
     );

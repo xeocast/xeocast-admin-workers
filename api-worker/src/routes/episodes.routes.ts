@@ -69,11 +69,11 @@ const listEpisodesRouteDef = createRoute({
       page: z.string().optional().openapi({ example: '1', description: 'Page number for pagination.' }),
       limit: z.string().optional().openapi({ example: '10', description: 'Number of items per page.' }),
       status: EpisodeStatusSchema.optional().openapi({ description: 'Filter by episode status.' }),
-      show_id: z.string().optional().openapi({ description: 'Filter by show ID.' }), // Assuming string for ID from query
-      series_id: z.string().optional().openapi({ description: 'Filter by series ID.' }), // Assuming string for ID from query
+      showId: z.string().optional().openapi({ description: 'Filter by show ID.' }),
+      seriesId: z.string().optional().openapi({ description: 'Filter by series ID.' }),
       title: z.string().optional().openapi({ description: 'Filter by episode title (case-insensitive, partial match).' }),
       type: EpisodePublicationTypeSchema.optional().openapi({ description: "Filter by episode publication type (e.g., 'evergreen', 'news')." }),
-      sortBy: EpisodeSortBySchema.optional().openapi({ description: 'Field to sort episodes by. Defaults to created_at.' }),
+      sortBy: EpisodeSortBySchema.optional().openapi({ description: 'Field to sort episodes by. Defaults to createdAt.' }),
       sortOrder: SortOrderSchema.optional().openapi({ description: 'Sort order (asc/desc). Defaults to desc.' }),
     }).openapi('ListEpisodesQuery'),
   },

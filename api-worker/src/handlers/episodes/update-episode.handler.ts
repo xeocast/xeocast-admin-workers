@@ -10,6 +10,8 @@ import {
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 import { generateSlug } from '../../utils/slugify';
 
+const camelToSnake = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+
 export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramParseResult = PathIdParamSchema.safeParse(c.req.param());
 
@@ -58,8 +60,8 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
     // If slug has changed or is being generated, check for uniqueness
     if (newSlug && newSlug !== currentEpisode.slug) {
       let slugCheckQuery;
-      const targetShowId = updates.show_id ?? currentEpisode.show_id;
-      const targetSeriesId = updates.series_id !== undefined ? updates.series_id : currentEpisode.series_id;
+      const targetShowId = updates.showId ?? currentEpisode.show_id;
+      const targetSeriesId = updates.seriesId !== undefined ? updates.seriesId : currentEpisode.series_id;
 
       if (targetSeriesId) {
         slugCheckQuery = c.env.DB.prepare('SELECT id FROM episodes WHERE slug = ?1 AND show_id = ?2 AND series_id = ?3 AND id != ?4')
@@ -83,7 +85,8 @@ export const updateEpisodeHandler = async (c: Context<{ Bindings: CloudflareEnv 
 
     Object.entries(updates).forEach(([key, value]) => {
       if (value !== undefined) { // Only include fields that are actually being updated
-        fieldsToUpdate.push(`${key} = ?${paramIndex++}`);
+        const snakeCaseKey = camelToSnake(key);
+        fieldsToUpdate.push(`${snakeCaseKey} = ?${paramIndex++}`);
         if (key === 'freezeStatus' && typeof value === 'boolean') {
           bindings.push(value ? 1 : 0); // Convert boolean to 0/1 for SQLite
         } else {

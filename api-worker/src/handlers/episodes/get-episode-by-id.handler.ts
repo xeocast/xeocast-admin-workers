@@ -7,11 +7,12 @@ import {
 } from '../../schemas/episode.schemas';
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 
+const snakeToCamel = (s: string) => s.replace(/(_\w)/g, k => k[1].toUpperCase());
+
 export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramParseResult = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramParseResult.success) {
-    // This case should ideally be caught by routing validation if PathIdParamSchema is used in createRoute
     return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Invalid episode ID format.' }), 400);
   }
 
@@ -33,7 +34,11 @@ export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
       return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Episode not found.' }), 404);
     }
 
-    const parsedEpisode = EpisodeSchema.safeParse(dbEpisode);
+    const camelCaseEpisode = Object.fromEntries(
+      Object.entries(dbEpisode).map(([key, value]) => [snakeToCamel(key), value])
+    );
+
+    const parsedEpisode = EpisodeSchema.safeParse(camelCaseEpisode);
 
     if (!parsedEpisode.success) {
       console.error(`Error parsing episode ID ${id} from DB:`, parsedEpisode.error.flatten());
@@ -43,7 +48,6 @@ export const getEpisodeByIdHandler = async (c: Context<{ Bindings: CloudflareEnv
     }
 
     return c.json(GetEpisodeResponseSchema.parse({
-      
       episode: parsedEpisode.data,
     }), 200);
 
