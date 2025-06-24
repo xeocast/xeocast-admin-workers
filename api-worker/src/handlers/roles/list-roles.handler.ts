@@ -46,8 +46,8 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
   const validSortColumns: Record<z.infer<typeof RoleSortBySchema>, string> = {
     id: 'id',
     name: 'name',
-    created_at: 'created_at',
-    updated_at: 'updated_at',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   };
 
   const orderByColumn = validSortColumns[sortBy] || 'name'; // Default to 'name'
@@ -90,8 +90,12 @@ export const listRolesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
       }
       
       const roleValidation = RoleSchema.safeParse({
-        ...dbRole,
+        id: dbRole.id,
+        name: dbRole.name,
+        description: dbRole.description,
         permissions: parsedPermissions,
+        createdAt: dbRole.created_at,
+        updatedAt: dbRole.updated_at,
       });
 
       if (roleValidation.success) {

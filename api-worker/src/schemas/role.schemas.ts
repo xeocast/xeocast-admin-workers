@@ -24,8 +24,8 @@ const RoleBaseSchema = z.object({
 // Full Role schema for API responses
 export const RoleSchema = RoleBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the role.' }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was created.' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was last updated.' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was created.' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the role was last updated.' }),
 }).openapi('Role');
 
 // Schema for creating a new role
@@ -40,8 +40,8 @@ export const RoleCreateResponseSchema = MessageResponseSchema.extend({
 export const RoleSortBySchema = z.enum([
   'id',
   'name',
-  'created_at',
-  'updated_at'
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort roles by.', example: 'name' });
 
 // Enum for sort order (can be moved to commonSchemas if used across more modules)
@@ -55,6 +55,7 @@ export const ListRolesQuerySchema = z.preprocess(
     }
     const q = query as Record<string, unknown>;
     const processed = { ...q };
+    // For backward compatibility, map snake_case to camelCase
     if (q.per_page) processed.limit = q.per_page;
     if (q.sort_by) processed.sortBy = q.sort_by;
     if (q.sort_order) processed.sortOrder = q.sort_order;

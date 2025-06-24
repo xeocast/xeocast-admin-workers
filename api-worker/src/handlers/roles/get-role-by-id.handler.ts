@@ -46,9 +46,12 @@ export const getRoleByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
     }
 
     const roleForValidation = {
-      ...dbRole,
-      description: dbRole.description, // Directly use dbRole.description as it's now string
+      id: dbRole.id,
+      name: dbRole.name,
+      description: dbRole.description,
       permissions: parsedPermissions,
+      createdAt: dbRole.created_at,
+      updatedAt: dbRole.updated_at,
     };
 
     const validation = RoleSchema.safeParse(roleForValidation);
