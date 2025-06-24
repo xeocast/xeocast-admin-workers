@@ -1,5 +1,5 @@
 import { createRoute, OpenAPIHono } from '@hono/zod-openapi';
-import { listWhatsNextHandler } from '../handlers/whats-next/list-episodes.handler';
+import { listWhatsNextEpisodes } from '../handlers/whats-next/list-episodes.handler';
 import { WhatsNextResponseSchema } from '../schemas/whats-next.schemas';
 import { GeneralServerErrorSchema } from '../schemas/common.schemas';
 import type { CloudflareEnv } from '../env';
@@ -32,6 +32,6 @@ const getWhatsNextRoute = createRoute({
     tags: ['What\'s Next'],
 });
 
-whatsNextRoutes.openapi(getWhatsNextRoute, listWhatsNextHandler);
+whatsNextRoutes.openapi(getWhatsNextRoute, listWhatsNextEpisodes);
 
 export default whatsNextRoutes;

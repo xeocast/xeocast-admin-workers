@@ -1,122 +1,163 @@
 import { Context } from 'hono';
+import { ZodError } from 'zod';
 import type { CloudflareEnv } from '../../env';
-import { z } from '@hono/zod-openapi';
-import {
-	WhatsNextResponseSchema,
-} from '../../schemas/whats-next.schemas';
-import { EpisodeSchema } from '../../schemas/episode.schemas';
+import { WhatsNextResponseSchema } from '../../schemas/whats-next.schemas';
 import { GeneralServerErrorSchema } from '../../schemas/common.schemas';
 
+// A type representing the raw database result for an episode with all required fields
+type DbEpisode = {
+  id: number;
+  title: string;
+  slug: string;
+  status: string;
+  show_id: number;
+  series_id: number | null;
+  show_name: string | null;
+  series_name: string | null;
+  thumbnail_gen_prompt: string | null;
+  article_image_gen_prompt: string | null;
+  scheduled_publish_at: string | null;
+  freezeStatus: number; // SQLite returns 0 or 1 for BOOLEAN
+  last_status_change_at: string;
+  updated_at: string;
+  created_at: string;
+};
+
+// Safely parses a D1 date string and converts it to an ISO string.
+const safeToISOString = (dateString: string | null | undefined): string | null => {
+  if (!dateString) {
+    return null;
+  }
+  // D1 returns dates as 'YYYY-MM-DD HH:MM:SS'. Replace space with 'T' and add 'Z' for UTC.
+  const date = new Date(dateString.replace(' ', 'T') + 'Z');
+  // Check if the created date is valid.
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  return date.toISOString();
+};
+
+// Maps a raw database episode object to the camelCase schema
+const mapToCamelCase = (dbEpisode: DbEpisode) => ({
+  id: dbEpisode.id,
+  title: dbEpisode.title,
+  slug: dbEpisode.slug,
+  status: dbEpisode.status,
+  showId: dbEpisode.show_id,
+  seriesId: dbEpisode.series_id,
+  showName: dbEpisode.show_name,
+  seriesName: dbEpisode.series_name,
+  thumbnailGenPrompt: dbEpisode.thumbnail_gen_prompt,
+  articleImageGenPrompt: dbEpisode.article_image_gen_prompt,
+  scheduledPublishAt: safeToISOString(dbEpisode.scheduled_publish_at),
+  freezeStatus: Boolean(dbEpisode.freezeStatus),
+  lastStatusChangeAt: safeToISOString(dbEpisode.last_status_change_at) ?? new Date().toISOString(),
+  updatedAt: safeToISOString(dbEpisode.updated_at) ?? new Date().toISOString(),
+  createdAt: safeToISOString(dbEpisode.created_at) ?? new Date().toISOString(),
+});
+
+const EPISODE_COLUMNS = `
+  e.id, e.title, e.slug, e.status, e.show_id, e.series_id,
+  e.thumbnail_gen_prompt, e.article_image_gen_prompt, e.scheduled_publish_at,
+  e.freezeStatus, e.last_status_change_at, e.updated_at, e.created_at,
+  s.name as show_name,
+  se.title as series_name
+`;
+
+// Fetches episodes for a specific status and optional extra conditions
 const fetchEpisodesByStatus = async (db: D1Database, status: string, extraWhere: string = '') => {
-    const query = `
-        SELECT 
-            e.*, 
-            s.name as show_title, 
-            se.title as series_title
-        FROM episodes e
-        LEFT JOIN shows s ON e.show_id = s.id
-        LEFT JOIN series se ON e.series_id = se.id
-        WHERE e.status = ?1 ${extraWhere}
-        ORDER BY e.created_at DESC
-    `;
-    const { results } = await db.prepare(query).bind(status).all<any>();
-        return z.array(EpisodeSchema).parse(results || []);
+  const query = `
+    SELECT ${EPISODE_COLUMNS}
+    FROM episodes e
+    INNER JOIN shows s ON e.show_id = s.id
+    LEFT JOIN series se ON e.series_id = se.id
+    WHERE e.status = ?1 ${extraWhere}
+    ORDER BY e.updated_at DESC;
+  `;
+  const { results } = await db.prepare(query).bind(status).all<DbEpisode>();
+  return (results || []).map(mapToCamelCase);
 };
 
-const fetchWaitingAndGeneratingCount = async (db: D1Database) => {
-    const query = `
-        SELECT 
-            SUM(CASE WHEN status = 'materialGenerated' THEN 1 ELSE 0 END) as materialGenerated,
-            SUM(CASE WHEN status = 'generatingVideo' THEN 1 ELSE 0 END) as generatingVideo
-        FROM episodes
-        WHERE status IN ('materialGenerated', 'generatingVideo')
-    `;
-    const result = await db.prepare(query).first<{ materialGenerated: number; generatingVideo: number; }>();
-    return {
-        materialGenerated: result?.materialGenerated || 0,
-        generatingVideo: result?.generatingVideo || 0,
-    };
+// Fetches counts for the 'Waiting & Generating' section
+const fetchWaitingAndGenerating = async (db: D1Database) => {
+  const query = `
+    SELECT
+      SUM(CASE WHEN status = 'materialGenerated' THEN 1 ELSE 0 END) as materialGenerated,
+      SUM(CASE WHEN status = 'generatingVideo' THEN 1 ELSE 0 END) as generatingVideo
+    FROM episodes;
+  `;
+  const result = await db.prepare(query).first<{ materialGenerated: number; generatingVideo: number; }>();
+  return {
+    materialGenerated: result?.materialGenerated || 0,
+    generatingVideo: result?.generatingVideo || 0,
+  };
 };
 
-const fetchToResearchEpisodes = async (db: D1Database) => {
-    // Step 1: Find all series that have draft episodes
-    const seriesWithDraftsQuery = `
-        SELECT DISTINCT series_id 
-        FROM episodes 
-        WHERE status = 'draft'
-    `;
-    const { results: seriesResults } = await db.prepare(seriesWithDraftsQuery).all<{ series_id: number }>();
-    if (!seriesResults) return [];
+// Fetches and groups episodes for the 'To Research' section
+const fetchToResearch = async (db: D1Database) => {
+  const query = `
+    WITH RankedEpisodes AS (
+      SELECT
+        ${EPISODE_COLUMNS},
+        ROW_NUMBER() OVER(PARTITION BY e.series_id ORDER BY e.created_at DESC) as rn,
+        COUNT(*) OVER(PARTITION BY e.series_id) as total_drafts
+      FROM episodes e
+      INNER JOIN series se ON e.series_id = se.id
+      INNER JOIN shows s ON e.show_id = s.id
+      WHERE e.status = 'draft' AND e.series_id IS NOT NULL
+    )
+    SELECT * FROM RankedEpisodes WHERE rn <= 3;
+  `;
+  const { results } = await db.prepare(query).all<DbEpisode & { total_drafts: number }>();
+  if (!results) return [];
 
-    const seriesIds = seriesResults.map(r => r.series_id);
-    if (seriesIds.length === 0) return [];
-
-    // Step 2: For each of those series, get up to 3 episodes, plus series/show info and total draft count
-    // We use a CTE and window functions to rank episodes within each series.
-    const episodesQuery = `
-        WITH RankedEpisodes AS (
-            SELECT 
-                e.*,
-                s.name as show_title,
-                se.title as series_title,
-                ROW_NUMBER() OVER(PARTITION BY e.series_id ORDER BY e.created_at DESC) as rn,
-                COUNT(*) OVER(PARTITION BY e.series_id) as total_draft_episodes
-            FROM episodes e
-            LEFT JOIN shows s ON e.show_id = s.id
-            LEFT JOIN series se ON e.series_id = se.id
-            WHERE e.status = 'draft' AND e.series_id IN (${seriesIds.map(() => '?').join(',')})
-        )
-        SELECT * 
-        FROM RankedEpisodes 
-        WHERE rn <= 3
-    `;
-
-    const { results: episodeResults } = await db.prepare(episodesQuery).bind(...seriesIds).all<any>();
-    if (!episodeResults) return [];
-
-    // Step 3: Group the results by series
-    const groupedBySeries = episodeResults.reduce((acc, row) => {
-        if (!acc[row.series_id]) {
-            acc[row.series_id] = {
-                series_id: row.series_id,
-                series_title: row.series_title,
-                show_id: row.show_id,
-                show_title: row.show_title,
-                total_draft_episodes: row.total_draft_episodes,
-                episodes: [],
-            };
-        }
-                acc[row.series_id].episodes.push(EpisodeSchema.parse(row));
-        return acc;
-    }, {} as any);
-
-    return Object.values(groupedBySeries);
+  // Group episodes by series
+  const seriesMap = new Map();
+  for (const row of results) {
+    if (!seriesMap.has(row.series_id)) {
+      seriesMap.set(row.series_id, {
+        seriesId: row.series_id,
+        seriesName: row.series_name,
+        showId: row.show_id,
+        showName: row.show_name,
+        episodes: [],
+      });
+    }
+    seriesMap.get(row.series_id).episodes.push(mapToCamelCase(row));
+  }
+  return Array.from(seriesMap.values());
 };
 
-export const listWhatsNextHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
-	try {
-		const [toGenerateMaterial, waitingAndGenerating, toPublishOnYoutube, toPublishOnX, toResearch] = await Promise.all([
-			fetchEpisodesByStatus(c.env.DB, 'researched'),
-			fetchWaitingAndGeneratingCount(c.env.DB),
-			fetchEpisodesByStatus(c.env.DB, 'videoGenerated', 'AND status_on_youtube = \'none\''),
-			fetchEpisodesByStatus(c.env.DB, 'videoGenerated', 'AND status_on_x = \'none\''),
-            fetchToResearchEpisodes(c.env.DB),
-		]);
+export const listWhatsNextEpisodes = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+  try {
+    const db = c.env.DB;
 
-		const response = WhatsNextResponseSchema.parse({
-			'to-generate-material': toGenerateMaterial,
-			'waiting-and-generating': waitingAndGenerating,
-			'to-publish-on-youtube': toPublishOnYoutube,
-			'to-publish-on-x': toPublishOnX,
-            'to-research': toResearch,
-		});
+    const [toGenerateMaterial, waitingAndGenerating, toPublishOnYouTube, toPublishOnX, toResearch] = await Promise.all([
+      fetchEpisodesByStatus(db, 'researched'),
+      fetchWaitingAndGenerating(db),
+      fetchEpisodesByStatus(db, 'videoGenerated', "AND e.status_on_youtube = 'none'"),
+      fetchEpisodesByStatus(db, 'videoGenerated', "AND e.status_on_x = 'none'"),
+      fetchToResearch(db),
+    ]);
 
-		return c.json(response, 200);
+    const response = WhatsNextResponseSchema.parse({
+      toGenerateMaterial: { episodes: toGenerateMaterial },
+      waitingAndGenerating: waitingAndGenerating,
+      toPublishOnYouTube: { episodes: toPublishOnYouTube },
+      toPublishOnX: { episodes: toPublishOnX },
+      toResearch: { series: toResearch },
+    });
 
-	} catch (error) {
-		console.error('Error fetching what\'s next data:', error);
-		return c.json(GeneralServerErrorSchema.parse({ 
-			message: 'Failed to fetch data for what\'s next due to a server error.' 
-		}), 500);
-	}
+    return c.json(response, 200);
+  } catch (e) {
+    if (e instanceof ZodError) {
+      console.error('Zod validation error:', JSON.stringify(e.issues, null, 2));
+    }
+    console.error("Error fetching what's next episodes:", e);
+    const error = GeneralServerErrorSchema.parse({
+      message: "Failed to fetch what's next episodes",
+      stack: c.env.ENVIRONMENT === 'development' ? (e as Error).stack : undefined,
+    });
+    return c.json(error, 500);
+  }
 };

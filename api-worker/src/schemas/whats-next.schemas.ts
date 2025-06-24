@@ -1,47 +1,54 @@
 import { z } from '@hono/zod-openapi';
-import { EpisodeListItemSchema } from './episode.schemas';
 
-// Schema for the 'waiting-and-generating' data point
-export const WaitingAndGeneratingSchema = z
-	.object({
-		materialGenerated: z.number().int().openapi({
-			description: 'Number of episodes with status "materialGenerated".',
-			example: 5,
-		}),
-		generatingVideo: z.number().int().openapi({
-			description: 'Number of episodes with status "generatingVideo".',
-			example: 2,
-		}),
-	})
-	.openapi('WaitingAndGenerating');
+// Schema for a single episode, tailored for the 'What's Next' response
+export const WhatsNextEpisodeSchema = z.object({
+  id: z.number().openapi({ example: 123 }),
+  title: z.string().openapi({ example: 'The Future of AI' }),
+  slug: z.string().openapi({ example: 'the-future-of-ai' }),
+  status: z.string().openapi({ example: 'draft' }),
+  showId: z.number().openapi({ example: 1 }),
+  seriesId: z.number().nullable().openapi({ example: 10 }),
+  showName: z.string().nullable().openapi({ example: 'Tech Uncovered' }),
+  seriesName: z.string().nullable().openapi({ example: 'AI Revolution' }),
+  thumbnailGenPrompt: z.string().nullable().openapi({ example: 'A brain made of circuits' }),
+  articleImageGenPrompt: z.string().nullable().openapi({ example: 'A robot writing an article' }),
+  scheduledPublishAt: z.string().datetime().nullable().openapi({ example: '2025-07-01T12:00:00Z' }),
+  freezeStatus: z.boolean().openapi({ example: true }),
+  lastStatusChangeAt: z.string().datetime().openapi({ example: '2025-06-23T21:00:00Z' }),
+  updatedAt: z.string().datetime().openapi({ example: '2025-06-23T21:00:00Z' }),
+  createdAt: z.string().datetime().openapi({ example: '2025-06-20T10:00:00Z' }),
+}).openapi('WhatsNextEpisode');
 
-// Schema for the 'to-research' section, which includes episodes and series info
-export const ToResearchItemSchema = z.object({
-    series_id: z.number().int(),
-    series_title: z.string(),
-    show_id: z.number().int(),
-    show_title: z.string(),
-    episodes: z.array(EpisodeListItemSchema),
-    total_draft_episodes: z.number().int(),
-});
+// Schema for a simple list of episodes
+const EpisodeListSectionSchema = z.object({
+	episodes: z.array(WhatsNextEpisodeSchema),
+}).openapi('EpisodeListSection');
 
-export const ToResearchSchema = z.array(ToResearchItemSchema);
+// Schema for the 'To Research' section, which groups episodes by series
+export const ToResearchSeriesSchema = z.object({
+  seriesId: z.number(),
+  seriesName: z.string().nullable(),
+  showId: z.number(),
+  showName: z.string().nullable(),
+  episodes: z.array(WhatsNextEpisodeSchema),
+}).openapi('ToResearchSeries');
 
-// The main response schema for the /whats-next endpoint
-export const WhatsNextResponseSchema = z
-	.object({
-		'to-generate-material': z.array(EpisodeListItemSchema).openapi({
-			description: 'Episodes with status "researched", ready for material generation.',
-		}),
-		'waiting-and-generating': WaitingAndGeneratingSchema,
-		'to-publish-on-youtube': z.array(EpisodeListItemSchema).openapi({
-			description: 'Episodes with status "videoGenerated" and not yet published on YouTube.',
-		}),
-		'to-publish-on-x': z.array(EpisodeListItemSchema).openapi({
-			description: 'Episodes with status "videoGenerated" and not yet published on X.',
-		}),
-		'to-research': ToResearchSchema.openapi({
-            description: 'A sample of episodes with status "draft", grouped by series.'
-        }),
-	})
-	.openapi('WhatsNextResponse');
+const ToResearchSectionSchema = z.object({
+  series: z.array(ToResearchSeriesSchema),
+}).openapi('ToResearchSection');
+
+// Schema for the 'Waiting & Generating' section counts
+export const WaitingAndGeneratingSectionSchema = z.object({
+  materialGenerated: z.number().openapi({ example: 5 }),
+  generatingVideo: z.number().openapi({ example: 2 }),
+}).openapi('WaitingAndGeneratingSection');
+
+// The main response schema for the 'What's Next' endpoint
+export const WhatsNextResponseSchema = z.object({
+  toGenerateMaterial: EpisodeListSectionSchema,
+  waitingAndGenerating: WaitingAndGeneratingSectionSchema,
+  toPublishOnYouTube: EpisodeListSectionSchema,
+  toPublishOnX: EpisodeListSectionSchema,
+  toResearch: ToResearchSectionSchema,
+}).openapi('WhatsNextResponse');
+
