@@ -96,6 +96,7 @@ export const updateYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
       return c.json(YouTubeChannelPlatformIdExistsErrorSchema.parse({ 
         message: `A YouTube channel with platform ID '${updateData.youtubePlatformId}' already exists.` 
       }), 409);
+    }
     // Catch other DB constraint errors e.g. NOT NULL
     if (error.message && error.message.toLowerCase().includes('constraint failed')) {
         return c.json(YouTubeChannelUpdateFailedErrorSchema.parse({ message: `Database constraint failed: ${error.message}`}), 400);

@@ -12,6 +12,7 @@ interface UserWithRoleFromDB {
   id: number;
   email: string;
   name: string;
+  password_hash: string;
   created_at: string;
   updated_at: string;
   role_id: number | null;
@@ -32,7 +33,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
   try {
     const dbResults = await c.env.DB.prepare(
       `SELECT
-         u.id, u.email, u.name, u.created_at, u.updated_at,
+         u.id, u.email, u.name, u.password_hash, u.created_at, u.updated_at,
          r.id as role_id, r.name as role_name
        FROM users u
        LEFT JOIN user_roles ur ON u.id = ur.user_id
@@ -56,6 +57,7 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
       id: firstRow.id,
       email: firstRow.email,
       name: firstRow.name,
+      password_hash: firstRow.password_hash,
       createdAt: new Date(firstRow.created_at),
       updatedAt: new Date(firstRow.updated_at),
       roles: roles.length > 0 ? roles : [],

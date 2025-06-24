@@ -12,6 +12,7 @@ About API design and project structure:
 - Always use camelCase for field keys in requests and responses
 - Always create new files with this name format: [name in kebab-case].[type].[extension]. Example: episodes.schemas.ts, external-tasks.routes.ts
 - Always use kebab-case for directory names
+- Never return the user password
 
 About TypeScript usage:
 

@@ -19,13 +19,17 @@ const UserBaseSchema = z.object({
   name: z.string().min(1).max(255).openapi({ example: 'John Doe' }),
 }).openapi('UserBase');
 
-// Full User schema for API responses (excluding sensitive data like password_hash)
+// Full User schema, potentially including sensitive data from the database
 export const UserSchema = UserBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
+  password_hash: z.string(), // Represents the hash from the DB
   createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   roles: z.array(RoleSchema).optional().openapi({ description: 'Roles assigned to the user' }),
 }).openapi('User');
+
+// Schema for user data returned in API responses, omitting sensitive fields.
+export const UserOutputSchema = UserSchema.omit({ password_hash: true }).openapi('UserOutput');
 
 // Enum for sortable fields for Users
 export const UserSortBySchema = z.enum([
@@ -76,13 +80,13 @@ export const ListUsersQuerySchema = z.object({
 
 // Schema for listing users
 export const ListUsersResponseSchema = z.object({
-  users: z.array(UserSchema),
+  users: z.array(UserOutputSchema),
   pagination: PaginationInfoSchema, // Corrected to use PaginationInfoSchema
 }).openapi('ListUsersResponse');
 
 // Schema for getting a single user
 export const GetUserResponseSchema = z.object({
-  user: UserSchema,
+  user: UserOutputSchema,
 }).openapi('GetUserResponse');
 
 // Schema for updating an existing user (all fields optional)
