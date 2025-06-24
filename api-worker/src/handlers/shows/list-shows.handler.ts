@@ -19,7 +19,7 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     }), 400);
   }
 
-  const { page, limit, name, language_code, sortBy, sortOrder } = queryParseResult.data;
+  const { page, limit, name, languageCode, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
@@ -30,9 +30,9 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     whereClauses.push(`LOWER(name) LIKE LOWER(?${paramIndex++})`);
     bindings.push(`%${name}%`);
   }
-  if (language_code) {
+  if (languageCode) {
     whereClauses.push(`language_code = ?${paramIndex++}`);
-    bindings.push(language_code);
+    bindings.push(languageCode);
   }
 
   const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -41,9 +41,9 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
   const validSortColumns: Record<z.infer<typeof ShowSortBySchema>, string> = {
     id: 'id',
     name: 'name',
-    language_code: 'language_code',
-    created_at: 'created_at',
-    updated_at: 'updated_at',
+    languageCode: 'language_code',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   };
 
   const orderByColumn = validSortColumns[sortBy] || 'name'; // Default to 'name'
@@ -61,7 +61,7 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     ).bind(...bindings);
 
     const [showsDbResult, countResult] = await Promise.all([
-      showsQuery.all<z.infer<typeof ShowSummarySchema>>(), 
+      showsQuery.all<any>(), 
       countQuery.first<{ total: number }>()
     ]);
 
@@ -72,7 +72,21 @@ export const listShowsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
         }), 500);
     }
 
-    const shows = showsDbResult.results ? showsDbResult.results.map((row: z.infer<typeof ShowSummarySchema>) => ShowSummarySchema.parse(row)) : [];
+    const keysToCamelCase = (obj: any): any => {
+      if (typeof obj !== 'object' || obj === null) {
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(v => keysToCamelCase(v));
+      }
+      return Object.keys(obj).reduce((acc: any, key: string) => {
+        const camelKey = key.replace(/_([a-z])/g, g => g[1].toUpperCase());
+        acc[camelKey] = keysToCamelCase(obj[key]);
+        return acc;
+      }, {});
+    };
+
+    const shows = showsDbResult.results ? showsDbResult.results.map((row: any) => ShowSummarySchema.parse(keysToCamelCase(row))) : [];
     const totalItems = countResult.total;
     const totalPages = Math.ceil(totalItems / limit);
 

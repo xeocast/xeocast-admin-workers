@@ -12,22 +12,22 @@ const ShowBaseSchema = z.object({
   slug: z.string().max(255).optional().openapi({ example: 'technology-updates', description: 'The URL-friendly slug for the show. Auto-generated if not provided.' }),
   description: z.string().max(5000).openapi({ example: 'Latest news and discussions in the tech world.' }),
   slogan: z.string().max(500).openapi({ example: 'Your daily dose of tech insights.' }),
-  custom_url: z.string().max(255).openapi({ example: 'tech-unfiltered-show' }),
-  default_episode_background_bucket_key: z.string().openapi({ example: 'defaults/show_episode_bg.mp4' }),
-  default_episode_thumbnail_bucket_key: z.string().openapi({ example: 'defaults/show_episode_thumb.png' }),
-  default_episode_background_music_bucket_key: z.string().openapi({ example: 'defaults/show_music_bg.mp3' }),
-  default_episode_intro_music_bucket_key: z.string().openapi({ example: 'defaults/show_music_intro.mp3' }),
-  first_comment_template: z.string().openapi({ example: 'Check out our latest show episode on {topic}!' }),
-  prompt_template_to_gen_evergreen_titles: z.string().openapi({ example: 'Generate an evergreen title about {topic} for this show.' }),
-  prompt_template_to_gen_news_titles: z.string().openapi({ example: 'Create a news title for a recent event: {event_summary} for this show.' }),
-  prompt_template_to_gen_series_titles: z.string().openapi({ example: 'Suggest a series title for an episode about {series_theme} in this show.' }),
-  prompt_template_to_gen_article_content: z.string().openapi({ example: 'Write an article about {topic} focusing on {aspect} for this show.' }),
-  prompt_template_to_gen_article_metadata: z.string().openapi({ example: 'Generate detailed article metadata for an episode about {episode_topic} for this show.' }),
-  prompt_template_to_gen_episode_script: z.string().openapi({ example: 'Create an episode script for an episode on {episode_topic} for this show.' }),
-  prompt_template_to_gen_episode_background: z.string().openapi({ example: 'Describe an episode background for an episode about {episode_topic} for this show.' }),
-  prompt_template_to_gen_episode_audio: z.string().openapi({ example: 'Draft a script segment for an audio episode discussing {segment_topic} for this show.' }),
-  prompt_template_to_gen_episode_background_music: z.string().openapi({ example: 'Suggest background music for an episode about {episode_topic} for this show.' }),
-  prompt_template_to_gen_episode_intro_music: z.string().openapi({ example: 'Suggest intro music for an episode on {episode_topic} for this show.' }),
+  customUrl: z.string().max(255).openapi({ example: 'tech-unfiltered-show' }),
+  defaultEpisodeBackgroundBucketKey: z.string().openapi({ example: 'defaults/show_episode_bg.mp4' }),
+  defaultEpisodeThumbnailBucketKey: z.string().openapi({ example: 'defaults/show_episode_thumb.png' }),
+  defaultEpisodeBackgroundMusicBucketKey: z.string().openapi({ example: 'defaults/show_music_bg.mp3' }),
+  defaultEpisodeIntroMusicBucketKey: z.string().openapi({ example: 'defaults/show_music_intro.mp3' }),
+  firstCommentTemplate: z.string().openapi({ example: 'Check out our latest show episode on {topic}!' }),
+  promptTemplateToGenEvergreenTitles: z.string().openapi({ example: 'Generate an evergreen title about {topic} for this show.' }),
+  promptTemplateToGenNewsTitles: z.string().openapi({ example: 'Create a news title for a recent event: {event_summary} for this show.' }),
+  promptTemplateToGenSeriesTitles: z.string().openapi({ example: 'Suggest a series title for an episode about {series_theme} in this show.' }),
+  promptTemplateToGenArticleContent: z.string().openapi({ example: 'Write an article about {topic} focusing on {aspect} for this show.' }),
+  promptTemplateToGenArticleMetadata: z.string().openapi({ example: 'Generate detailed article metadata for an episode about {episode_topic} for this show.' }),
+  promptTemplateToGenEpisodeScript: z.string().openapi({ example: 'Create an episode script for an episode on {episode_topic} for this show.' }),
+  promptTemplateToGenEpisodeBackground: z.string().openapi({ example: 'Describe an episode background for an episode about {episode_topic} for this show.' }),
+  promptTemplateToGenEpisodeAudio: z.string().openapi({ example: 'Draft a script segment for an audio episode discussing {segment_topic} for this show.' }),
+  promptTemplateToGenEpisodeBackgroundMusic: z.string().openapi({ example: 'Suggest background music for an episode about {episode_topic} for this show.' }),
+  promptTemplateToGenEpisodeIntroMusic: z.string().openapi({ example: 'Suggest intro music for an episode on {episode_topic} for this show.' }),
   config: z.string().refine(
     (val) => {
       try {
@@ -39,13 +39,13 @@ const ShowBaseSchema = z.object({
     },
     { message: 'Config must be a valid JSON string.' }
   ).openapi({ example: '{"audioGenerator": "gemini", "audioGeneratorConfig": {"model": "gemini-2.5-flash-preview-tts", "temperature": 0.7}}' }),
-  language_code: z.string().length(2).openapi({ example: 'en' }),
+  languageCode: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('ShowBase');
 
 export const ShowSchema = ShowBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
 }).openapi('Show');
 
 export const ShowCreateRequestSchema = ShowBaseSchema;
@@ -59,16 +59,16 @@ export const ShowSummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   name: z.string().openapi({ example: 'Technology Updates' }),
   slug: z.string().optional().openapi({ example: 'technology-updates' }),
-  language_code: z.string().length(2).openapi({ example: 'en' }),
+  languageCode: z.string().length(2).openapi({ example: 'en' }),
 }).openapi('ShowSummary');
 
 // Enum for sortable fields for Shows
 export const ShowSortBySchema = z.enum([
   'id',
   'name',
-  'language_code',
-  'created_at',
-  'updated_at'
+  'languageCode',
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort shows by.', example: 'name' });
 
 // Enum for sort order (can be moved to commonSchemas if used across more modules)
@@ -82,9 +82,23 @@ export const ListShowsQuerySchema = z.preprocess(
     }
     const q = query as Record<string, unknown>;
     const processed = { ...q };
-    if (q.per_page) processed.limit = q.per_page;
-    if (q.sort_by) processed.sortBy = q.sort_by;
-    if (q.sort_order) processed.sortOrder = q.sort_order;
+    // map snake_case to camelCase
+    if (q.per_page) {
+      processed.limit = q.per_page;
+      delete processed.per_page;
+    }
+    if (q.sort_by) {
+      processed.sortBy = q.sort_by;
+      delete processed.sort_by;
+    }
+    if (q.sort_order) {
+      processed.sortOrder = q.sort_order;
+      delete processed.sort_order;
+    }
+    if (q.language_code) {
+      processed.languageCode = q.language_code;
+      delete processed.language_code;
+    }
     return processed;
   },
   z.object({
@@ -100,7 +114,7 @@ export const ListShowsQuerySchema = z.preprocess(
       example: 'Tech',
       description: 'Filter by show name (case-insensitive, partial match).'
     }),
-    language_code: z.string().length(2).optional().openapi({
+    languageCode: z.string().length(2).optional().openapi({
       example: 'en',
       description: 'Filter by show language code.'
     }),

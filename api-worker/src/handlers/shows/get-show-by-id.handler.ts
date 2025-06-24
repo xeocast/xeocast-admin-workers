@@ -41,11 +41,25 @@ export const getShowByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
                 message: 'Show not found.'
       }), 404);
     }
-    
-    const show = ShowSchema.parse(showRaw);
+
+    const keysToCamelCase = (obj: any): any => {
+      if (typeof obj !== 'object' || obj === null) {
+        return obj;
+      }
+      if (Array.isArray(obj)) {
+        return obj.map(v => keysToCamelCase(v));
+      }
+      return Object.keys(obj).reduce((acc: any, key: string) => {
+        const camelKey = key.replace(/_([a-z])/g, g => g[1].toUpperCase());
+        acc[camelKey] = keysToCamelCase(obj[key]);
+        return acc;
+      }, {});
+    };
+
+    const showCamelCase = keysToCamelCase(showRaw);
+    const show = ShowSchema.parse(showCamelCase);
 
     return c.json(GetShowResponseSchema.parse({
-      
       show: show
     }), 200);
 

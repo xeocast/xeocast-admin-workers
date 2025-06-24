@@ -1,4 +1,4 @@
-// src/schemas/seriesSchemas.ts
+// src/schemas/series.schemas.ts
 import { z } from '@hono/zod-openapi';
 import {
   MessageResponseSchema,
@@ -13,7 +13,7 @@ const SeriesBaseSchema = z.object({
   slug: z.string().max(255).optional().openapi({ example: 'my-awesome-episode-series', description: 'The URL-friendly slug for the series. Auto-generated if not provided.' }),
   description: z.string().max(5000).optional()
     .openapi({ example: 'A series about interesting topics.', description: 'A detailed description of the series.' }),
-  show_id: z.number().int().positive()
+  showId: z.number().int().positive()
     .openapi({ example: 1, description: 'The ID of the show this series belongs to.' })
 }).openapi('SeriesBase');
 
@@ -21,8 +21,8 @@ const SeriesBaseSchema = z.object({
 export const SeriesSchema = SeriesBaseSchema.omit({ slug: true }).extend({
   slug: z.string().max(255).openapi({ example: 'my-awesome-episode-series', description: 'The URL-friendly slug for the series.' }), // Made non-optional for responses
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the series.' }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was created.' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of when the series was last updated.' }),
   // Note: 'slug' was previously inherited as optional from SeriesBaseSchema.
   // It's now explicitly non-optional here, as a retrieved series should always have a slug.
 }).openapi('Series');
@@ -40,7 +40,7 @@ export const SeriesSummarySchema = z.object({
   id: z.number().int().positive().openapi({ example: 1 }),
   title: z.string().openapi({ example: 'My Awesome Episode Series' }),
   slug: z.string().max(255).openapi({ example: 'my-awesome-episode-series' }),
-  show_id: z.number().int().positive().openapi({ example: 1 })
+  showId: z.number().int().positive().openapi({ example: 1 })
 }).openapi('SeriesSummary');
 
 // Schema for pagination details
@@ -55,9 +55,9 @@ const PaginationSchema = z.object({
 export const SeriesSortBySchema = z.enum([
   'id',
   'title',
-  'show_id',
-  'created_at',
-  'updated_at'
+  'showId',
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort series by.', example: 'title' });
 
 // Enum for sort order
@@ -71,16 +71,29 @@ export const ListSeriesQuerySchema = z.preprocess(
     }
     const q = query as Record<string, unknown>;
     const processed = { ...q };
-    if (q.per_page) processed.limit = q.per_page;
-    if (q.sort_by) processed.sortBy = q.sort_by;
-    if (q.sort_order) processed.sortOrder = q.sort_order;
+    if (q.per_page) {
+      processed.limit = q.per_page;
+      delete processed.per_page;
+    }
+    if (q.sort_by) {
+      processed.sortBy = q.sort_by;
+      delete processed.sort_by;
+    }
+    if (q.sort_order) {
+      processed.sortOrder = q.sort_order;
+      delete processed.sort_order;
+    }
+    if (q.show_id) {
+      processed.showId = q.show_id;
+      delete processed.show_id;
+    }
     return processed;
   },
   z.object({
     page: z.string().optional().default('1').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Page must be positive' }),
     limit: z.string().optional().default('10').transform(val => parseInt(val, 10)).refine(val => val > 0, { message: 'Limit must be positive' }),
     title: z.string().optional().openapi({ description: 'Filter by series title (case-insensitive, partial match).' }),
-    show_id: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
+    showId: z.string().optional().transform(val => val ? parseInt(val, 10) : undefined).refine(val => val === undefined || val > 0, { message: 'Show ID must be positive' }),
     sortBy: SeriesSortBySchema.optional().default('title')
       .openapi({ description: 'Field to sort series by.', example: 'title' }),
     sortOrder: SortOrderSchema.optional().default('asc')

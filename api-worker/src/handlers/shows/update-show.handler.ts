@@ -111,7 +111,8 @@ export const updateShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     Object.entries(updateData).forEach(([key, value]) => {
       if (key === 'slug') return; // Handled separately by finalSlug
       if (value !== undefined) {
-        setClauses.push(`${key} = ?${paramIndex++}`);
+        const toSnakeCase = (str: string) => str.replace(/[A-Z]/g, letter => `_${letter.toLowerCase()}`);
+        setClauses.push(`${toSnakeCase(key)} = ?${paramIndex++}`);
         bindings.push(value);
       }
     });

@@ -69,24 +69,24 @@ export const createShowHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       slug,                                           // 2 (potentially modified)
       showData.description,                           // 3
       showData.slogan,                                // 4
-      showData.custom_url,                            // 5
-      showData.default_episode_background_bucket_key, // 6
-      showData.default_episode_thumbnail_bucket_key,  // 7
-      showData.default_episode_background_music_bucket_key, // 8
-      showData.default_episode_intro_music_bucket_key,    // 9
-      showData.first_comment_template,                // 10
-      showData.prompt_template_to_gen_evergreen_titles, // 11
-      showData.prompt_template_to_gen_news_titles,    // 12
-      showData.prompt_template_to_gen_series_titles,  // 13
-      showData.prompt_template_to_gen_article_content,// 14
-      showData.prompt_template_to_gen_article_metadata, // 15
-      showData.prompt_template_to_gen_episode_script, // 16
-      showData.prompt_template_to_gen_episode_background, // 17
-      showData.prompt_template_to_gen_episode_audio,  // 18
-      showData.prompt_template_to_gen_episode_background_music, // 19
-      showData.prompt_template_to_gen_episode_intro_music,    // 20
+      showData.customUrl,                            // 5
+      showData.defaultEpisodeBackgroundBucketKey, // 6
+      showData.defaultEpisodeThumbnailBucketKey,  // 7
+      showData.defaultEpisodeBackgroundMusicBucketKey, // 8
+      showData.defaultEpisodeIntroMusicBucketKey,    // 9
+      showData.firstCommentTemplate,                // 10
+      showData.promptTemplateToGenEvergreenTitles, // 11
+      showData.promptTemplateToGenNewsTitles,    // 12
+      showData.promptTemplateToGenSeriesTitles,  // 13
+      showData.promptTemplateToGenArticleContent,// 14
+      showData.promptTemplateToGenArticleMetadata, // 15
+      showData.promptTemplateToGenEpisodeScript, // 16
+      showData.promptTemplateToGenEpisodeBackground, // 17
+      showData.promptTemplateToGenEpisodeAudio,  // 18
+      showData.promptTemplateToGenEpisodeBackgroundMusic, // 19
+      showData.promptTemplateToGenEpisodeIntroMusic,    // 20
       showData.config,                                // 21
-      showData.language_code                          // 22
+      showData.languageCode                          // 22
     );
     
     const result = await stmt.run();

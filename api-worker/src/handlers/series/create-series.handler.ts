@@ -20,13 +20,12 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
   const validationResult = SeriesCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
     return c.json(SeriesCreateFailedErrorSchema.parse({ 
-        
         message: 'Invalid input for creating series.',
         // errors: validationResult.error.flatten().fieldErrors 
     }), 400);
   }
 
-  const { title, show_id } = validationResult.data;
+  const { title, showId } = validationResult.data;
   let slug = validationResult.data.slug;
   const description = validationResult.data.description ?? null;
 
@@ -37,18 +36,18 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
 
 
   try {
-    // 1. Validate show_id
+    // 1. Validate showId
     const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1')
-      .bind(show_id)
+      .bind(showId)
       .first<{ id: number }>();
 
     if (!showExists) {
       return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Show not found.' }), 400);
     }
 
-    // 2. Check if series title already exists within the same show_id
+    // 2. Check if series title already exists within the same showId
     const existingSeries = await c.env.DB.prepare('SELECT id FROM series WHERE title = ?1 AND show_id = ?2')
-      .bind(title, show_id)
+      .bind(title, showId)
       .first<{ id: number }>();
 
     if (existingSeries) {
@@ -56,24 +55,23 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }
 
     // Ensure the slug is unique
-    slug = await ensureUniqueSlug(c.env.DB, slug, 'series', 'slug', 'id');
+    const finalSlug = await ensureUniqueSlug(c.env.DB, slug, 'series', 'slug', 'id');
 
     // 3. Store series in the database
     const stmt = c.env.DB.prepare(
       'INSERT INTO series (title, slug, description, show_id) VALUES (?1, ?2, ?3, ?4)'
-    ).bind(title, slug, description, show_id);
+    ).bind(title, finalSlug, description, showId);
     
     const result = await stmt.run();
 
     if (result.success && result.meta.last_row_id) {
       return c.json(SeriesCreateResponseSchema.parse({
-        
         message: 'Series created successfully.',
         id: result.meta.last_row_id
       }), 201);
     } else {
       console.error('Failed to insert series, D1 result:', result);
-      // This could be a D1 error or the unique constraint (show_id, title) if not caught above (race condition, though unlikely here)
+      // This could be a D1 error or the unique constraint (showId, title) if not caught above (race condition, though unlikely here)
       return c.json(SeriesCreateFailedErrorSchema.parse({ message: 'Failed to create series.' }), 500);
     }
 
@@ -84,7 +82,7 @@ export const createSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
       if (error.message.includes('UNIQUE constraint failed: series.slug')) {
         return c.json(SeriesSlugExistsErrorSchema.parse({ message: 'Series slug already exists.' }), 400);
       }
-      if (error.message.includes('UNIQUE constraint failed: series.title')) { // Assuming you might have a unique constraint on (title, show_id) or similar for title
+      if (error.message.includes('UNIQUE constraint failed: series.title')) { // Assuming you might have a unique constraint on (title, showId) or similar for title
         return c.json(SeriesCreateFailedErrorSchema.parse({ message: 'Series title already exists in this show.' }), 400);
       }
     }
