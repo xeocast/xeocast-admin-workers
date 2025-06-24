@@ -33,14 +33,14 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { email, name, password, role_ids } = validationResult.data;
+  const { email, name, password, roleIds } = validationResult.data;
 
-  // Check if any updatable field (name, email, password, or role_ids) is present.
-  // role_ids being an empty array is a valid update (remove all roles).
+  // Check if any updatable field (name, email, password, or roleIds) is present.
+  // roleIds being an empty array is a valid update (remove all roles).
   const hasActualUpdate = name !== undefined || 
                           email !== undefined || 
                           password !== undefined || 
-                          role_ids !== undefined;
+                          roleIds !== undefined;
 
   if (!hasActualUpdate) {
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'No update data provided.' }), 400);
@@ -49,7 +49,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   // The old check: const hasActualUpdateFields = name !== undefined || 
                                 email !== undefined || 
                                 password !== undefined || 
-                                role_ids !== undefined; // role_ids being an empty array is an intentional update
+                                roleIds !== undefined; // roleIds being an empty array is an intentional update
 
   try {
     // 1. Check if user exists
@@ -107,19 +107,19 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     // 4. Handle role updates if role_ids is provided in the request
     let rolesWereManaged = false; // True if role_ids was in payload (even if empty array)
 
-    if (role_ids !== undefined) {
+    if (roleIds !== undefined) {
       rolesWereManaged = true;
 
-      // Validate role_ids if the array is not empty
-      if (role_ids.length > 0) {
-        const placeholders = role_ids.map(() => '?').join(',');
+      // Validate roleIds if the array is not empty
+      if (roleIds.length > 0) {
+        const placeholders = roleIds.map(() => '?').join(',');
         const existingRolesStmt = c.env.DB.prepare(`SELECT id FROM roles WHERE id IN (${placeholders})`);
-        const existingRolesResult = await existingRolesStmt.bind(...role_ids).all<{id: number}>();
-        if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== role_ids.length) {
+        const existingRolesResult = await existingRolesStmt.bind(...roleIds).all<{id: number}>();
+        if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== roleIds.length) {
                     const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
-          const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
+          const invalidRoleIds = roleIds.filter((id: number) => !validFoundIds.has(id));
           return c.json(GeneralBadRequestErrorSchema.parse({
-                            message: `Invalid role_ids provided for update: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
+                            message: `Invalid roleIds provided for update: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
           }), 400);
         }
       }
@@ -132,9 +132,9 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
         // Continue, but roles might be in an inconsistent state
       }
 
-      // Insert new roles if role_ids is not empty
-      if (role_ids.length > 0) {
-        const insertPromises = role_ids.map(roleId => {
+      // Insert new roles if roleIds is not empty
+      if (roleIds.length > 0) {
+        const insertPromises = roleIds.map((roleId: number) => {
           return c.env.DB.prepare('INSERT INTO user_roles (user_id, role_id) VALUES (?1, ?2)')
             .bind(id, roleId)
             .run();
@@ -145,7 +145,7 @@ export const updateUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
           // Continue, but roles might be partially assigned
         }
       }
-      // rolesWereManaged is already true if role_ids was defined.
+      // rolesWereManaged is already true if roleIds was defined.
     }
 
     // Determine final response

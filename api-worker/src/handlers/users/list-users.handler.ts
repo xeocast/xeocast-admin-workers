@@ -52,8 +52,8 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
     id: 'u.id',
     name: 'u.name',
     email: 'u.email',
-    created_at: 'u.created_at',
-    updated_at: 'u.updated_at',
+    createdAt: 'u.created_at',
+    updatedAt: 'u.updated_at',
   };
 
   const orderByColumn = validSortColumns[sortBy] || 'u.name'; // Default to 'u.name'
@@ -98,8 +98,8 @@ export const listUsersHandler = async (c: Context<{ Bindings: CloudflareEnv }>) 
           id: row.id,
           email: row.email,
           name: row.name,
-          created_at: new Date(row.created_at),
-          updated_at: new Date(row.updated_at),
+          createdAt: new Date(row.created_at),
+          updatedAt: new Date(row.updated_at),
           roles: [],
         });
       }

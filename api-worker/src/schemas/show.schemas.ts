@@ -75,33 +75,7 @@ export const ShowSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing shows
-export const ListShowsQuerySchema = z.preprocess(
-  (query: unknown) => {
-    if (typeof query !== 'object' || query === null) {
-      return query;
-    }
-    const q = query as Record<string, unknown>;
-    const processed = { ...q };
-    // map snake_case to camelCase
-    if (q.per_page) {
-      processed.limit = q.per_page;
-      delete processed.per_page;
-    }
-    if (q.sort_by) {
-      processed.sortBy = q.sort_by;
-      delete processed.sort_by;
-    }
-    if (q.sort_order) {
-      processed.sortOrder = q.sort_order;
-      delete processed.sort_order;
-    }
-    if (q.language_code) {
-      processed.languageCode = q.language_code;
-      delete processed.language_code;
-    }
-    return processed;
-  },
-  z.object({
+export const ListShowsQuerySchema = z.object({
     page: z.string().optional().default('1').transform(Number).pipe(z.number().int().positive().openapi({
       example: 1,
       description: 'Page number for pagination, defaults to 1.'
@@ -122,8 +96,7 @@ export const ListShowsQuerySchema = z.preprocess(
       .openapi({ description: 'Field to sort shows by.', example: 'name' }),
     sortOrder: SortOrderSchema.optional().default('asc')
       .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
-  })
-).openapi('ListShowsQuery');
+  }).openapi('ListShowsQuery');
 
 export const ListShowsResponseSchema = z.object({
   shows: z.array(ShowSummarySchema),

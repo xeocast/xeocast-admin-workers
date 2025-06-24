@@ -22,8 +22,8 @@ const UserBaseSchema = z.object({
 // Full User schema for API responses (excluding sensitive data like password_hash)
 export const UserSchema = UserBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1 }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z' }),
   roles: z.array(RoleSchema).optional().openapi({ description: 'Roles assigned to the user' }),
 }).openapi('User');
 
@@ -32,8 +32,8 @@ export const UserSortBySchema = z.enum([
   'id',
   'name',
   'email',
-  'created_at',
-  'updated_at'
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort users by.', example: 'name' });
 
 // Enum for sort order
@@ -41,7 +41,7 @@ export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'S
 
 // Schema for creating a new user
 export const UserCreateRequestSchema = UserBaseSchema.extend({
-  role_ids: z.array(z.number().int().positive()).optional().openapi({ example: [1, 2], description: 'Array of role IDs to assign to the user. Defaults to [2] (editor) if not provided.' }),
+  roleIds: z.array(z.number().int().positive()).optional().openapi({ example: [1, 2], description: 'Array of role IDs to assign to the user. Defaults to [2] (editor) if not provided.' }),
   password: z.string().min(8).max(255).openapi({ example: 'SecurePassword123' }),
 }).openapi('UserCreateRequest');
 
@@ -101,7 +101,7 @@ export const GetUserResponseSchema = z.object({
 // Schema for updating an existing user (all fields optional)
 // Schema for updating an existing user (all fields optional)
 export const UserUpdateRequestSchema = UserBaseSchema.extend({
-  role_ids: z.array(z.number().int().positive()).optional().openapi({ example: [1], description: 'Array of role IDs to assign. This will replace all existing roles.' }),
+  roleIds: z.array(z.number().int().positive()).optional().openapi({ example: [1], description: 'Array of role IDs to assign. This will replace all existing roles.' }),
   password: z.string().min(8).max(255).optional().openapi({ example: 'NewSecurePassword123', description: 'Only provide if changing the password.' }),
 }).partial({
   email: true,

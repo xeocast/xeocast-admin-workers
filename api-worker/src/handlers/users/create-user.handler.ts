@@ -26,28 +26,28 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { email, name, password, role_ids } = validationResult.data;
+  const { email, name, password, roleIds } = validationResult.data;
 
   try {
-    // 0. Validate role_ids if provided
-    const rolesToAssignIds = (role_ids && role_ids.length > 0) ? role_ids : [2]; // Default to editor role (ID 2)
+    // 0. Validate roleIds if provided
+    const rolesToAssignIds = (roleIds && roleIds.length > 0) ? roleIds : [2]; // Default to editor role (ID 2)
 
-    if (role_ids && role_ids.length > 0) { // Only validate if roles were explicitly provided
-      const placeholders = role_ids.map(() => '?').join(',');
+    if (roleIds && roleIds.length > 0) { // Only validate if roles were explicitly provided
+      const placeholders = roleIds.map(() => '?').join(',');
       const existingRolesStmt = c.env.DB.prepare(`SELECT id FROM roles WHERE id IN (${placeholders})`);
-      const existingRolesResult = await existingRolesStmt.bind(...role_ids).all<{id: number}>();
+      const existingRolesResult = await existingRolesStmt.bind(...roleIds).all<{id: number}>();
       
-      if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== role_ids.length) {
+      if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== roleIds.length) {
         // Find which roles are invalid for a more specific error message (optional)
                 const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
-        const invalidRoleIds = role_ids.filter(id => !validFoundIds.has(id));
+        const invalidRoleIds = roleIds.filter((id: number) => !validFoundIds.has(id));
         return c.json(GeneralBadRequestErrorSchema.parse({
-                        message: `Invalid role_ids provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
+                        message: `Invalid roleIds provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
         }), 400);
       }
-      // At this point, all provided role_ids are valid and are in rolesToAssignIds
+      // At this point, all provided roleIds are valid and are in rolesToAssignIds
     }
-    // If no role_ids were provided, rolesToAssignIds defaults to [2] (editor), which is assumed to exist.
+    // If no roleIds were provided, rolesToAssignIds defaults to [2] (editor), which is assumed to exist.
 
     // 1. Check if email already exists
     const existingUserByEmail = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?1')

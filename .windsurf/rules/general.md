@@ -23,6 +23,7 @@ About TypeScript usage:
 About Cloudflare usage:
 
 - Always use Cloudflare's native way to code and avoid using third-party packages unless absolutely necessary
+- Never use the '@cloudflare/workers-types' package, that is deprecated and not needed
 
 About technologies in general:
 

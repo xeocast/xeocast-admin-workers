@@ -53,8 +53,8 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
       id: firstRow.id,
       email: firstRow.email,
       name: firstRow.name,
-      created_at: new Date(firstRow.created_at), // Zod will coerce to Date
-      updated_at: new Date(firstRow.updated_at), // Zod will coerce to Date
+      createdAt: new Date(firstRow.created_at), // Zod will coerce to Date
+      updatedAt: new Date(firstRow.updated_at), // Zod will coerce to Date
       roles: roles.length > 0 ? roles : [], // Ensure roles is an array, even if empty
     };
 
