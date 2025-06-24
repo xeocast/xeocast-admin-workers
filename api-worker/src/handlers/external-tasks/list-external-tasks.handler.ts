@@ -63,11 +63,11 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
     // Whitelist of sortable columns and their actual DB names
     const validSortColumns: Record<z.infer<typeof ExternalTaskSortBySchema>, string> = {
       id: 'id',
-      external_task_id: 'external_task_id',
+      externalTaskId: 'external_task_id',
       type: 'type',
       status: 'status',
-      created_at: 'created_at',
-      updated_at: 'updated_at',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at',
     };
 
     const orderByColumn = validSortColumns[sortBy] || 'created_at'; // Default to 'created_at'
@@ -124,10 +124,13 @@ export const listExternalTasksHandler = async (c: Context<{ Bindings: Cloudflare
         }
 
         const taskForValidation = {
-          ...dbTask,
+          id: dbTask.id,
+          externalTaskId: dbTask.external_task_id,
+          type: dbTask.type,
           data: parsedData,
-          created_at: createdAtOutput,
-          updated_at: updatedAtOutput,
+          status: dbTask.status,
+          createdAt: createdAtOutput,
+          updatedAt: updatedAtOutput,
         };
 
         const validation = ExternalTaskSchema.safeParse(taskForValidation);

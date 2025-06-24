@@ -35,15 +35,15 @@ export const updateExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
     }), 400);
   }
 
-  const { external_task_id, type, data, status } = validationResult.data;
+  const { externalTaskId, type, data, status } = validationResult.data;
 
   const updateFields: string[] = [];
   const bindings: (string | number | null | undefined)[] = [];
   let bindingIndex = 1;
 
-  if (external_task_id !== undefined) {
+  if (externalTaskId !== undefined) {
     updateFields.push(`external_task_id = ?${bindingIndex}`);
-    bindings.push(external_task_id);
+    bindings.push(externalTaskId);
     bindingIndex++;
   }
   if (type !== undefined) {

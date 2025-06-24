@@ -24,14 +24,14 @@ export const createExternalTaskHandler = async (c: Context<{ Bindings: Cloudflar
     }), 400);
   }
 
-  const { external_task_id, type, data, status } = validationResult.data;
+  const { externalTaskId, type, data, status } = validationResult.data;
 
   try {
     const jsonData = JSON.stringify(data); // 'data' from schema is already named 'data' for DB
 
     const stmt = c.env.DB.prepare(
       'INSERT INTO external_service_tasks (external_task_id, type, data, status) VALUES (?1, ?2, ?3, ?4)'
-    ).bind(external_task_id, type, jsonData, status);
+    ).bind(externalTaskId, type, jsonData, status);
     
     const result = await stmt.run();
 

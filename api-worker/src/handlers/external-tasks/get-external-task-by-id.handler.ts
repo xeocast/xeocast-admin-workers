@@ -54,14 +54,14 @@ export const getExternalTaskByIdHandler = async (c: Context<{ Bindings: Cloudfla
       // Keep parsedData as null if parsing fails, schema expects z.any()
     }
 
-    const taskForValidation = {
+        const taskForValidation = {
       id: dbTask.id,
-      external_task_id: dbTask.external_task_id,
+      externalTaskId: dbTask.external_task_id,
       type: dbTask.type,
       data: parsedData,
       status: dbTask.status,
-      created_at: dbTask.created_at,
-      updated_at: dbTask.updated_at,
+      createdAt: dbTask.created_at,
+      updatedAt: dbTask.updated_at,
     };
 
     const validation = ExternalTaskSchema.safeParse(taskForValidation);

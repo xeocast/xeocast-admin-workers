@@ -25,7 +25,7 @@ export const ExternalTaskTypeSchema = z.enum([
 
 // Base schema for external task properties
 const ExternalTaskBaseSchema = z.object({
-  external_task_id: z.string()
+  externalTaskId: z.string()
     .openapi({ example: 'ext-task-abc-123', description: 'The unique identifier for the task in an external system or context. This corresponds to external_task_id in the database.' }),
   type: ExternalTaskTypeSchema
     .openapi({ description: 'The type of the external task. This corresponds to type in the database.' }),
@@ -38,13 +38,13 @@ const ExternalTaskBaseSchema = z.object({
 // Full ExternalTask schema for API responses
 export const ExternalTaskSchema = ExternalTaskBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the external task record in our system.' }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
 }).openapi('ExternalTask');
 
 // Schema for creating a new external task (input)
 export const CreateExternalTaskSchema = z.object({
-  external_task_id: z.string()
+  externalTaskId: z.string()
     .openapi({ example: 'ext-task-abc-123', description: 'The unique identifier for the task in an external system or context.' }),
   type: ExternalTaskTypeSchema,
   data: z.any()
@@ -62,47 +62,26 @@ export const ExternalTaskCreateResponseSchema = MessageResponseSchema.extend({
 // Enum for sortable fields for External Tasks
 export const ExternalTaskSortBySchema = z.enum([
   'id',
-  'external_task_id',
+  'externalTaskId',
   'type',
   'status',
-  'created_at',
-  'updated_at'
-]).openapi({ description: 'Field to sort external tasks by.', example: 'created_at' });
+  'createdAt',
+  'updatedAt'
+]).openapi({ description: 'Field to sort external tasks by.', example: 'createdAt' });
 
 // Enum for sort order (re-defined here for locality, consider moving to commonSchemas if widely used)
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'desc' });
 
-export const ListExternalTasksQuerySchema = z.preprocess(
-  (query: unknown) => {
-    if (typeof query !== 'object' || query === null) {
-      return query; // Let Zod handle non-object inputs
-    }
-    const q = query as Record<string, unknown>;
-    const processed = { ...q };
-
-    if (q.per_page) {
-      processed.limit = q.per_page;
-    }
-    if (q.sort_by) {
-      processed.sortBy = q.sort_by;
-    }
-    if (q.sort_order) {
-      processed.sortOrder = q.sort_order;
-    }
-
-    return processed;
-  },
-  PaginationQuerySchema.extend({
-    type: ExternalTaskTypeSchema.optional()
-      .openapi({ description: 'Filter by task type.' }),
-    status: ExternalTaskStatusSchema.optional()
-      .openapi({ description: 'Filter by task status.' }),
-    sortBy: ExternalTaskSortBySchema.optional().default('created_at')
-      .openapi({ description: 'Field to sort by.', example: 'created_at' }),
-    sortOrder: SortOrderSchema.optional().default('desc')
-      .openapi({ description: 'Sort order (asc/desc).', example: 'desc' }),
-  })
-).openapi('ListExternalTasksQuery');
+export const ListExternalTasksQuerySchema = PaginationQuerySchema.extend({
+  type: ExternalTaskTypeSchema.optional()
+    .openapi({ description: 'Filter by task type.' }),
+  status: ExternalTaskStatusSchema.optional()
+    .openapi({ description: 'Filter by task status.' }),
+  sortBy: ExternalTaskSortBySchema.optional().default('createdAt')
+    .openapi({ description: 'Field to sort by.', example: 'createdAt' }),
+  sortOrder: SortOrderSchema.optional().default('desc')
+    .openapi({ description: 'Sort order.', example: 'desc' }),
+}).openapi('ListExternalTasksQuery');
 
 // Schema for listing external tasks (paginated)
 export const ListExternalTasksResponseSchema = PaginatedResponseSchema(ExternalTaskSchema, 'tasks');

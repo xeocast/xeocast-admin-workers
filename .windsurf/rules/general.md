@@ -4,16 +4,13 @@ trigger: always_on
 
 About this project:
 
-- Is a admin dashboard for a website of podcasts organized in categories.
-- Has CRUD operations for users, categories and podcasts.
+- Is a admin dashboard for a website of podcasts organized in series.
+- Has CRUD operations for users, shows, series and episodes.
 - Is protected with user athentication and a RBAC system.
 
-About Astro usage:
-
-- Always use Astro 5.7 or above.
-- For Astro code always follow the more updated official Astro docs.
-- Always use Astro Actions, never Astro Endpoints unless explicitly specified
-- Store all Astro Actions inside the src/actions/ directory
+About API design:
+- Always use cameCase for field keys in responses
+- 
 
 About TypeScript usage:
 
@@ -25,13 +22,6 @@ About TypeScript usage:
 About Cloudflare usage:
 
 - Always use Cloudflare's native way to code and avoid using third-party packages unless absolutely necessary
-
-About Tailwind usage:
-
-- Always use Tailwind 4.1 or above for styling.
-- Always create new pages and components with a @index.astro page similar style.
-- For Tailwind CSS code always follow the more updated official Tailwind CSS docs.
-
 
 About technologies in general:
 
