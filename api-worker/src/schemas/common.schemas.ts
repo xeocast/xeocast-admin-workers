@@ -75,6 +75,10 @@ export const GeneralServerErrorSchema = ErrorSchema.extend({
     message: z.string().openapi({ example: 'An internal server error occurred.' })
 }).openapi('GeneralServerError');
 
+export const GeneralConflictErrorSchema = ErrorSchema.extend({
+    message: z.string().openapi({ example: 'A conflict occurred.' })
+}).openapi('GeneralConflictError');
+
 export const GeneralUnauthorizedErrorSchema = ErrorSchema.extend({
   error: z.literal('unauthorized').optional(),
   message: z.string().openapi({example: 'Unauthorized access.'})

@@ -1,5 +1,5 @@
 // src/routes/users.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
   UserCreateRequestSchema,
@@ -44,8 +44,12 @@ const createUserRouteDef = createRoute({
       description: 'User created successfully.',
     },
     400: {
-      content: { 'application/json': { schema: z.union([UserCreateFailedErrorSchema, UserEmailExistsErrorSchema]) } },
-      description: 'Invalid input or user already exists.',
+      content: { 'application/json': { schema: UserCreateFailedErrorSchema } },
+      description: 'Invalid input.',
+    },
+    409: {
+      content: { 'application/json': { schema: UserEmailExistsErrorSchema } },
+      description: 'User with this email already exists.',
     },
     500: {
       content: { 'application/json': { schema: GeneralServerErrorSchema } },
@@ -133,8 +137,12 @@ const updateUserRouteDef = createRoute({
       description: 'User updated successfully.',
     },
     400: {
-      content: { 'application/json': { schema: z.union([UserUpdateFailedErrorSchema, UserEmailExistsErrorSchema]) } },
-      description: 'Invalid input or email already exists.',
+      content: { 'application/json': { schema: UserUpdateFailedErrorSchema } },
+      description: 'Invalid input.',
+    },
+    409: {
+      content: { 'application/json': { schema: UserEmailExistsErrorSchema } },
+      description: 'Email already exists.',
     },
     404: {
       content: { 'application/json': { schema: UserNotFoundErrorSchema } },

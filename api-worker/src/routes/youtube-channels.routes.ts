@@ -1,5 +1,5 @@
 // src/routes/youtubeChannels.ts
-import { OpenAPIHono, createRoute, z } from '@hono/zod-openapi';
+import { OpenAPIHono, createRoute } from '@hono/zod-openapi';
 import type { CloudflareEnv } from '../env';
 import {
   YouTubeChannelCreateRequestSchema,
@@ -34,7 +34,9 @@ const createChannelRouteDef = createRoute({
   },
   responses: {
     201: { content: { 'application/json': { schema: YouTubeChannelCreateResponseSchema } }, description: 'YouTube channel created' },
-    400: { content: { 'application/json': { schema: z.union([YouTubeChannelPlatformIdExistsErrorSchema, YouTubeChannelCreateFailedErrorSchema]) } }, description: 'Invalid input or platform ID exists' },
+    400: { content: { 'application/json': { schema: YouTubeChannelCreateFailedErrorSchema } }, description: 'Invalid input' },
+    404: { content: { 'application/json': { schema: YouTubeChannelNotFoundErrorSchema } }, description: 'Related show not found' },
+    409: { content: { 'application/json': { schema: YouTubeChannelPlatformIdExistsErrorSchema } }, description: 'Platform ID exists' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Creates a new YouTube channel link.',
@@ -86,8 +88,9 @@ const updateChannelRouteDef = createRoute({
   },
   responses: {
     200: { content: { 'application/json': { schema: YouTubeChannelUpdateResponseSchema } }, description: 'YouTube channel updated' },
-    400: { content: { 'application/json': { schema: z.union([YouTubeChannelPlatformIdExistsErrorSchema, YouTubeChannelUpdateFailedErrorSchema]) } }, description: 'Invalid input or platform ID conflict' },
+    400: { content: { 'application/json': { schema: YouTubeChannelUpdateFailedErrorSchema } }, description: 'Invalid input' },
     404: { content: { 'application/json': { schema: YouTubeChannelNotFoundErrorSchema } }, description: 'YouTube channel not found' },
+    409: { content: { 'application/json': { schema: YouTubeChannelPlatformIdExistsErrorSchema } }, description: 'Platform ID conflict' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Updates an existing YouTube channel link.',
@@ -102,8 +105,9 @@ const deleteChannelRouteDef = createRoute({
   request: { params: PathIdParamSchema },
   responses: {
     200: { content: { 'application/json': { schema: YouTubeChannelDeleteResponseSchema } }, description: 'YouTube channel deleted' },
-    400: { content: { 'application/json': { schema: YouTubeChannelDeleteFailedErrorSchema } }, description: 'Deletion failed (e.g., channel has videos/playlists)' },
+    400: { content: { 'application/json': { schema: GeneralBadRequestErrorSchema } }, description: 'Bad request (e.g., invalid ID format)' },
     404: { content: { 'application/json': { schema: YouTubeChannelNotFoundErrorSchema } }, description: 'YouTube channel not found' },
+    409: { content: { 'application/json': { schema: YouTubeChannelDeleteFailedErrorSchema } }, description: 'Deletion conflict' },
     500: { content: { 'application/json': { schema: GeneralServerErrorSchema } }, description: 'Server error' },
   },
   summary: 'Deletes a YouTube channel link.',

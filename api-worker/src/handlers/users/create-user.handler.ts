@@ -7,7 +7,7 @@ import {
   UserCreateFailedErrorSchema,
   UserEmailExistsErrorSchema
 } from '../../schemas/user.schemas';
-import { GeneralBadRequestErrorSchema } from '../../schemas/common.schemas'; // For role not found
+import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas'; // For role not found
 
 export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   let requestBody;
@@ -88,10 +88,10 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       if (result.error?.includes('UNIQUE constraint failed')) {
         return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'emailExists' }), 409);
       }
-      return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user due to a database error.' }), 500);
+      return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to create user due to a database error.' }), 500);
     }
   } catch (error: any) {
     console.error(`Error creating user ${email}:`, error);
-    return c.json(UserCreateFailedErrorSchema.parse({ message: 'An unexpected server error occurred.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'An unexpected server error occurred.' }), 500);
   }
 };

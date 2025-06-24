@@ -83,15 +83,18 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     const totalItems = countResult.total;
     const totalPages = Math.ceil(totalItems / limit);
 
-    return c.json(ListYouTubeChannelsResponseSchema.parse({
-      channels: channels,
-      pagination: {
-        page,
-        limit,
-        totalItems,
-        totalPages,
-      },
-    }));
+    return c.json(
+      ListYouTubeChannelsResponseSchema.parse({
+        channels: channels,
+        pagination: {
+          page,
+          limit,
+          totalItems,
+          totalPages,
+        },
+      }),
+      200
+    );
 
   } catch (error: any) {
     console.error('Error listing YouTube channels:', error);

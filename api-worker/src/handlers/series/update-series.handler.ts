@@ -59,9 +59,9 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     }
 
     // 2. Validate show_id if changed
-    if (updateData.show_id !== undefined && updateData.show_id !== existingSeries.show_id) {
+    if (updateData.showId !== undefined && updateData.showId !== existingSeries.show_id) {
       const showExists = await c.env.DB.prepare('SELECT id FROM shows WHERE id = ?1')
-        .bind(updateData.show_id)
+        .bind(updateData.showId)
         .first<{ id: number }>();
       if (!showExists) {
         return c.json(GeneralBadRequestErrorSchema.parse({ message: 'New show not found.' }), 400);
@@ -71,11 +71,11 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
     // 3. Check for title uniqueness if title or show_id is changing
     // This specific check for (title, show_id) might be a business rule not enforced by a DB constraint.
     // The DB schema only has UNIQUE(slug) for the series table.
-    if (updateData.title !== undefined || updateData.show_id !== undefined) {
+    if (updateData.title !== undefined || updateData.showId !== undefined) {
         const checkTitle = updateData.title !== undefined ? updateData.title : existingSeries.title;
-        const checkShowId = updateData.show_id !== undefined ? updateData.show_id : existingSeries.show_id;
+        const checkShowId = updateData.showId !== undefined ? updateData.showId : existingSeries.showId;
         
-        if (checkTitle !== existingSeries.title || checkShowId !== existingSeries.show_id) {
+        if (checkTitle !== existingSeries.title || checkShowId !== existingSeries.showId) {
             const conflictingSeriesByTitle = await c.env.DB.prepare(
               'SELECT id FROM series WHERE title = ?1 AND show_id = ?2 AND id != ?3'
             ).bind(checkTitle, checkShowId, id).first<{ id: number }>();
@@ -132,7 +132,7 @@ export const updateSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }
             bindingIndex++;
         }
     }
-    addField('show_id', updateData.show_id);
+    addField('show_id', updateData.showId);
 
     if (newSlug && newSlug !== existingSeries.slug) { 
       fieldsToUpdate.push(`slug = ?${bindingIndex}`);

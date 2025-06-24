@@ -6,6 +6,7 @@ import {
   GeneralNotFoundErrorSchema,
   PaginatedResponseSchema,
   PaginationQuerySchema, // For request query params
+  GeneralConflictErrorSchema,
 } from './common.schemas';
 
 // Base schema for YouTube channel properties
@@ -111,7 +112,7 @@ export const YouTubeChannelDeleteResponseSchema = MessageResponseSchema.extend({
 }).openapi('YouTubeChannelDeleteResponse');
 
 // --- Specific Error Schemas for YouTube Channels ---
-export const YouTubeChannelPlatformIdExistsErrorSchema = GeneralBadRequestErrorSchema.extend({
+export const YouTubeChannelPlatformIdExistsErrorSchema = GeneralConflictErrorSchema.extend({
   message: z.string().openapi({ example: 'YouTube platform ID already exists.' })
 }).openapi('YouTubeChannelPlatformIdExistsError');
 
@@ -123,7 +124,7 @@ export const YouTubeChannelUpdateFailedErrorSchema = GeneralBadRequestErrorSchem
   message: z.string().openapi({ example: 'Failed to update YouTube channel.' })
 }).openapi('YouTubeChannelUpdateFailedError');
 
-export const YouTubeChannelDeleteFailedErrorSchema = GeneralBadRequestErrorSchema.extend({
+export const YouTubeChannelDeleteFailedErrorSchema = GeneralConflictErrorSchema.extend({
   message: z.string().openapi({ example: 'Cannot delete YouTube Channel: It is referenced by existing YouTube videos or playlists.' })
 }).openapi('YouTubeChannelDeleteFailedError');
 
