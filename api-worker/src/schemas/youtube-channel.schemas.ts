@@ -18,11 +18,11 @@ const YouTubeChannelBaseSchema = z.object({
     .openapi({ example: '22', description: 'Default YouTube category ID for videos (e.g., People & Blogs is 22).' }),
   title: z.string().min(1).max(255)
     .openapi({ example: 'My Awesome Channel', description: 'The title (name) of the YouTube channel.' }),
-  description: z.string().max(5000)
+  description: z.string().max(5000).nullable()
     .openapi({ example: 'Channel discussing interesting topics.', description: 'A description for the YouTube channel.' }),
-  videoDescriptionTemplate: z.string().max(10000)
+  videoDescriptionTemplate: z.string().max(10000).nullable()
     .openapi({ example: 'In this episode, we discuss {topic_details}.\n\nKeywords: {keywords}', description: 'Template for generating video descriptions.' }),
-  firstCommentTemplate: z.string().max(2000)
+  firstCommentTemplate: z.string().max(2000).nullable()
     .openapi({ example: 'Join the discussion! What are your thoughts on {topic}?', description: 'Template for the first comment on videos.' }),
   languageCode: z.string().length(2)
     .openapi({ example: 'en', description: 'Language code for the channel (ISO 639-1 alpha-2 code).' }),
@@ -38,16 +38,16 @@ const YouTubeChannelObjectSchema = YouTubeChannelBaseSchema.extend({
 export const YouTubeChannelSchema = z.preprocess(
   (val: any) => (val ? {
     id: val.id,
-    showId: val.show_id,
-    youtubePlatformId: val.youtube_platform_id,
-    youtubePlatformCategoryId: val.youtube_platform_category_id,
+    showId: val.show_id ?? val.showId,
+    youtubePlatformId: val.youtube_platform_id ?? val.youtubePlatformId,
+    youtubePlatformCategoryId: val.youtube_platform_category_id ?? val.youtubePlatformCategoryId,
     title: val.title,
     description: val.description,
-    videoDescriptionTemplate: val.video_description_template,
-    firstCommentTemplate: val.first_comment_template,
-    languageCode: val.language_code,
-    createdAt: val.created_at,
-    updatedAt: val.updated_at,
+    videoDescriptionTemplate: val.video_description_template ?? val.videoDescriptionTemplate,
+    firstCommentTemplate: val.first_comment_template ?? val.firstCommentTemplate,
+    languageCode: val.language_code ?? val.languageCode,
+    createdAt: val.created_at ?? val.createdAt,
+    updatedAt: val.updated_at ?? val.updatedAt,
   } : val),
   YouTubeChannelObjectSchema
 ).openapi('YouTubeChannel');

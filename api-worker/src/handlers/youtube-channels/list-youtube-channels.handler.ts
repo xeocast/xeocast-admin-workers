@@ -74,6 +74,7 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     ]);
 
     if (!channelResults || countResult === null) {
+
       console.error('Failed to fetch YouTube channels or count, D1 results:', channelResults, countResult);
       return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve YouTube channels from the database.' }), 500);
     }
