@@ -10,30 +10,47 @@ import {
 
 // Base schema for YouTube channel properties
 const YouTubeChannelBaseSchema = z.object({
-  show_id: z.number().int().positive()
+  showId: z.number().int().positive()
     .openapi({ example: 1, description: 'The ID of the show this YouTube channel is associated with.' }),
-  youtube_platform_id: z.string().min(1).max(100)
+  youtubePlatformId: z.string().min(1).max(100)
     .openapi({ example: 'UCxxxxxxxxxxxxxxxxx', description: 'The unique YouTube Channel ID (platform ID).' }),
-  youtube_platform_category_id: z.string().max(50)
+  youtubePlatformCategoryId: z.string().max(50)
     .openapi({ example: '22', description: 'Default YouTube category ID for videos (e.g., People & Blogs is 22).' }),
   title: z.string().min(1).max(255)
     .openapi({ example: 'My Awesome Channel', description: 'The title (name) of the YouTube channel.' }),
   description: z.string().max(5000)
     .openapi({ example: 'Channel discussing interesting topics.', description: 'A description for the YouTube channel.' }),
-  video_description_template: z.string().max(10000)
+  videoDescriptionTemplate: z.string().max(10000)
     .openapi({ example: 'In this episode, we discuss {topic_details}.\n\nKeywords: {keywords}', description: 'Template for generating video descriptions.' }),
-  first_comment_template: z.string().max(2000)
+  firstCommentTemplate: z.string().max(2000)
     .openapi({ example: 'Join the discussion! What are your thoughts on {topic}?', description: 'Template for the first comment on videos.' }),
-  language_code: z.string().length(2)
+  languageCode: z.string().length(2)
     .openapi({ example: 'en', description: 'Language code for the channel (ISO 639-1 alpha-2 code).' }),
 }).openapi('YouTubeChannelBase');
 
 // Full YouTubeChannel schema for API responses
-export const YouTubeChannelSchema = YouTubeChannelBaseSchema.extend({
+const YouTubeChannelObjectSchema = YouTubeChannelBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the YouTube channel record.' }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
-}).openapi('YouTubeChannel');
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
+});
+
+export const YouTubeChannelSchema = z.preprocess(
+  (val: any) => (val ? {
+    id: val.id,
+    showId: val.show_id,
+    youtubePlatformId: val.youtube_platform_id,
+    youtubePlatformCategoryId: val.youtube_platform_category_id,
+    title: val.title,
+    description: val.description,
+    videoDescriptionTemplate: val.video_description_template,
+    firstCommentTemplate: val.first_comment_template,
+    languageCode: val.language_code,
+    createdAt: val.created_at,
+    updatedAt: val.updated_at,
+  } : val),
+  YouTubeChannelObjectSchema
+).openapi('YouTubeChannel');
 
 // Schema for creating a new YouTube channel
 export const YouTubeChannelCreateRequestSchema = YouTubeChannelBaseSchema;
@@ -47,43 +64,30 @@ export const YouTubeChannelCreateResponseSchema = MessageResponseSchema.extend({
 export const YouTubeChannelSortBySchema = z.enum([
   'id',
   'title',
-  'show_id',
-  'language_code',
-  'created_at',
-  'updated_at'
+  'showId',
+  'languageCode',
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort YouTube channels by.', example: 'title' });
 
 // Enum for sort order
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing YouTube channels
-export const ListYouTubeChannelsQuerySchema = z.preprocess(
-  (query: unknown) => {
-    if (typeof query !== 'object' || query === null) {
-      return query;
-    }
-    const q = query as Record<string, unknown>;
-    const processed = { ...q };
-    if (q.per_page) processed.limit = q.per_page;
-    if (q.sort_by) processed.sortBy = q.sort_by;
-    if (q.sort_order) processed.sortOrder = q.sort_order;
-    return processed;
-  },
-  PaginationQuerySchema.extend({
-    show_id: z.string().optional()
+export const ListYouTubeChannelsQuerySchema = PaginationQuerySchema.extend({
+    showId: z.string().optional()
       .transform(val => val ? parseInt(val, 10) : undefined)
       .pipe(z.number().int().positive().optional())
       .openapi({ description: 'Filter by show ID.', example: '1' }),
     title: z.string().optional()
       .openapi({ description: 'Filter by YouTube channel title (case-insensitive, partial match).', example: 'Awesome Channel' }),
-    language_code: z.string().optional()
+    languageCode: z.string().optional()
       .openapi({ description: 'Filter by language code (ISO 639-1 alpha-2 code).', example: 'en' }),
     sortBy: YouTubeChannelSortBySchema.optional().default('title')
       .openapi({ description: 'Field to sort YouTube channels by.', example: 'title' }),
     sortOrder: SortOrderSchema.optional().default('asc')
       .openapi({ description: 'Sort order (asc/desc).', example: 'asc' }),
-  })
-).openapi('ListYouTubeChannelsQuery');
+  }).openapi('ListYouTubeChannelsQuery');
 
 // Schema for listing YouTube channels
 export const ListYouTubeChannelsResponseSchema = PaginatedResponseSchema(YouTubeChannelSchema, 'channels')

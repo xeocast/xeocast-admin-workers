@@ -10,9 +10,12 @@ import { PathIdParamSchema, GeneralServerErrorSchema, GeneralBadRequestErrorSche
 export const deleteYouTubeChannelHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const paramsValidation = PathIdParamSchema.safeParse(c.req.param());
   if (!paramsValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format in path.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      message: 'Invalid ID format in path.',
+      errors: paramsValidation.error.flatten().fieldErrors,
+    }), 400);
   }
-  const id = parseInt(paramsValidation.data.id, 10);
+  const { id } = paramsValidation.data;
 
   try {
     // Check if channel exists first to provide a clear 404 if it doesn't
@@ -24,10 +27,9 @@ export const deleteYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     // Check for dependencies in youtube_playlists
     const playlistDependency = await c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE channel_id = ?1 LIMIT 1').bind(id).first();
     if (playlistDependency) {
-      return c.json(YouTubeChannelDeleteFailedErrorSchema.parse({ 
-        
-        message: 'Cannot delete YouTube Channel: It is referenced by existing YouTube playlists. Please delete or reassign them first.' 
-      }), 400);
+      return c.json(YouTubeChannelDeleteFailedErrorSchema.parse({
+        message: 'Cannot delete YouTube Channel: It is referenced by existing YouTube playlists. Please delete or reassign them first.',
+      }), 409);
     }
 
     // Note: youtube_videos has ON DELETE CASCADE for youtube_channel_id, so they will be auto-deleted.
@@ -45,13 +47,12 @@ export const deleteYouTubeChannelHandler = async (c: Context<{ Bindings: Cloudfl
     }
 
   } catch (error: any) {
-    console.error('Error deleting YouTube channel:', error);
+    console.error(`Error deleting YouTube channel ${id}:`, error);
     // Check for any other foreign key constraint errors that might not have been caught
-    if (error.message && error.message.toLowerCase().includes('foreign key constraint failed')) {
-      return c.json(YouTubeChannelDeleteFailedErrorSchema.parse({ 
-        
-        message: 'Cannot delete YouTube Channel: It is still referenced by other resources.' 
-      }), 400);
+    if (error.message?.toLowerCase().includes('foreign key constraint failed')) {
+      return c.json(YouTubeChannelDeleteFailedErrorSchema.parse({
+        message: 'Cannot delete YouTube Channel: It is still referenced by other resources.',
+      }), 409);
     }
     return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to delete YouTube channel due to a server error.' }), 500);
   }

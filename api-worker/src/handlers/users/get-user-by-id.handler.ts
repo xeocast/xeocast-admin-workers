@@ -22,9 +22,12 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
   const paramValidation = PathIdParamSchema.safeParse(c.req.param());
 
   if (!paramValidation.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid ID format.' }), 400);
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      message: 'Invalid ID format in path.',
+      errors: paramValidation.error.flatten().fieldErrors,
+    }), 400);
   }
-  const id = parseInt(paramValidation.data.id, 10);
+  const { id } = paramValidation.data;
 
   try {
     const dbResults = await c.env.DB.prepare(
@@ -53,21 +56,21 @@ export const getUserByIdHandler = async (c: Context<{ Bindings: CloudflareEnv }>
       id: firstRow.id,
       email: firstRow.email,
       name: firstRow.name,
-      createdAt: new Date(firstRow.created_at), // Zod will coerce to Date
-      updatedAt: new Date(firstRow.updated_at), // Zod will coerce to Date
-      roles: roles.length > 0 ? roles : [], // Ensure roles is an array, even if empty
+      createdAt: new Date(firstRow.created_at),
+      updatedAt: new Date(firstRow.updated_at),
+      roles: roles.length > 0 ? roles : [],
     };
 
     const validation = UserSchema.safeParse(userForValidation);
     if (!validation.success) {
-      console.error(`Data for user ID ${firstRow.id} failed UserSchema validation after DB fetch:`, validation.error.flatten());
+      console.error(`Data for user ID ${id} failed UserSchema validation after DB fetch:`, validation.error.flatten());
       return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing user data.' }), 500);
     }
 
     return c.json(GetUserResponseSchema.parse({ user: validation.data }), 200);
 
   } catch (error) {
-    console.error('Error getting user by ID:', error);
+    console.error(`Error getting user by ID ${id}:`, error);
     return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve user due to a server error.' }), 500);
   }
 };

@@ -9,36 +9,20 @@ import {
 } from '../../schemas/youtube-channel.schemas';
 import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../schemas/common.schemas';
 
-// Helper to map DB row to YouTubeChannelSchema compatible object
-const mapDbRowToYouTubeChannel = (row: any): z.infer<typeof YouTubeChannelSchema> => {
-  return YouTubeChannelSchema.parse({
-    id: row.id,
-    show_id: row.show_id,
-    youtube_platform_id: row.youtube_platform_id,
-    youtube_platform_category_id: row.youtube_platform_category_id,
-    title: row.title,
-    description: row.description,
-    video_description_template: row.video_description_template,
-    first_comment_template: row.first_comment_template,
-    language_code: row.language_code,
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  });
-};
+
 
 export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParams = c.req.query();
   const validationResult = ListYouTubeChannelsQuerySchema.safeParse(queryParams);
 
   if (!validationResult.success) {
-    return c.json(GeneralBadRequestErrorSchema.parse({ 
-        
-        message: 'Invalid query parameters.',
-        // errors: validationResult.error.flatten().fieldErrors 
+    return c.json(GeneralBadRequestErrorSchema.parse({
+      message: 'Invalid query parameters.',
+      errors: validationResult.error.flatten().fieldErrors,
     }), 400);
   }
 
-  const { page, limit, show_id, title, language_code, sortBy, sortOrder } = validationResult.data;
+  const { page, limit, showId, title, languageCode, sortBy, sortOrder } = validationResult.data;
   const offset = (page - 1) * limit;
 
   try {
@@ -47,17 +31,17 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     const bindings: (string | number)[] = [];
     let paramIndex = 1;
 
-    if (show_id !== undefined) {
+    if (showId !== undefined) {
       whereClauses.push(`show_id = ?${paramIndex++}`);
-      bindings.push(show_id);
+      bindings.push(showId);
     }
     if (title) {
       whereClauses.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
       bindings.push(`%${title}%`);
     }
-    if (language_code) {
+    if (languageCode) {
       whereClauses.push(`language_code = ?${paramIndex++}`);
-      bindings.push(language_code);
+      bindings.push(languageCode);
     }
 
     const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -66,10 +50,10 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
     const validSortColumns: Record<z.infer<typeof YouTubeChannelSortBySchema>, string> = {
       id: 'id',
       title: 'title',
-      show_id: 'show_id',
-      language_code: 'language_code',
-      created_at: 'created_at',
-      updated_at: 'updated_at'
+      showId: 'show_id',
+      languageCode: 'language_code',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     };
 
     const orderByColumn = validSortColumns[sortBy] || 'title';
@@ -94,26 +78,28 @@ export const listYouTubeChannelsHandler = async (c: Context<{ Bindings: Cloudfla
       return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to retrieve YouTube channels from the database.' }), 500);
     }
 
-    const channels = channelResults ? channelResults.map(mapDbRowToYouTubeChannel) : [];
+    const channels = z.array(YouTubeChannelSchema).parse(channelResults);
     const totalItems = countResult.total;
     const totalPages = Math.ceil(totalItems / limit);
 
-    const pagination = {
-      page,
-      limit,
-      totalItems,
-      totalPages,
-    };
-
-    return c.json(ListYouTubeChannelsResponseSchema.parse({ channels, pagination }), 200);
+    return c.json(ListYouTubeChannelsResponseSchema.parse({
+      channels: channels,
+      pagination: {
+        page,
+        limit,
+        totalItems,
+        totalPages,
+      },
+    }));
 
   } catch (error: any) {
     console.error('Error listing YouTube channels:', error);
-    // Check if it's a Zod parsing error during mapping
     if (error instanceof z.ZodError) {
-        console.error('Zod validation error during mapping list results:', error.flatten());
-        return c.json(GeneralServerErrorSchema.parse({ message: 'Error processing channel data.'}), 500);
+      return c.json(GeneralServerErrorSchema.parse({
+        message: 'Data validation error after fetching from database.',
+        errors: error.flatten()
+      }), 500);
     }
-    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list YouTube channels.' }), 500);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'An unexpected error occurred.' }), 500);
   }
 };

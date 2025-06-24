@@ -48,20 +48,7 @@ export const RoleSortBySchema = z.enum([
 export const SortOrderSchema = z.enum(['asc', 'desc']).openapi({ description: 'Sort order.', example: 'asc' });
 
 // Schema for query parameters when listing roles
-export const ListRolesQuerySchema = z.preprocess(
-  (query: unknown) => {
-    if (typeof query !== 'object' || query === null) {
-      return query;
-    }
-    const q = query as Record<string, unknown>;
-    const processed = { ...q };
-    // For backward compatibility, map snake_case to camelCase
-    if (q.per_page) processed.limit = q.per_page;
-    if (q.sort_by) processed.sortBy = q.sort_by;
-    if (q.sort_order) processed.sortOrder = q.sort_order;
-    return processed;
-  },
-  z.object({
+export const ListRolesQuerySchema = z.object({
     page: z.string().optional().default('1').transform(val => parseInt(val, 10)).pipe(z.number().int().positive().openapi({
       example: 1,
       description: 'Page number for pagination, defaults to 1.'
@@ -78,8 +65,7 @@ export const ListRolesQuerySchema = z.preprocess(
       .openapi({ description: 'Field to sort roles by.', example: 'name' }),
     sortOrder: SortOrderSchema.optional().default('asc')
       .openapi({ description: 'Sort order (asc/desc).', example: 'asc' })
-  })
-).openapi('ListRolesQuery');
+  }).openapi('ListRolesQuery');
 
 // Schema for listing roles
 export const ListRolesResponseSchema = z.object({

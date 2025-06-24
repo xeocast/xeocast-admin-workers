@@ -9,15 +9,6 @@ import {
 } from '../../schemas/series.schemas';
 import { GeneralBadRequestErrorSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 
-interface SeriesSummaryFromDB {
-  id: number;
-  title: string;
-  slug: string;
-  show_id: number;
-  // created_at and updated_at are not in SeriesSummarySchema, so not strictly needed here
-  // but if they were, they'd be: created_at: string; updated_at: string;
-}
-
 export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
   const queryParseResult = ListSeriesQuerySchema.safeParse(c.req.query());
 
@@ -28,16 +19,16 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     }), 400);
   }
 
-  const { page, limit, title, show_id, sortBy, sortOrder } = queryParseResult.data;
+  const { page, limit, title, showId, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   let whereClauses: string[] = [];
   let bindings: (string | number)[] = [];
   let paramIndex = 1;
 
-  if (show_id !== undefined) {
+  if (showId !== undefined) {
     whereClauses.push(`show_id = ?${paramIndex++}`);
-    bindings.push(show_id);
+    bindings.push(showId);
   }
   if (title) {
     whereClauses.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
@@ -50,9 +41,9 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
   const validSortColumns: Record<z.infer<typeof SeriesSortBySchema>, string> = {
     id: 'id',
     title: 'title',
-    show_id: 'show_id',
-    created_at: 'created_at',
-    updated_at: 'updated_at',
+    showId: 'show_id',
+    createdAt: 'created_at',
+    updatedAt: 'updated_at',
   };
 
   const orderByColumn = validSortColumns[sortBy] || 'title'; // Default to 'title'
@@ -70,7 +61,7 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
     ).bind(...bindings);
 
     const [seriesDbResult, countResult] = await Promise.all([
-      seriesQueryStmt.all<SeriesSummaryFromDB>(),
+      seriesQueryStmt.all<any>(),
       countQueryStmt.first<{ total: number }>()
     ]);
 
@@ -81,8 +72,14 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       }), 500);
     }
 
-    // Validate each summary - SeriesSummarySchema does not include created_at/updated_at, so direct mapping is fine.
-    const validatedSeriesSummaries = z.array(SeriesSummarySchema).safeParse(seriesDbResult.results);
+    const series = seriesDbResult.results.map((row: any) => ({
+      id: row.id,
+      title: row.title,
+      slug: row.slug,
+      showId: row.show_id,
+    }));
+
+    const validatedSeriesSummaries = z.array(SeriesSummarySchema).safeParse(series);
 
     if (!validatedSeriesSummaries.success) {
       console.error('Final series list validation error:', validatedSeriesSummaries.error.flatten());
@@ -106,8 +103,8 @@ export const listSeriesHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       pagination: pagination,
     }), 200);
 
-  } catch (error) {
-    console.error('Error listing series:', error);
-    return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to list series due to a server error.' }), 500);
+  } catch (e: any) {
+    console.error('Error in listSeriesHandler:', e);
+    return c.json(GeneralServerErrorSchema.parse({ message: 'An unexpected error occurred.' }), 500);
   }
 };

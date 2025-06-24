@@ -19,17 +19,16 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
 
   const validationResult = UserCreateRequestSchema.safeParse(requestBody);
   if (!validationResult.success) {
-    return c.json(UserCreateFailedErrorSchema.parse({ 
-        
-        message: 'Invalid input for creating user.',
-        // errors: validationResult.error.flatten().fieldErrors 
+    return c.json(UserCreateFailedErrorSchema.parse({
+      message: 'Invalid input for creating user.',
+      errors: validationResult.error.flatten().fieldErrors,
     }), 400);
   }
 
   const { email, name, password, roleIds } = validationResult.data;
 
   try {
-    // 0. Validate roleIds if provided
+    // Validate roleIds if provided
     const rolesToAssignIds = (roleIds && roleIds.length > 0) ? roleIds : [2]; // Default to editor role (ID 2)
 
     if (roleIds && roleIds.length > 0) { // Only validate if roles were explicitly provided
@@ -38,77 +37,61 @@ export const createUserHandler = async (c: Context<{ Bindings: CloudflareEnv }>)
       const existingRolesResult = await existingRolesStmt.bind(...roleIds).all<{id: number}>();
       
       if (!existingRolesResult.success || !existingRolesResult.results || existingRolesResult.results.length !== roleIds.length) {
-        // Find which roles are invalid for a more specific error message (optional)
-                const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
+        const validFoundIds = new Set(existingRolesResult.results?.map((r: { id: number }) => r.id) || []);
         const invalidRoleIds = roleIds.filter((id: number) => !validFoundIds.has(id));
         return c.json(GeneralBadRequestErrorSchema.parse({
-                        message: `Invalid roleIds provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`
+          message: `Invalid roleIds provided: ${invalidRoleIds.join(', ')}. Please ensure all role IDs exist.`,
         }), 400);
       }
-      // At this point, all provided roleIds are valid and are in rolesToAssignIds
     }
-    // If no roleIds were provided, rolesToAssignIds defaults to [2] (editor), which is assumed to exist.
 
-    // 1. Check if email already exists
+    // Check if email already exists
     const existingUserByEmail = await c.env.DB.prepare('SELECT id FROM users WHERE email = ?1')
       .bind(email)
       .first<{ id: number }>();
 
     if (existingUserByEmail) {
-      return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'email_exists' }), 400);
+      return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'emailExists' }), 409);
     }
 
-    // 3. Hash password securely.
+    // Hash password securely
     const saltRounds = 12;
-    const password_hash = await hash(password, saltRounds); 
+    const passwordHash = await hash(password, saltRounds);
 
-    // 3. Store user in the database
+    // Store user in the database
     const stmt = c.env.DB.prepare(
       'INSERT INTO users (email, name, password_hash) VALUES (?1, ?2, ?3)'
-    ).bind(email, name, password_hash);
+    ).bind(email, name, passwordHash);
     
     const result = await stmt.run();
 
     if (result.success && result.meta.last_row_id) {
       const newUserId = result.meta.last_row_id;
-      // rolesToAssignIds is already defined and validated (or defaulted) from above
 
       try {
         for (const roleId of rolesToAssignIds) {
           const userRoleStmt = c.env.DB.prepare(
             'INSERT INTO user_roles (user_id, role_id) VALUES (?1, ?2)'
           ).bind(newUserId, roleId);
-          const userRoleResult = await userRoleStmt.run();
-
-          if (!userRoleResult.success) {
-            console.error(`Failed to assign role ID ${roleId} to user ${newUserId}. D1 user_roles insert result:`, userRoleResult);
-            // Potentially collect errors and report them, or decide if one failure means the whole operation failed.
-          }
+          await userRoleStmt.run();
         }
       } catch (roleError) {
         console.error(`Error assigning roles to user ${newUserId}:`, roleError);
-        // Log and proceed as user creation was successful, roles might be partially assigned.
       }
 
       return c.json(UserCreateResponseSchema.parse({
-        
         message: 'User created successfully.',
-        id: result.meta.last_row_id
+        id: newUserId,
       }), 201);
     } else {
-      console.error('Failed to insert user, D1 result:', result);
-      // This could be a D1 error or the unique constraint on email if not caught above (race condition)
-      return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user.' }), 500);
+      console.error(`Failed to insert user ${email}, D1 result:`, result);
+      if (result.error?.includes('UNIQUE constraint failed')) {
+        return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'emailExists' }), 409);
+      }
+      return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user due to a database error.' }), 500);
     }
-
-  } catch (error) {
-    console.error('Error creating user:', error);
-    if (error instanceof Error) {
-        if (error.message.includes('UNIQUE constraint failed: users.email')) {
-            return c.json(UserEmailExistsErrorSchema.parse({ message: 'A user with this email already exists.', error: 'email_exists' }), 400);
-        }
-
-    }
-    return c.json(UserCreateFailedErrorSchema.parse({ message: 'Failed to create user due to a server error.' }), 500);
+  } catch (error: any) {
+    console.error(`Error creating user ${email}:`, error);
+    return c.json(UserCreateFailedErrorSchema.parse({ message: 'An unexpected server error occurred.' }), 500);
   }
 };
