@@ -9,11 +9,11 @@ import {
 
 // Base schema for YouTube playlist properties
 const YouTubePlaylistBaseSchema = z.object({
-  series_id: z.number().int().positive()
+  seriesId: z.number().int().positive()
     .openapi({ example: 1, description: 'The ID of the series this YouTube playlist is associated with.' }),
-  channel_id: z.number().int().positive() // Renamed from youtube_channel_id
+  channelId: z.number().int().positive() // Renamed from youtube_channel_id
     .openapi({ example: 1, description: 'The ID of the YouTube channel this playlist belongs to.' }),
-  youtube_platform_id: z.string().min(1).max(100)
+  youtubePlatformId: z.string().min(1).max(100)
     .openapi({ example: 'PLxxxxxxxxxxxxxxxxx', description: 'The unique YouTube Playlist ID (platform ID).' }),
   title: z.string().min(1).max(255)
     .openapi({ example: 'My Awesome Series Playlist', description: 'The title of the YouTube playlist.' }),
@@ -25,8 +25,8 @@ const YouTubePlaylistBaseSchema = z.object({
 // Full YouTubePlaylist schema for API responses
 export const YouTubePlaylistSchema = YouTubePlaylistBaseSchema.extend({
   id: z.number().int().positive().openapi({ example: 1, description: 'Unique identifier for the YouTube playlist record.' }),
-  created_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
-  updated_at: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
+  createdAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of creation.' }),
+  updatedAt: z.coerce.date().openapi({ example: '2023-01-01T12:00:00Z', description: 'Timestamp of last update.' }),
 }).openapi('YouTubePlaylist');
 
 // Schema for creating a new YouTube playlist
@@ -41,10 +41,10 @@ export const YouTubePlaylistCreateResponseSchema = MessageResponseSchema.extend(
 export const YouTubePlaylistSortBySchema = z.enum([
   'id',
   'title',
-  'series_id',
-  'channel_id',
-  'created_at',
-  'updated_at'
+  'seriesId',
+  'channelId',
+  'createdAt',
+  'updatedAt'
 ]).openapi({ description: 'Field to sort YouTube playlists by.', example: 'title' });
 
 // Enum for sort order
@@ -74,11 +74,11 @@ export const ListYouTubePlaylistsQuerySchema = z.preprocess(
       .openapi({ description: 'Number of items per page.', example: '10' }),
     title: z.string().optional()
       .openapi({ description: 'Filter by playlist title (case-insensitive, partial match).', example: 'Awesome Playlist' }),
-    series_id: z.string().optional()
+    seriesId: z.string().optional()
       .transform(val => val ? parseInt(val, 10) : undefined)
       .pipe(z.number().int().positive().optional())
       .openapi({ description: 'Filter by series ID.', example: '1' }),
-    channel_id: z.string().optional()
+    channelId: z.string().optional()
       .transform(val => val ? parseInt(val, 10) : undefined)
       .pipe(z.number().int().positive().optional())
       .openapi({ description: 'Filter by YouTube channel ID.', example: '1' }),
@@ -110,7 +110,7 @@ export const YouTubePlaylistUpdateResponseSchema = MessageResponseSchema.extend(
 
 // Schema for specifically updating the youtube_platform_id (if a dedicated route is desired)
 export const YouTubePlaylistUpdatePlatformIdRequestSchema = z.object({
-    youtube_platform_id: z.string().min(1).max(100)
+    youtubePlatformId: z.string().min(1).max(100)
         .openapi({ example: 'PLnewxxxxxxxxxxxx', description: 'The new YouTube Playlist ID (platform ID).' }),
 }).openapi('YouTubePlaylistUpdatePlatformIdRequest');
 

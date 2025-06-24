@@ -27,9 +27,9 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
   }
 
   const { 
-    series_id,
-    channel_id, // Renamed from youtube_channel_id
-    youtube_platform_id,
+    seriesId,
+    channelId,
+    youtubePlatformId,
     title,
     description, // Now non-nullable as per updated schema
     // thumbnail_url was removed from schema
@@ -37,19 +37,19 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
   try {
     // Validate foreign keys
-    const channelExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(channel_id).first();
+    const channelExists = await c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(channelId).first();
     if (!channelExists) {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `YouTube channel with id ${channel_id} not found.` }), 400);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `YouTube channel with id ${channelId} not found.` }), 400);
     }
 
-    const seriesExists = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(series_id).first();
+    const seriesExists = await c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(seriesId).first();
     if (!seriesExists) {
-      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `Series with id ${series_id} not found.` }), 400);
+      return c.json(YouTubePlaylistCreateFailedErrorSchema.parse({ message: `Series with id ${seriesId} not found.` }), 400);
     }
 
-    // Check for youtube_platform_id uniqueness (globally, as per DB constraint)
+    // Check for youtubePlatformId uniqueness (globally, as per DB constraint)
     const platformIdExists = await c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE youtube_platform_id = ?1')
-      .bind(youtube_platform_id).first();
+      .bind(youtubePlatformId).first();
     if (platformIdExists) {
       // The schema YouTubePlaylistPlatformIdExistsErrorSchema says '...for this channel', but DB constraint is global.
       // Adjusting message to reflect global uniqueness.
@@ -61,7 +61,7 @@ export const createYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
     const stmt = c.env.DB.prepare(
       'INSERT INTO youtube_playlists (youtube_platform_id, title, description, channel_id, series_id) VALUES (?1, ?2, ?3, ?4, ?5)'
-    ).bind(youtube_platform_id, title, description, channel_id, series_id);
+    ).bind(youtubePlatformId, title, description, channelId, seriesId);
     
     const result = await stmt.run();
 

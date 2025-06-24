@@ -43,8 +43,8 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     }
 
     // 2. Validate youtube_platform_id uniqueness if changed
-    if (updateData.youtube_platform_id && updateData.youtube_platform_id !== existingPlaylist.youtube_platform_id) {
-      const platformIdCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE youtube_platform_id = ?1 AND id != ?2').bind(updateData.youtube_platform_id, id);
+    if (updateData.youtubePlatformId && updateData.youtubePlatformId !== existingPlaylist.youtube_platform_id) {
+      const platformIdCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_playlists WHERE youtube_platform_id = ?1 AND id != ?2').bind(updateData.youtubePlatformId, id);
       const platformIdConflict = await platformIdCheckStmt.first();
       if (platformIdConflict) {
         return c.json(YouTubePlaylistPlatformIdExistsErrorSchema.parse({ message: 'YouTube playlist platform ID already exists.' }), 400);
@@ -52,20 +52,20 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
     }
 
     // 3. Validate series_id existence if changed
-    if (updateData.series_id && updateData.series_id !== existingPlaylist.series_id) {
-      const seriesCheckStmt = c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(updateData.series_id);
+    if (updateData.seriesId && updateData.seriesId !== existingPlaylist.series_id) {
+      const seriesCheckStmt = c.env.DB.prepare('SELECT id FROM series WHERE id = ?1').bind(updateData.seriesId);
       const seriesExists = await seriesCheckStmt.first();
       if (!seriesExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ message: `Series with ID ${updateData.series_id} not found.` }), 400);
+        return c.json(GeneralBadRequestErrorSchema.parse({ message: `Series with ID ${updateData.seriesId} not found.` }), 400);
       }
     }
 
     // 4. Validate channel_id existence if changed
-    if (updateData.channel_id && updateData.channel_id !== existingPlaylist.channel_id) {
-      const channelCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(updateData.channel_id);
+    if (updateData.channelId && updateData.channelId !== existingPlaylist.channel_id) {
+      const channelCheckStmt = c.env.DB.prepare('SELECT id FROM youtube_channels WHERE id = ?1').bind(updateData.channelId);
       const channelExists = await channelCheckStmt.first();
       if (!channelExists) {
-        return c.json(GeneralBadRequestErrorSchema.parse({ message: `YouTube channel with ID ${updateData.channel_id} not found.` }), 400);
+        return c.json(GeneralBadRequestErrorSchema.parse({ message: `YouTube channel with ID ${updateData.channelId} not found.` }), 400);
       }
     }
 
@@ -76,9 +76,9 @@ export const updateYouTubePlaylistHandler = async (c: Context<{ Bindings: Cloudf
 
     if (updateData.title !== undefined) { fieldsToUpdate.push('title = ?' + bindingIdx++); bindings.push(updateData.title); }
     if (updateData.description !== undefined) { fieldsToUpdate.push('description = ?' + bindingIdx++); bindings.push(updateData.description); }
-    if (updateData.youtube_platform_id !== undefined) { fieldsToUpdate.push('youtube_platform_id = ?' + bindingIdx++); bindings.push(updateData.youtube_platform_id); }
-    if (updateData.series_id !== undefined) { fieldsToUpdate.push('series_id = ?' + bindingIdx++); bindings.push(updateData.series_id); }
-    if (updateData.channel_id !== undefined) { fieldsToUpdate.push('channel_id = ?' + bindingIdx++); bindings.push(updateData.channel_id); }
+    if (updateData.youtubePlatformId !== undefined) { fieldsToUpdate.push('youtube_platform_id = ?' + bindingIdx++); bindings.push(updateData.youtubePlatformId); }
+    if (updateData.seriesId !== undefined) { fieldsToUpdate.push('series_id = ?' + bindingIdx++); bindings.push(updateData.seriesId); }
+    if (updateData.channelId !== undefined) { fieldsToUpdate.push('channel_id = ?' + bindingIdx++); bindings.push(updateData.channelId); }
     // Note: thumbnail_url is not in the DB table for playlists, so it's ignored.
 
     if (fieldsToUpdate.length === 0) {

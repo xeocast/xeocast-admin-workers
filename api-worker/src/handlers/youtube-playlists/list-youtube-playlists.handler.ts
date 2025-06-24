@@ -13,14 +13,14 @@ import { GeneralServerErrorSchema, GeneralBadRequestErrorSchema } from '../../sc
 const mapDbRowToYouTubePlaylist = (dbRow: any): z.infer<typeof YouTubePlaylistSchema> => { // Ensure this maps all fields for YouTubePlaylistSchema
   return YouTubePlaylistSchema.parse({
     id: dbRow.id,
-    youtube_platform_id: dbRow.youtube_platform_id,
+    youtubePlatformId: dbRow.youtube_platform_id,
     title: dbRow.title,
     description: dbRow.description,
-    channel_id: dbRow.channel_id, // DB stores as channel_id, schema now expects channel_id
-    series_id: dbRow.series_id,
+    channelId: dbRow.channel_id,
+    seriesId: dbRow.series_id,
     // thumbnail_url was removed from schema
-    created_at: typeof dbRow.created_at === 'number' ? new Date(dbRow.created_at * 1000).toISOString() : dbRow.created_at,
-    updated_at: typeof dbRow.updated_at === 'number' ? new Date(dbRow.updated_at * 1000).toISOString() : dbRow.updated_at,
+    createdAt: typeof dbRow.created_at === 'number' ? new Date(dbRow.created_at * 1000).toISOString() : dbRow.created_at,
+    updatedAt: typeof dbRow.updated_at === 'number' ? new Date(dbRow.updated_at * 1000).toISOString() : dbRow.updated_at,
   });
 };
 
@@ -31,7 +31,7 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     return c.json(GeneralBadRequestErrorSchema.parse({ message: 'Invalid query parameters.'}), 400);
   }
 
-  const { page, limit, title, series_id, channel_id, sortBy, sortOrder } = queryParseResult.data;
+  const { page, limit, title, seriesId, channelId, sortBy, sortOrder } = queryParseResult.data;
   const offset = (page - 1) * limit;
 
   try {
@@ -47,13 +47,13 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
       conditions.push(`LOWER(title) LIKE LOWER(?${paramIndex++})`);
       bindings.push(`%${title}%`);
     }
-    if (series_id !== undefined) {
+    if (seriesId !== undefined) {
       conditions.push(`series_id = ?${paramIndex++}`);
-      bindings.push(series_id);
+      bindings.push(seriesId);
     }
-    if (channel_id !== undefined) {
+    if (channelId !== undefined) {
       conditions.push(`channel_id = ?${paramIndex++}`);
-      bindings.push(channel_id);
+      bindings.push(channelId);
     }
 
     if (conditions.length > 0) {
@@ -66,10 +66,10 @@ export const listYouTubePlaylistsHandler = async (c: Context<{ Bindings: Cloudfl
     const validSortColumns: Record<z.infer<typeof YouTubePlaylistSortBySchema>, string> = {
       id: 'id',
       title: 'title',
-      series_id: 'series_id',
-      channel_id: 'channel_id',
-      created_at: 'created_at',
-      updated_at: 'updated_at'
+      seriesId: 'series_id',
+      channelId: 'channel_id',
+      createdAt: 'created_at',
+      updatedAt: 'updated_at'
     };
 
     const orderByColumn = validSortColumns[sortBy] || 'title';

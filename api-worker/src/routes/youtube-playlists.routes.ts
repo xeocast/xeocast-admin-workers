@@ -47,7 +47,7 @@ const listPlaylistsRouteDef = createRoute({
   method: 'get',
   path: '/',
   request: {
-    query: ListYouTubePlaylistsQuerySchema, // This now includes page, limit, title, series_id, channel_id
+    query: ListYouTubePlaylistsQuerySchema, // This now includes page, limit, title, seriesId, channelId
   },
   responses: {
     200: { content: { 'application/json': { schema: ListYouTubePlaylistsResponseSchema } }, description: 'List of YouTube playlists' },
