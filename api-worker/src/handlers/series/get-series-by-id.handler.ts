@@ -34,10 +34,15 @@ export const getSeriesByIdHandler = async (c: Context<{ Bindings: CloudflareEnv 
       return c.json(SeriesNotFoundErrorSchema.parse({ message: 'Series not found.' }), 404);
     }
 
-    // Prepare for validation, ensuring optional fields are handled correctly
+    // Map DB fields (snake_case) to schema fields (camelCase) for validation
     const seriesForValidation = {
-      ...dbSeries,
+      id: dbSeries.id,
+      title: dbSeries.title,
+      slug: dbSeries.slug,
       description: dbSeries.description === null ? undefined : dbSeries.description,
+      showId: dbSeries.show_id,
+      createdAt: dbSeries.created_at,
+      updatedAt: dbSeries.updated_at,
     };
 
     const validation = SeriesSchema.safeParse(seriesForValidation);
