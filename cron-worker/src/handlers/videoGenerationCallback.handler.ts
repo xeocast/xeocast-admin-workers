@@ -63,12 +63,12 @@ export async function handleVideoGenerationCallback(request: Request, env: Env):
 		try {
 			const now = new Date().toISOString();
 			const stmt = env.DB.prepare(
-				'UPDATE episodes SET video_bucket_key = ?, status = \'videoGenerated\', last_status_change_at = ? WHERE id = ?'
+				'UPDATE episodes SET video_bucket_key = ?, status = \'videoGenerated\', last_status_change_at = ?, freeze_status = true WHERE id = ?'
 			);
 			const result = await stmt.bind(payload.video_bucket_key, now, episodeId).run();
 
 			if (result.success && result.meta.changes > 0) {
-				console.log(`Successfully updated episode ${episodeId} status to videoGenerated.`);
+				console.log(`Successfully updated episode ${episodeId} status to videoGenerated and set freeze_status to true.`);
 
 				// Update external_service_tasks status to 'completed'
 				try {
