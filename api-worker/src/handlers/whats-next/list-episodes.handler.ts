@@ -17,7 +17,7 @@ type DbEpisode = {
   thumbnail_gen_prompt: string | null;
   article_image_gen_prompt: string | null;
   scheduled_publish_at: string | null;
-  freezeStatus: number; // SQLite returns 0 or 1 for BOOLEAN
+  freeze_status: number; // SQLite returns 0 or 1 for BOOLEAN
   last_status_change_at: string;
   updated_at: string;
   created_at: string;
@@ -50,7 +50,7 @@ const mapToCamelCase = (dbEpisode: DbEpisode) => ({
   thumbnailGenPrompt: dbEpisode.thumbnail_gen_prompt,
   articleImageGenPrompt: dbEpisode.article_image_gen_prompt,
   scheduledPublishAt: safeToISOString(dbEpisode.scheduled_publish_at),
-  freezeStatus: Boolean(dbEpisode.freezeStatus),
+  freezeStatus: Boolean(dbEpisode.freeze_status),
   lastStatusChangeAt: safeToISOString(dbEpisode.last_status_change_at) ?? new Date().toISOString(),
   updatedAt: safeToISOString(dbEpisode.updated_at) ?? new Date().toISOString(),
   createdAt: safeToISOString(dbEpisode.created_at) ?? new Date().toISOString(),
@@ -59,7 +59,7 @@ const mapToCamelCase = (dbEpisode: DbEpisode) => ({
 const EPISODE_COLUMNS = `
   e.id, e.title, e.slug, e.status, e.show_id, e.series_id,
   e.thumbnail_gen_prompt, e.article_image_gen_prompt, e.scheduled_publish_at,
-  e.freezeStatus, e.last_status_change_at, e.updated_at, e.created_at,
+  e.freeze_status, e.last_status_change_at, e.updated_at, e.created_at,
   s.name as show_name,
   se.title as series_name
 `;

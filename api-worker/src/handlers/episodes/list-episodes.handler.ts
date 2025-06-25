@@ -81,7 +81,7 @@ export const listEpisodesHandler = async (c: Context<{ Bindings: CloudflareEnv }
         audio_bucket_key, background_bucket_key, background_music_bucket_key, intro_music_bucket_key, 
         video_bucket_key, thumbnail_bucket_key, article_image_bucket_key,
         script, thumbnail_gen_prompt, article_image_gen_prompt,
-        status_on_youtube, status_on_website, status_on_x, freezeStatus, first_comment
+        status_on_youtube, status_on_website, status_on_x, freeze_status, first_comment
       FROM episodes ${whereString} ${orderByString} LIMIT ?${paramIndex++} OFFSET ?${paramIndex++}`
     ).bind(...bindings, limit, offset);
     
