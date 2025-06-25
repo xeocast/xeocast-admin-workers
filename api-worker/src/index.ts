@@ -79,8 +79,8 @@ app.doc('/doc', {
   openapi: '3.1.0',
   info: {
     version: '1.0.1',
-    title: 'Xeocast Admin API',
-    description: 'API for managing Xeocast episode content and users.',
+    title: 'XeoCast Admin API',
+    description: 'API for managing XeoCast episode content and users.',
   },
   servers: [
     {
@@ -92,7 +92,7 @@ app.doc('/doc', {
 });
 
 // A simple root message
-app.get('/', (c) => c.text('Xeocast Admin API Worker is running. Visit /api/ui for documentation.'));
+app.get('/', (c) => c.text('XeoCast Admin API Worker is running. Visit /api/ui for documentation.'));
 
 // Swagger UI
 app.get('/doc/ui', swaggerUI({ url: '/doc' }));
