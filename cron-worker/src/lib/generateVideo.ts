@@ -27,7 +27,7 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
             c.default_episode_background_bucket_key
          FROM episodes e
          JOIN shows c ON e.show_id = c.id
-         WHERE e.status = ? AND e.freezeStatus = FALSE
+         WHERE e.status = ? AND e.freeze_status = FALSE
          ORDER BY
              CASE WHEN e.scheduled_publish_at IS NOT NULL THEN 0 ELSE 1 END,
              e.scheduled_publish_at ASC,
@@ -46,7 +46,7 @@ export async function triggerVideoGeneration(env: Env): Promise<void> {
     }>();
 
     if (!episodeToProcess) {
-        console.log('No episodes with status "materialGenerated" and freezeStatus FALSE found for video generation.');
+        console.log('No episodes with status "materialGenerated" and freeze_status FALSE found for video generation.');
         return;
     }
 
