@@ -1,6 +1,6 @@
 import { Context } from 'hono';
 import { z } from 'zod';
-import { zip } from 'fflate';
+import { zipSync, strToU8 } from 'fflate';
 import type { CloudflareEnv } from '../../env';
 import {
   EpisodeNotFoundErrorSchema
@@ -10,7 +10,10 @@ import { getR2Bucket } from '../storage/utils';
 
 const EpisodeDownloadInfoSchema = z.object({
 	videoBucketKey: z.string(),
+	thumbnailBucketKey: z.string().nullable(),
 	episodeSlug: z.string(),
+	episodeTitle: z.string(),
+	episodeDescription: z.string().nullable(),
 	seriesSlug: z.string(),
 });
 
@@ -27,7 +30,10 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
 		const stmt = c.env.DB.prepare(`
       SELECT
         e.video_bucket_key AS videoBucketKey,
+        e.thumbnail_bucket_key as thumbnailBucketKey,
         e.slug AS episodeSlug,
+        e.title AS episodeTitle,
+        e.description AS episodeDescription,
         s.slug AS seriesSlug
       FROM episodes AS e
       JOIN series AS s ON e.series_id = s.id
@@ -54,20 +60,23 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
 
 		const videoData = await videoObject.arrayBuffer();
 
-		const zipData = await new Promise<Uint8Array>((resolve, reject) => {
-			zip(
-				{
-					[`${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.mp4`]: new Uint8Array(videoData),
-				},
-				(err: Error | null, data: Uint8Array) => {
-					if (err) {
-						reject(err);
-					} else {
-						resolve(data);
-					}
-				}
-			);
-		});
+		const descriptionContent = `${episodeInfo.episodeTitle}\n\n${episodeInfo.episodeDescription || ''}`;
+		const descriptionData = strToU8(descriptionContent);
+
+		const filesToZip: Record<string, Uint8Array> = {
+			[`${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.mp4`]: new Uint8Array(videoData),
+			'description.txt': descriptionData,
+		};
+
+		if (episodeInfo.thumbnailBucketKey) {
+			const thumbnailObject = await bucket.get(episodeInfo.thumbnailBucketKey);
+			if (thumbnailObject) {
+				const thumbnailData = await thumbnailObject.arrayBuffer();
+				filesToZip[`${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.jpg`] = new Uint8Array(thumbnailData);
+			}
+		}
+
+		const zipData = zipSync(filesToZip);
 
 		const zipFileName = `${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}-yt-pkg.zip`;
 
