@@ -20,7 +20,7 @@ const EpisodeDownloadInfoSchema = z.object({
 	seriesTitle: z.string(),
 });
 
-export const downloadYtPackageHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
+export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
 	const paramParseResult = PathIdParamSchema.safeParse(c.req.param());
 
 	if (!paramParseResult.success) {
@@ -98,12 +98,12 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
 		// Update episode status
 		const updateStmt = c.env.DB.prepare(`
 			UPDATE episodes
-			SET status_on_youtube = 'public', freeze_status = 1
+			SET status_on_x = 'public', freeze_status = 1
 			WHERE id = ?1
 		`);
 		await updateStmt.bind(id).run();
 
-		const zipFileName = `${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}-yt-pkg.zip`;
+		const zipFileName = `${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.zip`;
 
 		return new Response(zipData, {
 			headers: {
@@ -111,9 +111,8 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
 				'Content-Disposition': `attachment; filename="${zipFileName}"`,
 			},
 		});
-
 	} catch (error) {
-		console.error(`Failed to generate YT package for episode ${id}:`, error);
-		return c.json(GeneralServerErrorSchema.parse({ message: 'Failed to generate YouTube package.' }), 500);
+		console.error('Error downloading package:', error);
+		return c.json(GeneralServerErrorSchema.parse({ message: 'An unexpected error occurred.' }), 500);
 	}
 };
