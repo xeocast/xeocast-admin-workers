@@ -11,10 +11,13 @@ import { getR2Bucket } from '../storage/utils';
 const EpisodeDownloadInfoSchema = z.object({
 	videoBucketKey: z.string(),
 	thumbnailBucketKey: z.string().nullable(),
+	backgroundBucketKey: z.string().nullable(),
 	episodeSlug: z.string(),
 	episodeTitle: z.string(),
 	episodeDescription: z.string().nullable(),
+	scheduledPublishAt: z.string().nullable(),
 	seriesSlug: z.string(),
+	seriesTitle: z.string(),
 });
 
 export const downloadYtPackageHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -31,10 +34,13 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
       SELECT
         e.video_bucket_key AS videoBucketKey,
         e.thumbnail_bucket_key as thumbnailBucketKey,
+        e.background_bucket_key as backgroundBucketKey,
         e.slug AS episodeSlug,
         e.title AS episodeTitle,
         e.description AS episodeDescription,
-        s.slug AS seriesSlug
+        e.scheduled_publish_at as scheduledPublishAt,
+        s.slug AS seriesSlug,
+        s.title AS seriesTitle
       FROM episodes AS e
       JOIN series AS s ON e.series_id = s.id
       WHERE e.id = ?1
@@ -52,27 +58,38 @@ export const downloadYtPackageHandler = async (c: Context<{ Bindings: Cloudflare
 			return c.json(GeneralServerErrorSchema.parse({ message: 'Episode projects bucket not configured.' }), 500);
 		}
 
-		const videoObject = await bucket.get(episodeInfo.videoBucketKey);
+		const filesToZip: Record<string, Uint8Array> = {};
 
+		// Add text files
+		filesToZip['title.txt'] = strToU8(episodeInfo.episodeTitle);
+		filesToZip['series.txt'] = strToU8(episodeInfo.seriesTitle);
+		if (episodeInfo.episodeDescription) {
+			filesToZip['description.txt'] = strToU8(episodeInfo.episodeDescription);
+		}
+		if (episodeInfo.scheduledPublishAt) {
+			filesToZip['scheduled.txt'] = strToU8(episodeInfo.scheduledPublishAt);
+		}
+
+		// Add video file
+		const videoObject = await bucket.get(episodeInfo.videoBucketKey);
 		if (!videoObject) {
 			return c.json(EpisodeNotFoundErrorSchema.parse({ message: 'Episode video file not found.' }), 404);
 		}
+		filesToZip['video.mp4'] = new Uint8Array(await videoObject.arrayBuffer());
 
-		const videoData = await videoObject.arrayBuffer();
-
-		const descriptionContent = `${episodeInfo.episodeTitle}\n\n${episodeInfo.episodeDescription || ''}`;
-		const descriptionData = strToU8(descriptionContent);
-
-		const filesToZip: Record<string, Uint8Array> = {
-			[`${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.mp4`]: new Uint8Array(videoData),
-			'description.txt': descriptionData,
-		};
-
+		// Add thumbnail file
 		if (episodeInfo.thumbnailBucketKey) {
 			const thumbnailObject = await bucket.get(episodeInfo.thumbnailBucketKey);
 			if (thumbnailObject) {
-				const thumbnailData = await thumbnailObject.arrayBuffer();
-				filesToZip[`${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.jpg`] = new Uint8Array(thumbnailData);
+				filesToZip['thumbnail.jpg'] = new Uint8Array(await thumbnailObject.arrayBuffer());
+			}
+		}
+
+		// Add background file
+		if (episodeInfo.backgroundBucketKey) {
+			const backgroundObject = await bucket.get(episodeInfo.backgroundBucketKey);
+			if (backgroundObject) {
+				filesToZip['background.jpg'] = new Uint8Array(await backgroundObject.arrayBuffer());
 			}
 		}
 
