@@ -26,6 +26,9 @@ importers:
       bcryptjs:
         specifier: ^3.0.2
         version: 3.0.2
+      fflate:
+        specifier: ^0.8.2
+        version: 0.8.2
       hono:
         specifier: ^4.7.11
         version: 4.7.11
@@ -878,6 +881,9 @@ packages:
   fast-xml-parser@4.4.1:
     resolution: {integrity: sha512-xkjOecfnKGkSsOwtZ5Pz7Us/T6mrbPQrq0nh+aCO5V9nk5NLWmasAHumTKjiPJPWANe+kAZ84Jc8ooJkzZ88Sw==}
     hasBin: true
+
+  fflate@0.8.2:
+    resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
   fsevents@2.3.3:
     resolution: {integrity: sha512-5xoDfX+fL7faATnagmWPpbFtwh/R77WmMMqqHGS65C3vvB0YHrgF+B1YmZ3441tMj5n63k0212XNoJwzlhffQw==}
@@ -2158,6 +2164,8 @@ snapshots:
   fast-xml-parser@4.4.1:
     dependencies:
       strnum: 1.1.2
+
+  fflate@0.8.2: {}
 
   fsevents@2.3.3:
     optional: true

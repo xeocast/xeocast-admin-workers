@@ -26,8 +26,34 @@ import { listEpisodesHandler } from '../handlers/episodes/list-episodes.handler'
 import { getEpisodeByIdHandler } from '../handlers/episodes/get-episode-by-id.handler';
 import { updateEpisodeHandler } from '../handlers/episodes/update-episode.handler';
 import { deleteEpisodeHandler } from '../handlers/episodes/delete-episode.handler';
+import { downloadYtPackageHandler } from '../handlers/episodes/download-yt-pkg.handler';
 
 const episodeRoutes = new OpenAPIHono<{ Bindings: CloudflareEnv }>();
+
+// GET /episodes/{id}/download-yt-pkg
+const downloadYtPkgRouteDef = createRoute({
+  method: 'get',
+  path: '/{id}/download-yt-pkg',
+  request: {
+    params: PathIdParamSchema,
+  },
+  responses: {
+    200: {
+      content: { 'application/zip': { schema: z.string().openapi({ format: 'binary' }) } },
+      description: 'Returns a zip file containing the episode\'s YouTube package.',
+    },
+    404: {
+      content: { 'application/json': { schema: EpisodeNotFoundErrorSchema } },
+      description: 'The episode or its assets were not found.',
+    },
+    500: {
+      content: { 'application/json': { schema: GeneralServerErrorSchema } },
+      description: 'Server error while generating the package.',
+    },
+  },
+  tags: ['Episodes'],
+});
+
 
 // POST /episodes
 const createEpisodeRouteDef = createRoute({
@@ -194,5 +220,6 @@ const deleteEpisodeRouteDef = createRoute({
 });
 
 episodeRoutes.openapi(deleteEpisodeRouteDef, deleteEpisodeHandler);
+episodeRoutes.openapi(downloadYtPkgRouteDef, downloadYtPackageHandler);
 
 export default episodeRoutes;
