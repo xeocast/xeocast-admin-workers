@@ -9,8 +9,6 @@ import { findVideoIdByTitle } from '../../utils/youtube';
 
 const EpisodeDownloadInfoSchema = z.object({
 	videoBucketKey: z.string(),
-	thumbnailBucketKey: z.string().nullable(),
-	backgroundBucketKey: z.string().nullable(),
 	episodeSlug: z.string(),
 	episodeTitle: z.string(),
 	episodeDescription: z.string().nullable(),
@@ -37,8 +35,6 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
 		const stmt = c.env.DB.prepare(`
       SELECT
         e.video_bucket_key AS videoBucketKey,
-        e.thumbnail_bucket_key as thumbnailBucketKey,
-        e.background_bucket_key as backgroundBucketKey,
         e.slug AS episodeSlug,
         e.title AS episodeTitle,
         e.description AS episodeDescription,
@@ -82,29 +78,16 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
 		}
 		filesToZip['video.mp4'] = new Uint8Array(await videoObject.arrayBuffer());
 
-		// Add thumbnail file
-		if (episodeInfo.thumbnailBucketKey) {
-			const thumbnailObject = await bucket.get(episodeInfo.thumbnailBucketKey);
-			if (thumbnailObject) {
-				filesToZip['thumbnail.jpg'] = new Uint8Array(await thumbnailObject.arrayBuffer());
-			}
-		}
-
-		// Add background file
-		if (episodeInfo.backgroundBucketKey) {
-			const backgroundObject = await bucket.get(episodeInfo.backgroundBucketKey);
-			if (backgroundObject) {
-				filesToZip['background.jpg'] = new Uint8Array(await backgroundObject.arrayBuffer());
-			}
-		}
-
 		// Add first-comment.txt
 		const ytChannelStmt = c.env.DB.prepare('SELECT youtube_platform_id as youtubePlatformId FROM youtube_channels WHERE show_id = ?1');
 		const ytChannelResult = await ytChannelStmt.bind(episodeInfo.showId).first();
+		console.log({ytChannelResult});
 
 		if (ytChannelResult) {
 			const parsedYtChannel = YoutubeChannelResultSchema.parse(ytChannelResult);
+			console.log({parsedYtChannel});
 			const videoId = await findVideoIdByTitle(parsedYtChannel.youtubePlatformId, episodeInfo.episodeTitle);
+			console.log({videoId});
 
 			if (videoId) {
 				const commentText = `You can also listen to this podcast episode on YouTube\n\nhttps://www.youtube.com/watch?v=${videoId}`;

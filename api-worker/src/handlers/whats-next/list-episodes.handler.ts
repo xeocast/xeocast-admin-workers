@@ -138,7 +138,7 @@ export const listWhatsNextEpisodes = async (c: Context<{ Bindings: CloudflareEnv
       fetchEpisodesByStatus(db, 'researched'),
       fetchWaitingAndGenerating(db),
       fetchEpisodesByStatus(db, 'videoGenerated', "AND e.status_on_youtube = 'none'"),
-      fetchEpisodesByStatus(db, 'videoGenerated', "AND e.status_on_x = 'none'"),
+      fetchEpisodesByStatus(db, 'videoGenerated', "AND e.status_on_x = 'none' AND e.status_on_youtube = 'public'"),
       fetchToResearch(db),
     ]);
 
