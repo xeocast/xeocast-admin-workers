@@ -15,6 +15,7 @@ const EpisodeDownloadInfoSchema = z.object({
 	scheduledPublishAt: z.string().nullable(),
 	seriesSlug: z.string(),
 	seriesTitle: z.string(),
+	showName: z.string(),
 	showId: z.number(),
 });
 
@@ -41,9 +42,11 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
         e.scheduled_publish_at as scheduledPublishAt,
         s.slug AS seriesSlug,
         s.title AS seriesTitle,
+        sh.name as showName,
         e.show_id AS showId
       FROM episodes AS e
       JOIN series AS s ON e.series_id = s.id
+      JOIN shows AS sh ON e.show_id = sh.id
       WHERE e.id = ?1
     `);
 		const dbResult = await stmt.bind(id).first();
@@ -70,6 +73,14 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
 		if (episodeInfo.scheduledPublishAt) {
 			filesToZip['scheduled.txt'] = strToU8(episodeInfo.scheduledPublishAt);
 		}
+
+		const postText = `🚀 NEW EPISODE: "${episodeInfo.episodeTitle}" is here! 🎧
+
+Check out the latest discussion on "${episodeInfo.seriesTitle}" from the show "${episodeInfo.showName}".
+
+${episodeInfo.episodeDescription || 'Find out more in the episode!'}`.trim();
+
+		filesToZip['post.txt'] = strToU8(postText);
 
 		// Add video file
 		const videoObject = await bucket.get(episodeInfo.videoBucketKey);
