@@ -41,6 +41,7 @@ const ToResearchSectionSchema = z.object({
 export const WaitingAndGeneratingSectionSchema = z.object({
   materialGenerated: z.number().openapi({ example: 5 }),
   generatingVideo: z.number().openapi({ example: 2 }),
+  generatedNotPublished: z.number().openapi({ example: 3 }),
 }).openapi('WaitingAndGeneratingSection');
 
 // The main response schema for the 'What's Next' endpoint

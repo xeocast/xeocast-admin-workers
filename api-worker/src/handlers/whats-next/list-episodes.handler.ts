@@ -83,13 +83,15 @@ const fetchWaitingAndGenerating = async (db: D1Database) => {
   const query = `
     SELECT
       SUM(CASE WHEN status = 'materialGenerated' THEN 1 ELSE 0 END) as materialGenerated,
-      SUM(CASE WHEN status = 'generatingVideo' THEN 1 ELSE 0 END) as generatingVideo
+      SUM(CASE WHEN status = 'generatingVideo' THEN 1 ELSE 0 END) as generatingVideo,
+      SUM(CASE WHEN status = 'videoGenerated' AND status_on_youtube = 'none' AND status_on_x = 'none' AND status_on_website = 'none' THEN 1 ELSE 0 END) as generatedNotPublished
     FROM episodes;
   `;
-  const result = await db.prepare(query).first<{ materialGenerated: number; generatingVideo: number; }>();
+  const result = await db.prepare(query).first<{ materialGenerated: number; generatingVideo: number; generatedNotPublished: number; }>();
   return {
     materialGenerated: result?.materialGenerated || 0,
     generatingVideo: result?.generatingVideo || 0,
+    generatedNotPublished: result?.generatedNotPublished || 0,
   };
 };
 
