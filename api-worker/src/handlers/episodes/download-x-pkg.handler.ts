@@ -2,11 +2,10 @@ import { Context } from 'hono';
 import { z } from 'zod';
 import { zipSync, strToU8 } from 'fflate';
 import type { CloudflareEnv } from '../../env';
-import {
-  EpisodeNotFoundErrorSchema
-} from '../../schemas/episode.schemas';
+import { EpisodeNotFoundErrorSchema } from '../../schemas/episode.schemas';
 import { PathIdParamSchema, GeneralServerErrorSchema } from '../../schemas/common.schemas';
 import { getR2Bucket } from '../storage/utils';
+import { findVideoIdByTitle } from '../../utils/youtube';
 
 const EpisodeDownloadInfoSchema = z.object({
 	videoBucketKey: z.string(),
@@ -18,6 +17,11 @@ const EpisodeDownloadInfoSchema = z.object({
 	scheduledPublishAt: z.string().nullable(),
 	seriesSlug: z.string(),
 	seriesTitle: z.string(),
+	showId: z.number(),
+});
+
+const YoutubeChannelResultSchema = z.object({
+	youtubePlatformId: z.string(),
 });
 
 export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareEnv }>) => {
@@ -40,7 +44,8 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
         e.description AS episodeDescription,
         e.scheduled_publish_at as scheduledPublishAt,
         s.slug AS seriesSlug,
-        s.title AS seriesTitle
+        s.title AS seriesTitle,
+        e.show_id AS showId
       FROM episodes AS e
       JOIN series AS s ON e.series_id = s.id
       WHERE e.id = ?1
@@ -93,9 +98,22 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
 			}
 		}
 
-		const zipData = zipSync(filesToZip);
+		// Add first-comment.txt
+		const ytChannelStmt = c.env.DB.prepare('SELECT youtube_platform_id as youtubePlatformId FROM youtube_channels WHERE show_id = ?1');
+		const ytChannelResult = await ytChannelStmt.bind(episodeInfo.showId).first();
 
-		// Update episode status
+		if (ytChannelResult) {
+			const parsedYtChannel = YoutubeChannelResultSchema.parse(ytChannelResult);
+			const videoId = await findVideoIdByTitle(parsedYtChannel.youtubePlatformId, episodeInfo.episodeTitle);
+
+			if (videoId) {
+				const commentText = `You can also listen to this podcast episode on YouTube\n\nhttps://www.youtube.com/watch?v=${videoId}`;
+				filesToZip['first-comment.txt'] = strToU8(commentText);
+			}
+		}
+
+		const zipFile = zipSync(filesToZip);
+
 		const updateStmt = c.env.DB.prepare(`
 			UPDATE episodes
 			SET status_on_x = 'public', freeze_status = 1
@@ -105,14 +123,15 @@ export const downloadXPackageHandler = async (c: Context<{ Bindings: CloudflareE
 
 		const zipFileName = `${episodeInfo.seriesSlug}-${episodeInfo.episodeSlug}.zip`;
 
-		return new Response(zipData, {
+		return new Response(zipFile, {
 			headers: {
 				'Content-Type': 'application/zip',
 				'Content-Disposition': `attachment; filename="${zipFileName}"`,
 			},
 		});
+
 	} catch (error) {
-		console.error('Error downloading package:', error);
+		console.error('Error downloading X package:', error);
 		return c.json(GeneralServerErrorSchema.parse({ message: 'An unexpected error occurred.' }), 500);
 	}
 };
