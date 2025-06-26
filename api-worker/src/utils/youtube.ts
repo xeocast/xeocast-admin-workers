@@ -11,7 +11,9 @@ export const findVideoIdByTitle = async (
 	videoTitle: string,
 ): Promise<string | null> => {
 	try {
-		const youtube = await Innertube.create();
+		const youtube = await Innertube.create({
+			fetch: (input, init) => fetch(input, init),
+		});
 
 		const channel = await youtube.getChannel(channelId);
 
